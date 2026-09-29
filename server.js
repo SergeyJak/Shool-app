@@ -261,6 +261,11 @@ function isValidStroke(stroke) {
 
 app.use((err, _req, res, _next) => {
   console.error(err);
+
+  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({ error: "PDF_TOO_LARGE" });
+  }
+
   res.status(500).json({ error: "INTERNAL_ERROR" });
 });
 
