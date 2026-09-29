@@ -21,6 +21,7 @@ const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 const penBtn = document.getElementById("penBtn");
 const eraserBtn = document.getElementById("eraserBtn");
+const handBtn = document.getElementById("handBtn");
 const undoBtn = document.getElementById("undoBtn");
 const uploadInput = document.getElementById("pdfUpload");
 
@@ -142,6 +143,7 @@ nextBtn.addEventListener("click", async () => {
 
 penBtn.addEventListener("click", () => setTool("pen"));
 eraserBtn.addEventListener("click", () => setTool("eraser"));
+handBtn.addEventListener("click", () => setTool("hand"));
 undoBtn.addEventListener("click", () => {
   socket.emit("stroke:undo", { page: pageNumber });
 });
@@ -219,7 +221,15 @@ function setTool(nextTool) {
   tool = nextTool;
   penBtn.classList.toggle("active", tool === "pen");
   eraserBtn.classList.toggle("active", tool === "eraser");
-  drawCanvas.style.cursor = tool === "eraser" ? "cell" : "crosshair";
+  handBtn.classList.toggle("active", tool === "hand");
+
+  if (tool === "hand") {
+    drawCanvas.style.pointerEvents = "none";
+    drawCanvas.style.cursor = "grab";
+  } else {
+    drawCanvas.style.pointerEvents = "auto";
+    drawCanvas.style.cursor = tool === "eraser" ? "cell" : "crosshair";
+  }
 }
 
 function pointFromEvent(event) {
@@ -231,11 +241,10 @@ function pointFromEvent(event) {
 }
 
 function onPointerDown(event) {
-  if (!pdfDoc) return;
+  if (!pdfDoc || tool === "hand") return;
 
-  // Finger is reserved for scrolling/panning the page. Stylus/mouse draw.
-  if (event.pointerType === "touch") return;
-
+  // In pen/eraser mode both finger and stylus work.
+  // Scroll is available through the explicit Hand tool.
   drawCanvas.setPointerCapture(event.pointerId);
   const point = pointFromEvent(event);
 
@@ -263,7 +272,7 @@ function onPointerDown(event) {
 }
 
 function onPointerMove(event) {
-  if (event.pointerType === "touch") return;
+  if (tool === "hand") return;
   const point = pointFromEvent(event);
 
   if (activeErasePath) {
@@ -279,7 +288,7 @@ function onPointerMove(event) {
 }
 
 function onPointerUp(event) {
-  if (event?.pointerType === "touch") return;
+  if (tool === "hand") return;
 
   if (activeErasePath) {
     const erase = activeErasePath;
