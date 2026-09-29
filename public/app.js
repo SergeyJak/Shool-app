@@ -294,6 +294,14 @@ function onPointerUp(event) {
     const erase = activeErasePath;
     activeErasePath = null;
     if (erase.points.length === 1) erase.points.push(erase.points[0]);
+
+    // Optimistic erase: keep the visual result immediately after finger/stylus release.
+    // The server persists the same erase path and then refreshes authoritative strokes.
+    strokes = strokes.flatMap((stroke) => {
+      if (role !== "teacher" && stroke.role !== role) return [stroke];
+      return splitStrokeForErase(stroke, erase);
+    });
+
     socket.emit("erase:path", erase);
     redrawInk();
     return;
@@ -316,25 +324,41 @@ function distanceToErasePath(point, erasePath) {
   return best;
 }
 
-function erasePreviewSegments(stroke) {
-  if (!activeErasePath) return [stroke];
-  if (role !== "teacher" && stroke.role !== role) return [stroke];
-
+function splitStrokeForErase(stroke, erasePath) {
   const parts = [];
   let current = [];
 
   for (const point of stroke.points) {
-    const erased = distanceToErasePath(point, activeErasePath) <= activeErasePath.radius;
+    const erased = distanceToErasePath(point, erasePath) <= erasePath.radius;
     if (erased) {
-      if (current.length >= 2) parts.push({ ...stroke, points: current });
+      if (current.length >= 2) {
+        parts.push({
+          ...stroke,
+          id: `${stroke.id || stroke._id}-local-${parts.length}`,
+          points: current,
+        });
+      }
       current = [];
     } else {
       current.push(point);
     }
   }
 
-  if (current.length >= 2) parts.push({ ...stroke, points: current });
+  if (current.length >= 2) {
+    parts.push({
+      ...stroke,
+      id: `${stroke.id || stroke._id}-local-${parts.length}`,
+      points: current,
+    });
+  }
+
   return parts;
+}
+
+function erasePreviewSegments(stroke) {
+  if (!activeErasePath) return [stroke];
+  if (role !== "teacher" && stroke.role !== role) return [stroke];
+  return splitStrokeForErase(stroke, activeErasePath);
 }
 
 async function loadDocument() {
