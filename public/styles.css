@@ -19,7 +19,24 @@ main { padding: 12px; }
 }
 .toolbar button.active { background: #17202a; color: white; }
 .spacer { flex: 1; }
-#pageInfo { min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
+#pageInfo { min-width: 94px; text-align: center; font-variant-numeric: tabular-nums; }
+.page-jump {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+#pageInput {
+  width: 54px;
+  border: 1px solid #cfd6dd;
+  border-radius: 8px;
+  padding: 7px 5px;
+  font: inherit;
+  text-align: center;
+  background: white;
+  color: inherit;
+}
 #emptyState,
 .loading-state {
   max-width: 800px;
@@ -86,23 +103,22 @@ canvas { display: block; }
     display: none;
   }
 
-  #prevBtn {
-    grid-column: 1;
-    grid-row: 2;
-  }
+  #firstBtn { grid-column: 1; grid-row: 2; }
+  #prevBtn { grid-column: 2; grid-row: 2; }
 
   #pageInfo {
-    grid-column: 2 / span 2;
-    grid-row: 2;
-    display: grid;
-    place-items: center;
+    grid-column: 1 / span 4;
+    grid-row: 3;
+    display: flex;
+    align-items: center;
     min-width: 0;
+    justify-self: center;
   }
 
-  #nextBtn {
-    grid-column: 4;
-    grid-row: 2;
-  }
+  #nextBtn { grid-column: 3; grid-row: 2; }
+  #lastBtn { grid-column: 4; grid-row: 2; }
+
+  #pageInput { width: 62px; }
 }
 
 .snackbar {
