@@ -178,3 +178,7 @@ canvas { display: block; }
     border-radius: 12px;
   }
 }
+
+[hidden] {
+  display: none !important;
+}
