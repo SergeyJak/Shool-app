@@ -25,7 +25,11 @@
       <button id="nextBtn">›</button>
     </div>
 
-    <div id="emptyState">Ждём, пока учитель загрузит PDF.</div>
+    <div id="loadingState" class="loading-state">
+      <div class="spinner" aria-hidden="true"></div>
+      <div id="loadingText">Проверяем документ…</div>
+    </div>
+    <div id="emptyState" hidden>Ждём, пока учитель загрузит PDF.</div>
     <div id="stage" hidden>
       <div id="pageShell">
         <canvas id="pdfCanvas"></canvas>
