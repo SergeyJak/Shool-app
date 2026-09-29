@@ -63,10 +63,16 @@ app.get("/api/document", async (_req, res, next) => {
   }
 });
 
-app.get("/api/document/file", async (_req, res, next) => {
+app.get("/api/document/file", async (req, res, next) => {
   try {
     const current = await getCurrentDocument();
     if (!current) return res.status(404).end();
+
+    const requestedId = String(req.query.id || "");
+    const currentId = String(current.fileId);
+    if (!requestedId || requestedId !== currentId) {
+      return res.status(404).end();
+    }
 
     const fileId = new ObjectId(current.fileId);
     const files = await db.collection("pdfs.files").find({ _id: fileId }).toArray();
@@ -74,6 +80,8 @@ app.get("/api/document/file", async (_req, res, next) => {
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(current.name)}"`);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("ETag", `"${currentId}"`);
     bucket.openDownloadStream(fileId).pipe(res);
   } catch (err) {
     next(err);
