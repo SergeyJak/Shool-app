@@ -51,7 +51,7 @@ main { padding: 12px; }
 }
 canvas { display: block; }
 #drawCanvas {
-  position: absolute; inset: 0; touch-action: pan-y; cursor: crosshair;
+  position: absolute; inset: 0; touch-action: none; cursor: crosshair;
 }
 @media (max-width: 600px) {
   main { padding: 8px; }
@@ -71,7 +71,7 @@ canvas { display: block; }
     width: 100%;
     max-width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
     align-items: stretch;
   }
@@ -88,17 +88,20 @@ canvas { display: block; }
 
   #prevBtn {
     grid-column: 1;
+    grid-row: 2;
   }
 
   #pageInfo {
-    grid-column: 2;
+    grid-column: 2 / span 2;
+    grid-row: 2;
     display: grid;
     place-items: center;
     min-width: 0;
   }
 
   #nextBtn {
-    grid-column: 3;
+    grid-column: 4;
+    grid-row: 2;
   }
 }
 
