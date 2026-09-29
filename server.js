@@ -222,6 +222,46 @@ io.on("connection", (socket) => {
     io.emit("stroke:deleted", { id, page: row.page });
   });
 
+  socket.on("erase:path", async (erase) => {
+    try {
+      if (!isValidErasePath(erase)) return;
+
+      const query = { page: erase.page };
+      if (role !== "teacher") query.role = role;
+
+      const pageStrokes = await annotations.find(query).toArray();
+      let changed = false;
+
+      for (const stroke of pageStrokes) {
+        const parts = splitStrokeByErasePath(stroke, erase);
+        const unchanged =
+          parts.length === 1 &&
+          parts[0].points.length === stroke.points.length;
+
+        if (unchanged) continue;
+
+        changed = true;
+        await annotations.deleteOne({ _id: stroke._id });
+
+        const replacements = parts
+          .filter((part) => part.points.length >= 2)
+          .map((part) => ({
+            ...part,
+            _id: crypto.randomUUID(),
+            createdAt: stroke.createdAt || new Date(),
+          }));
+
+        if (replacements.length) {
+          await annotations.insertMany(replacements);
+        }
+      }
+
+      if (changed) io.emit("annotations:refresh", { page: erase.page });
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
   socket.on("stroke:undo", async ({ page }, ack) => {
     const query = { page: Number(page) };
     if (role !== "teacher") query.role = role;
@@ -234,6 +274,72 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, id: row._id });
   });
 });
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function distancePointToSegment(point, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (!len2) return distance(point, a);
+
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / len2)
+  );
+  return distance(point, { x: a.x + t * dx, y: a.y + t * dy });
+}
+
+function pointHitsErasePath(point, erase) {
+  for (let i = 1; i < erase.points.length; i += 1) {
+    if (distancePointToSegment(point, erase.points[i - 1], erase.points[i]) <= erase.radius) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function splitStrokeByErasePath(stroke, erase) {
+  const parts = [];
+  let current = [];
+
+  for (const point of stroke.points || []) {
+    if (pointHitsErasePath(point, erase)) {
+      if (current.length >= 2) parts.push({ ...stroke, points: current });
+      current = [];
+    } else {
+      current.push(point);
+    }
+  }
+
+  if (current.length >= 2) parts.push({ ...stroke, points: current });
+  return parts;
+}
+
+function isValidErasePath(erase) {
+  return (
+    erase &&
+    Number.isInteger(erase.page) &&
+    erase.page > 0 &&
+    Number.isFinite(erase.radius) &&
+    erase.radius > 0 &&
+    erase.radius <= 0.08 &&
+    Array.isArray(erase.points) &&
+    erase.points.length >= 2 &&
+    erase.points.length <= 5000 &&
+    erase.points.every(
+      (p) =>
+        Number.isFinite(p.x) &&
+        Number.isFinite(p.y) &&
+        p.x >= 0 &&
+        p.x <= 1 &&
+        p.y >= 0 &&
+        p.y <= 1
+    )
+  );
+}
 
 function isValidStroke(stroke) {
   return (
