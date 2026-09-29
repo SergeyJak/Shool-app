@@ -389,7 +389,7 @@ async function loadDocument() {
   emptyState.hidden = true;
   loadingState.hidden = false;
   loadingText.textContent = "Проверяем документ…";
-  pageInfo.textContent = "—";
+  syncPageControls();
 
   try {
     const res = await fetch("/api/document", { cache: "no-store" });
@@ -447,7 +447,6 @@ async function loadDocument() {
       role === "teacher"
         ? "Не удалось открыть PDF. Попробуйте обновить страницу или загрузить файл заново."
         : "Не удалось скачать PDF. Проверьте соединение и обновите страницу.";
-    pageInfo.textContent = "—";
     currentDocumentId = null;
     syncPageControls();
   }
