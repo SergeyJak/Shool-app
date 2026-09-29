@@ -90,6 +90,9 @@ function uploadErrorMessage(status, code) {
 let pdfDoc = null;
 let currentDocumentId = null;
 let pageNumber = 1;
+let zoom = 1;
+let pinchStartDistance = null;
+let pinchStartZoom = 1;
 let tool = "pen";
 let strokes = [];
 let activeStroke = null;
@@ -243,9 +246,11 @@ function setTool(nextTool) {
   if (tool === "hand") {
     drawCanvas.style.pointerEvents = "none";
     drawCanvas.style.cursor = "grab";
+    stage.classList.add("hand-mode");
   } else {
     drawCanvas.style.pointerEvents = "auto";
     drawCanvas.style.cursor = tool === "eraser" ? "cell" : "crosshair";
+    stage.classList.remove("hand-mode");
   }
 }
 
@@ -473,7 +478,8 @@ async function renderPage() {
 
   const availableWidth = Math.min(window.innerWidth - 20, 1100);
   const baseViewport = page.getViewport({ scale: 1 });
-  const scale = availableWidth / baseViewport.width;
+  const fitScale = availableWidth / baseViewport.width;
+  const scale = fitScale * zoom;
   const viewport = page.getViewport({ scale });
 
   const outputScale = Math.min(window.devicePixelRatio || 1, 2);
@@ -560,6 +566,36 @@ function drawStroke(stroke) {
   drawCtx.stroke();
   drawCtx.restore();
 }
+
+function touchDistance(touches) {
+  const [a, b] = touches;
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+}
+
+stage.addEventListener("touchstart", (event) => {
+  if (tool !== "hand" || event.touches.length !== 2) return;
+  pinchStartDistance = touchDistance(event.touches);
+  pinchStartZoom = zoom;
+}, { passive: true });
+
+stage.addEventListener("touchmove", (event) => {
+  if (tool !== "hand" || event.touches.length !== 2 || !pinchStartDistance) return;
+
+  event.preventDefault();
+  const nextDistance = touchDistance(event.touches);
+  const factor = nextDistance / pinchStartDistance;
+  const nextZoom = Math.min(3, Math.max(0.75, pinchStartZoom * factor));
+
+  if (Math.abs(nextZoom - zoom) < 0.03) return;
+  zoom = nextZoom;
+  renderPage();
+}, { passive: false });
+
+stage.addEventListener("touchend", (event) => {
+  if (event.touches.length < 2) {
+    pinchStartDistance = null;
+  }
+}, { passive: true });
 
 let resizeTimer;
 window.addEventListener("resize", () => {
