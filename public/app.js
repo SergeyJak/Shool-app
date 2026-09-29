@@ -17,8 +17,12 @@ const emptyState = document.getElementById("emptyState");
 const loadingState = document.getElementById("loadingState");
 const loadingText = document.getElementById("loadingText");
 const pageInfo = document.getElementById("pageInfo");
+const pageInput = document.getElementById("pageInput");
+const pageTotal = document.getElementById("pageTotal");
+const firstBtn = document.getElementById("firstBtn");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
+const lastBtn = document.getElementById("lastBtn");
 const penBtn = document.getElementById("penBtn");
 const eraserBtn = document.getElementById("eraserBtn");
 const handBtn = document.getElementById("handBtn");
@@ -84,6 +88,7 @@ function uploadErrorMessage(status, code) {
 }
 
 let pdfDoc = null;
+let currentDocumentId = null;
 let pageNumber = 1;
 let tool = "pen";
 let strokes = [];
@@ -129,16 +134,28 @@ socket.on("annotations:refresh", ({ page }) => {
   if (page === pageNumber) loadAnnotations();
 });
 
-prevBtn.addEventListener("click", async () => {
-  if (!pdfDoc || pageNumber <= 1) return;
-  pageNumber -= 1;
+async function goToPage(nextPage) {
+  if (!pdfDoc) return;
+  const clamped = Math.max(1, Math.min(pdfDoc.numPages, Number(nextPage) || 1));
+  if (clamped === pageNumber) {
+    syncPageControls();
+    return;
+  }
+  pageNumber = clamped;
   await renderPage();
-});
+}
 
-nextBtn.addEventListener("click", async () => {
-  if (!pdfDoc || pageNumber >= pdfDoc.numPages) return;
-  pageNumber += 1;
-  await renderPage();
+firstBtn.addEventListener("click", () => goToPage(1));
+prevBtn.addEventListener("click", () => goToPage(pageNumber - 1));
+nextBtn.addEventListener("click", () => goToPage(pageNumber + 1));
+lastBtn.addEventListener("click", () => goToPage(pdfDoc?.numPages || 1));
+
+pageInput.addEventListener("change", () => goToPage(pageInput.value));
+pageInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    pageInput.blur();
+    goToPage(pageInput.value);
+  }
 });
 
 penBtn.addEventListener("click", () => setTool("pen"));
@@ -383,6 +400,7 @@ async function loadDocument() {
     }
 
     const documentMeta = await res.json();
+    currentDocumentId = documentMeta.id;
     loadingText.textContent = "Скачиваем PDF…";
 
     const loadingTask = pdfjsLib.getDocument(
@@ -398,8 +416,17 @@ async function loadDocument() {
     };
 
     pdfDoc = await loadingTask.promise;
-    loadingText.textContent = "Готовим первую страницу…";
-    pageNumber = Math.min(pageNumber, pdfDoc.numPages);
+    const savedPage = Number(
+      localStorage.getItem(`shool:lastPage:${documentMeta.id}:${role}`)
+    );
+    if (Number.isInteger(savedPage) && savedPage >= 1) {
+      pageNumber = Math.min(savedPage, pdfDoc.numPages);
+    } else {
+      pageNumber = Math.min(pageNumber, pdfDoc.numPages);
+    }
+
+    loadingText.textContent =
+      pageNumber === 1 ? "Готовим первую страницу…" : `Открываем страницу ${pageNumber}…`;
     await renderPage();
 
     loadingState.hidden = true;
@@ -416,7 +443,29 @@ async function loadDocument() {
         ? "Не удалось открыть PDF. Попробуйте обновить страницу или загрузить файл заново."
         : "Не удалось скачать PDF. Проверьте соединение и обновите страницу.";
     pageInfo.textContent = "—";
+    currentDocumentId = null;
+    syncPageControls();
   }
+}
+
+function syncPageControls() {
+  if (!pdfDoc) {
+    pageInput.value = "";
+    pageTotal.textContent = "/ —";
+    firstBtn.disabled = true;
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+    lastBtn.disabled = true;
+    return;
+  }
+
+  pageInput.value = String(pageNumber);
+  pageInput.max = String(pdfDoc.numPages);
+  pageTotal.textContent = `/ ${pdfDoc.numPages}`;
+  firstBtn.disabled = pageNumber <= 1;
+  prevBtn.disabled = pageNumber <= 1;
+  nextBtn.disabled = pageNumber >= pdfDoc.numPages;
+  lastBtn.disabled = pageNumber >= pdfDoc.numPages;
 }
 
 async function renderPage() {
@@ -448,9 +497,13 @@ async function renderPage() {
     transform: outputScale === 1 ? null : [outputScale, 0, 0, outputScale, 0, 0],
   }).promise;
 
-  pageInfo.textContent = `${pageNumber} / ${pdfDoc.numPages}`;
-  prevBtn.disabled = pageNumber <= 1;
-  nextBtn.disabled = pageNumber >= pdfDoc.numPages;
+  syncPageControls();
+  if (currentDocumentId) {
+    localStorage.setItem(
+      `shool:lastPage:${currentDocumentId}:${role}`,
+      String(pageNumber)
+    );
+  }
 
   await loadAnnotations();
 }
