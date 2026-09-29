@@ -20,8 +20,29 @@ main { padding: 12px; }
 .toolbar button.active { background: #17202a; color: white; }
 .spacer { flex: 1; }
 #pageInfo { min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
-#emptyState {
-  max-width: 800px; margin: 80px auto; text-align: center; padding: 30px; opacity: .65;
+#emptyState,
+.loading-state {
+  max-width: 800px;
+  margin: 80px auto;
+  text-align: center;
+  padding: 30px;
+  opacity: .68;
+}
+.loading-state {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+}
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 4px solid rgba(23,32,42,.14);
+  border-top-color: #17202a;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 #stage { width: 100%; overflow: auto; -webkit-overflow-scrolling: touch; }
 #pageShell {
