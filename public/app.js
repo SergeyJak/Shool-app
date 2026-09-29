@@ -85,6 +85,7 @@ let pageNumber = 1;
 let tool = "pen";
 let strokes = [];
 let activeStroke = null;
+let activeErasePath = null;
 let previewStrokes = new Map();
 
 socket.on("connect", () => {
@@ -119,6 +120,10 @@ socket.on("stroke:deleted", ({ id, page }) => {
   if (page !== pageNumber) return;
   strokes = strokes.filter((x) => x.id !== id);
   redrawInk();
+});
+
+socket.on("annotations:refresh", ({ page }) => {
+  if (page === pageNumber) loadAnnotations();
 });
 
 prevBtn.addEventListener("click", async () => {
@@ -225,13 +230,20 @@ function pointFromEvent(event) {
 
 function onPointerDown(event) {
   if (!pdfDoc) return;
-  drawCanvas.setPointerCapture(event.pointerId);
 
+  // Finger is reserved for scrolling/panning the page. Stylus/mouse draw.
+  if (event.pointerType === "touch") return;
+
+  drawCanvas.setPointerCapture(event.pointerId);
   const point = pointFromEvent(event);
 
   if (tool === "eraser") {
-    const id = findStrokeAt(point);
-    if (id) socket.emit("stroke:delete", { id });
+    activeErasePath = {
+      page: pageNumber,
+      radius: 0.022,
+      points: [point],
+    };
+    redrawInk();
     return;
   }
 
@@ -249,14 +261,33 @@ function onPointerDown(event) {
 }
 
 function onPointerMove(event) {
-  if (!activeStroke) return;
+  if (event.pointerType === "touch") return;
   const point = pointFromEvent(event);
+
+  if (activeErasePath) {
+    activeErasePath.points.push(point);
+    redrawInk();
+    return;
+  }
+
+  if (!activeStroke) return;
   activeStroke.points.push(point);
   socket.emit("stroke:preview", activeStroke);
   redrawInk();
 }
 
-function onPointerUp() {
+function onPointerUp(event) {
+  if (event?.pointerType === "touch") return;
+
+  if (activeErasePath) {
+    const erase = activeErasePath;
+    activeErasePath = null;
+    if (erase.points.length === 1) erase.points.push(erase.points[0]);
+    socket.emit("erase:path", erase);
+    redrawInk();
+    return;
+  }
+
   if (!activeStroke) return;
   const finished = activeStroke;
   activeStroke = null;
@@ -266,21 +297,33 @@ function onPointerUp() {
   redrawInk();
 }
 
-function findStrokeAt(point) {
-  const tolerance = 14 / Math.max(drawCanvas.width, drawCanvas.height);
+function distanceToErasePath(point, erasePath) {
+  let best = Infinity;
+  for (const e of erasePath.points) {
+    best = Math.min(best, Math.hypot(point.x - e.x, point.y - e.y));
+  }
+  return best;
+}
 
-  for (let i = strokes.length - 1; i >= 0; i -= 1) {
-    const stroke = strokes[i];
-    // Student cannot erase teacher corrections.
-    if (role !== "teacher" && stroke.role !== role) continue;
+function erasePreviewSegments(stroke) {
+  if (!activeErasePath) return [stroke];
+  if (role !== "teacher" && stroke.role !== role) return [stroke];
 
-    for (const p of stroke.points) {
-      const dx = p.x - point.x;
-      const dy = p.y - point.y;
-      if (Math.hypot(dx, dy) <= tolerance) return stroke.id;
+  const parts = [];
+  let current = [];
+
+  for (const point of stroke.points) {
+    const erased = distanceToErasePath(point, activeErasePath) <= activeErasePath.radius;
+    if (erased) {
+      if (current.length >= 2) parts.push({ ...stroke, points: current });
+      current = [];
+    } else {
+      current.push(point);
     }
   }
-  return null;
+
+  if (current.length >= 2) parts.push({ ...stroke, points: current });
+  return parts;
 }
 
 async function loadDocument() {
@@ -348,9 +391,25 @@ async function loadAnnotations() {
 function redrawInk() {
   drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
 
-  for (const stroke of strokes) drawStroke(stroke);
+  for (const stroke of strokes) {
+    for (const visiblePart of erasePreviewSegments(stroke)) drawStroke(visiblePart);
+  }
   for (const stroke of previewStrokes.values()) drawStroke(stroke);
   if (activeStroke) drawStroke(activeStroke);
+  if (activeErasePath?.points?.length) drawEraserCursor(activeErasePath.points.at(-1));
+}
+
+function drawEraserCursor(point) {
+  const radius = activeErasePath.radius * Math.min(drawCanvas.width, drawCanvas.height);
+  drawCtx.save();
+  drawCtx.beginPath();
+  drawCtx.arc(point.x * drawCanvas.width, point.y * drawCanvas.height, radius, 0, Math.PI * 2);
+  drawCtx.fillStyle = "rgba(255,255,255,.72)";
+  drawCtx.strokeStyle = "rgba(23,32,42,.45)";
+  drawCtx.lineWidth = 1.5;
+  drawCtx.fill();
+  drawCtx.stroke();
+  drawCtx.restore();
 }
 
 function drawStroke(stroke) {
