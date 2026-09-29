@@ -1,6 +1,6 @@
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; font-family: system-ui, sans-serif; background: #f3f5f7; color: #17202a; }
-body { overscroll-behavior: none; }
+html, body { margin: 0; min-height: 100%; font-family: system-ui, sans-serif; background: #f3f5f7; color: #17202a; overflow-x: hidden; }
+body { overscroll-behavior-x: none; }
 header {
   height: 56px; padding: 0 16px; background: white; border-bottom: 1px solid #dfe4ea;
   display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 5;
@@ -30,12 +30,55 @@ main { padding: 12px; }
 }
 canvas { display: block; }
 #drawCanvas {
-  position: absolute; inset: 0; touch-action: none; cursor: crosshair;
+  position: absolute; inset: 0; touch-action: pan-y; cursor: crosshair;
 }
 @media (max-width: 600px) {
   main { padding: 8px; }
-  .toolbar { top: 64px; }
-  .toolbar button { padding: 7px 9px; }
+
+  header {
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .upload {
+    white-space: nowrap;
+    padding: 8px 10px;
+  }
+
+  .toolbar {
+    top: 64px;
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .toolbar button {
+    min-width: 0;
+    padding: 8px 6px;
+    white-space: normal;
+  }
+
+  .toolbar .spacer {
+    display: none;
+  }
+
+  #prevBtn {
+    grid-column: 1;
+  }
+
+  #pageInfo {
+    grid-column: 2;
+    display: grid;
+    place-items: center;
+    min-width: 0;
+  }
+
+  #nextBtn {
+    grid-column: 3;
+  }
 }
 
 .snackbar {
