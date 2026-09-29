@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const multer = require("multer");
 const { MongoClient, GridFSBucket, ObjectId } = require("mongodb");
 const { Server } = require("socket.io");
+const { optimizePdfBuffer } = require("./lib/pdf-compression");
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -21,7 +22,7 @@ const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 2e6 });
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     cb(null, file.mimetype === "application/pdf");
   },
@@ -90,13 +91,19 @@ app.post("/api/document", upload.single("pdf"), async (req, res, next) => {
     }
 
     const current = await getCurrentDocument();
+    const optimized = await optimizePdfBuffer(req.file.buffer);
 
     const fileId = new ObjectId();
     const stream = bucket.openUploadStreamWithId(fileId, req.file.originalname, {
       contentType: "application/pdf",
-      metadata: { uploadedAt: new Date() },
+      metadata: {
+        uploadedAt: new Date(),
+        originalSize: optimized.originalSize,
+        storedSize: optimized.finalSize,
+        compressed: optimized.compressed,
+      },
     });
-    stream.end(req.file.buffer);
+    stream.end(optimized.buffer);
 
     await new Promise((resolve, reject) => {
       stream.on("finish", resolve);
@@ -130,7 +137,13 @@ app.post("/api/document", upload.single("pdf"), async (req, res, next) => {
       name: req.file.originalname,
     });
 
-    res.status(201).json({ id: String(fileId), name: req.file.originalname });
+    res.status(201).json({
+      id: String(fileId),
+      name: req.file.originalname,
+      originalSize: optimized.originalSize,
+      storedSize: optimized.finalSize,
+      compressed: optimized.compressed,
+    });
   } catch (err) {
     next(err);
   }
