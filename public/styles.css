@@ -37,3 +37,77 @@ canvas { display: block; }
   .toolbar { top: 64px; }
   .toolbar button { padding: 7px 9px; }
 }
+
+.snackbar {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  z-index: 50;
+  width: min(92vw, 520px);
+  transform: translate(-50%, 18px);
+  opacity: 0;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: rgba(23, 32, 42, .96);
+  color: white;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .22);
+  backdrop-filter: blur(10px);
+  transition: opacity .18s ease, transform .18s ease;
+}
+.snackbar.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.snackbar-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  background: rgba(255,255,255,.14);
+}
+.snackbar-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.snackbar-title {
+  font-size: 14px;
+  line-height: 1.25;
+}
+.snackbar-message {
+  font-size: 13px;
+  line-height: 1.35;
+  opacity: .82;
+}
+.snackbar-close {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 4px 6px;
+  font-size: 22px;
+  line-height: 1;
+  opacity: .7;
+}
+.snackbar-close:hover { opacity: 1; }
+.snackbar.success .snackbar-icon::before { content: "✓"; }
+.snackbar.success .snackbar-icon { color: #b9f6ca; }
+.snackbar.error .snackbar-icon::before { content: "!"; }
+.snackbar.error .snackbar-icon { color: #ffb4ab; }
+
+@media (max-width: 600px) {
+  .snackbar {
+    bottom: 12px;
+    width: calc(100vw - 20px);
+    padding: 12px;
+    border-radius: 12px;
+  }
+}
