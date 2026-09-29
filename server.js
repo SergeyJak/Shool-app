@@ -255,7 +255,7 @@ async function start() {
   const client = new MongoClient(MONGODB_URI);
   await client.connect();
 
-  db = client.db("shool_app");
+  db = client.db("school_app");
   bucket = new GridFSBucket(db, { bucketName: "pdfs" });
   annotations = db.collection("annotations");
   settings = db.collection("settings");
