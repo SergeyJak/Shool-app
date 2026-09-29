@@ -22,6 +22,64 @@ const eraserBtn = document.getElementById("eraserBtn");
 const undoBtn = document.getElementById("undoBtn");
 const uploadInput = document.getElementById("pdfUpload");
 
+const snackbar = document.createElement("div");
+snackbar.className = "snackbar";
+snackbar.setAttribute("role", "status");
+snackbar.setAttribute("aria-live", "polite");
+snackbar.innerHTML = `
+  <div class="snackbar-icon" aria-hidden="true">!</div>
+  <div class="snackbar-copy">
+    <strong class="snackbar-title"></strong>
+    <span class="snackbar-message"></span>
+  </div>
+  <button class="snackbar-close" type="button" aria-label="Закрыть">×</button>
+`;
+document.body.appendChild(snackbar);
+
+const snackbarTitle = snackbar.querySelector(".snackbar-title");
+const snackbarMessage = snackbar.querySelector(".snackbar-message");
+const snackbarClose = snackbar.querySelector(".snackbar-close");
+let snackbarTimer;
+
+snackbarClose.addEventListener("click", hideSnackbar);
+
+function showSnackbar({ title, message, type = "error", timeout = 7000 }) {
+  clearTimeout(snackbarTimer);
+  snackbarTitle.textContent = title;
+  snackbarMessage.textContent = message;
+  snackbar.classList.remove("success", "error", "visible");
+  snackbar.classList.add(type);
+  requestAnimationFrame(() => snackbar.classList.add("visible"));
+  if (timeout) snackbarTimer = setTimeout(hideSnackbar, timeout);
+}
+
+function hideSnackbar() {
+  clearTimeout(snackbarTimer);
+  snackbar.classList.remove("visible");
+}
+
+function humanFileSize(bytes) {
+  if (!Number.isFinite(bytes)) return "";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
+function uploadErrorMessage(status, code) {
+  if (status === 413 || code === "PDF_TOO_LARGE") {
+    return "Файл слишком большой. Максимальный размер PDF — 100 МБ.";
+  }
+  if (code === "PDF_REQUIRED") {
+    return "Не удалось распознать PDF. Проверьте формат файла и попробуйте ещё раз.";
+  }
+  if (code === "TEACHER_ONLY") {
+    return "Загрузить новый документ можно только со страницы учителя.";
+  }
+  if (status >= 500) {
+    return "Сервер не смог обработать файл. Попробуйте ещё раз через минуту.";
+  }
+  return "Не удалось загрузить PDF. Проверьте соединение и попробуйте ещё раз.";
+}
+
 let pdfDoc = null;
 let pageNumber = 1;
 let tool = "pen";
@@ -86,18 +144,62 @@ if (uploadInput) {
     const file = uploadInput.files?.[0];
     if (!file) return;
 
+    if (file.size > 100 * 1024 * 1024) {
+      showSnackbar({
+        title: "PDF не загружен",
+        message: `Файл весит ${humanFileSize(file.size)}. Максимум — 100 МБ.`,
+      });
+      uploadInput.value = "";
+      return;
+    }
+
     statusEl.textContent = "загрузка…";
     const body = new FormData();
     body.append("pdf", file);
 
-    const res = await fetch("/api/document", {
-      method: "POST",
-      headers: { "x-role": "teacher" },
-      body,
-    });
+    try {
+      const res = await fetch("/api/document", {
+        method: "POST",
+        headers: { "x-role": "teacher" },
+        body,
+      });
 
-    statusEl.textContent = res.ok ? "онлайн" : "ошибка загрузки";
-    uploadInput.value = "";
+      let payload = {};
+      try {
+        payload = await res.json();
+      } catch {
+        // Some proxy/server failures return HTML or an empty body.
+      }
+
+      if (!res.ok) {
+        throw Object.assign(new Error("UPLOAD_FAILED"), {
+          status: res.status,
+          code: payload.error,
+        });
+      }
+
+      statusEl.textContent = "онлайн";
+      const sizeNote = payload.compressed
+        ? `Сжато: ${humanFileSize(payload.originalSize)} → ${humanFileSize(payload.storedSize)}.`
+        : `Размер: ${humanFileSize(payload.storedSize || file.size)}.`;
+
+      showSnackbar({
+        title: "PDF загружен",
+        message: sizeNote,
+        type: "success",
+        timeout: 4500,
+      });
+    } catch (error) {
+      statusEl.textContent = socket.connected ? "онлайн" : "нет связи";
+      showSnackbar({
+        title: "PDF не загружен",
+        message: uploadErrorMessage(error.status || 0, error.code),
+        type: "error",
+        timeout: 9000,
+      });
+    } finally {
+      uploadInput.value = "";
+    }
   });
 }
 
