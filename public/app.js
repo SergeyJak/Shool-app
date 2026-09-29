@@ -14,6 +14,8 @@ const pdfCtx = pdfCanvas.getContext("2d");
 const drawCtx = drawCanvas.getContext("2d");
 const stage = document.getElementById("stage");
 const emptyState = document.getElementById("emptyState");
+const loadingState = document.getElementById("loadingState");
+const loadingText = document.getElementById("loadingText");
 const pageInfo = document.getElementById("pageInfo");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -327,20 +329,56 @@ function erasePreviewSegments(stroke) {
 }
 
 async function loadDocument() {
+  pdfDoc = null;
+  stage.hidden = true;
+  emptyState.hidden = true;
+  loadingState.hidden = false;
+  loadingText.textContent = "Проверяем документ…";
+  pageInfo.textContent = "—";
+
   try {
     const res = await fetch("/api/document");
-    if (!res.ok) throw new Error("NO_DOCUMENT");
+
+    if (res.status === 404) {
+      loadingState.hidden = true;
+      emptyState.hidden = false;
+      return;
+    }
+
+    if (!res.ok) {
+      throw new Error(`DOCUMENT_METADATA_${res.status}`);
+    }
+
+    loadingText.textContent = "Скачиваем PDF…";
 
     const loadingTask = pdfjsLib.getDocument("/api/document/file");
+    loadingTask.onProgress = ({ loaded, total }) => {
+      if (total > 0) {
+        const percent = Math.min(100, Math.round((loaded / total) * 100));
+        loadingText.textContent = `Скачиваем PDF… ${percent}%`;
+      } else if (loaded > 0) {
+        loadingText.textContent = `Скачиваем PDF… ${humanFileSize(loaded)}`;
+      }
+    };
+
     pdfDoc = await loadingTask.promise;
+    loadingText.textContent = "Готовим первую страницу…";
     pageNumber = Math.min(pageNumber, pdfDoc.numPages);
+    await renderPage();
+
+    loadingState.hidden = true;
     emptyState.hidden = true;
     stage.hidden = false;
-    await renderPage();
-  } catch {
+  } catch (error) {
+    console.error("Failed to load PDF:", error);
     pdfDoc = null;
     stage.hidden = true;
+    loadingState.hidden = true;
     emptyState.hidden = false;
+    emptyState.textContent =
+      role === "teacher"
+        ? "Не удалось открыть PDF. Попробуйте обновить страницу или загрузить файл заново."
+        : "Не удалось скачать PDF. Проверьте соединение и обновите страницу.";
     pageInfo.textContent = "—";
   }
 }
