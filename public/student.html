@@ -21,9 +21,14 @@
       <button id="handBtn">Рука</button>
       <button id="undoBtn">↶ Отменить</button>
       <span class="spacer"></span>
-      <button id="prevBtn">‹</button>
-      <span id="pageInfo">—</span>
-      <button id="nextBtn">›</button>
+      <button id="firstBtn" title="В начало">«</button>
+      <button id="prevBtn" title="Назад">‹</button>
+      <span id="pageInfo" class="page-jump">
+        <input id="pageInput" type="number" min="1" inputmode="numeric" aria-label="Номер страницы" />
+        <span id="pageTotal">/ —</span>
+      </span>
+      <button id="nextBtn" title="Вперёд">›</button>
+      <button id="lastBtn" title="В конец">»</button>
     </div>
 
     <div id="loadingState" class="loading-state">
