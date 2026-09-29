@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Shool App</title>
+  <link rel="stylesheet" href="/landing.css" />
+</head>
+<body class="landing-body">
+  <main class="landing-shell">
+    <section class="landing-card" aria-labelledby="welcomeTitle">
+      <button id="infoBtn" class="info-button" type="button" aria-label="Как пользоваться">i</button>
+
+      <div class="landing-mark">PDF</div>
+      <h1 id="welcomeTitle">Совместный урок</h1>
+      <p class="landing-lead">
+        Один учебник, две стороны и общие пометки в реальном времени.
+      </p>
+
+      <div class="role-grid">
+        <a class="role-card teacher-card" href="/teacher">
+          <span class="role-kicker">Я веду урок</span>
+          <strong>Учитель</strong>
+          <span>Загрузить PDF, проверять и делать пометки</span>
+        </a>
+
+        <a class="role-card student-card" href="/student">
+          <span class="role-kicker">Я занимаюсь</span>
+          <strong>Ученик</strong>
+          <span>Открыть учебник, писать и выполнять задания</span>
+        </a>
+      </div>
+
+      <p class="landing-note">Выберите свою роль, чтобы продолжить.</p>
+    </section>
+  </main>
+
+  <dialog id="helpDialog" class="help-dialog">
+    <form method="dialog">
+      <div class="help-header">
+        <div>
+          <span class="help-eyebrow">Краткая инструкция</span>
+          <h2>Как пользоваться</h2>
+        </div>
+        <button class="dialog-close" value="close" aria-label="Закрыть">×</button>
+      </div>
+
+      <div class="help-list">
+        <div><b>1.</b><span>Учитель загружает PDF. Ученик автоматически видит тот же документ.</span></div>
+        <div><b>2.</b><span><strong>Ручка</strong> рисует, <strong>Ластик</strong> стирает, <strong>Рука</strong> двигает и масштабирует страницу.</span></div>
+        <div><b>3.</b><span>В режиме «Рука» страницу можно двигать пальцем и увеличивать двумя пальцами.</span></div>
+        <div><b>4.</b><span>Страницу можно листать кнопками, перейти в начало/конец или ввести номер вручную.</span></div>
+        <div><b>5.</b><span>Пометки сохраняются автоматически и синхронизируются между учителем и учеником.</span></div>
+      </div>
+
+      <button class="dialog-ok" value="close">Понятно</button>
+    </form>
+  </dialog>
+
+  <script>
+    const dialog = document.getElementById("helpDialog");
+    document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+  </script>
+</body>
+</html>
