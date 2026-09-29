@@ -29,7 +29,11 @@
       <button id="nextBtn">›</button>
     </div>
 
-    <div id="emptyState">Загрузите PDF, чтобы начать.</div>
+    <div id="loadingState" class="loading-state">
+      <div class="spinner" aria-hidden="true"></div>
+      <div id="loadingText">Проверяем документ…</div>
+    </div>
+    <div id="emptyState" hidden>Загрузите PDF, чтобы начать.</div>
     <div id="stage" hidden>
       <div id="pageShell">
         <canvas id="pdfCanvas"></canvas>
