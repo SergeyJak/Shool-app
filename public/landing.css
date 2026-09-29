@@ -1,0 +1,234 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #17202a;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(21,101,192,.10), transparent 32%),
+    radial-gradient(circle at 90% 85%, rgba(229,57,53,.08), transparent 30%),
+    #f4f6f8;
+}
+
+.landing-body {
+  min-height: 100dvh;
+}
+
+.landing-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.landing-card {
+  position: relative;
+  width: min(100%, 720px);
+  padding: 44px;
+  border: 1px solid rgba(23,32,42,.08);
+  border-radius: 26px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 24px 70px rgba(23,32,42,.11);
+  backdrop-filter: blur(12px);
+  text-align: center;
+}
+
+.info-button {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #d8dee5;
+  border-radius: 50%;
+  background: #fff;
+  color: #17202a;
+  font: 700 18px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.landing-mark {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background: #17202a;
+  color: white;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(32px, 7vw, 52px);
+  letter-spacing: -.035em;
+}
+
+.landing-lead {
+  max-width: 520px;
+  margin: 14px auto 30px;
+  color: #68727d;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.role-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.role-card {
+  min-height: 180px;
+  padding: 24px;
+  border-radius: 20px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  text-align: left;
+  border: 1px solid #dfe4ea;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.role-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(23,32,42,.10);
+}
+
+.teacher-card {
+  background: linear-gradient(145deg, #fff, #fff6f5);
+}
+
+.student-card {
+  background: linear-gradient(145deg, #fff, #f3f8ff);
+}
+
+.role-kicker {
+  margin-bottom: auto;
+  color: #7a8490;
+  font-size: 13px;
+}
+
+.role-card strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 24px;
+}
+
+.role-card > span:last-child {
+  color: #68727d;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.landing-note {
+  margin: 22px 0 0;
+  color: #89919a;
+  font-size: 13px;
+}
+
+.help-dialog {
+  width: min(calc(100vw - 28px), 560px);
+  border: 0;
+  border-radius: 22px;
+  padding: 0;
+  color: #17202a;
+  box-shadow: 0 28px 80px rgba(0,0,0,.26);
+}
+
+.help-dialog::backdrop {
+  background: rgba(17,24,32,.52);
+  backdrop-filter: blur(3px);
+}
+
+.help-dialog form {
+  padding: 24px;
+}
+
+.help-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.help-eyebrow {
+  color: #7a8490;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.help-header h2 {
+  margin: 4px 0 0;
+  font-size: 26px;
+}
+
+.dialog-close {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f3f5;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.help-list {
+  display: grid;
+  gap: 14px;
+  margin: 24px 0;
+}
+
+.help-list > div {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 8px;
+  align-items: start;
+  line-height: 1.45;
+  color: #4f5964;
+}
+
+.help-list b {
+  color: #17202a;
+}
+
+.dialog-ok {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: #17202a;
+  color: white;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+@media (max-width: 620px) {
+  .landing-shell { padding: 14px; }
+
+  .landing-card {
+    padding: 34px 18px 22px;
+    border-radius: 22px;
+  }
+
+  .role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-card {
+    min-height: 145px;
+  }
+
+  .landing-lead {
+    margin-bottom: 22px;
+  }
+}
