@@ -346,7 +346,7 @@ async function loadDocument() {
   pageInfo.textContent = "—";
 
   try {
-    const res = await fetch("/api/document");
+    const res = await fetch("/api/document", { cache: "no-store" });
 
     if (res.status === 404) {
       loadingState.hidden = true;
@@ -358,9 +358,12 @@ async function loadDocument() {
       throw new Error(`DOCUMENT_METADATA_${res.status}`);
     }
 
+    const documentMeta = await res.json();
     loadingText.textContent = "Скачиваем PDF…";
 
-    const loadingTask = pdfjsLib.getDocument("/api/document/file");
+    const loadingTask = pdfjsLib.getDocument(
+      `/api/document/file?id=${encodeURIComponent(documentMeta.id)}`
+    );
     loadingTask.onProgress = ({ loaded, total }) => {
       if (total > 0) {
         const percent = Math.min(100, Math.round((loaded / total) * 100));
