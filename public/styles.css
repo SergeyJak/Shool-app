@@ -198,3 +198,11 @@ canvas { display: block; }
 [hidden] {
   display: none !important;
 }
+
+#stage.hand-mode {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+}
+#stage.hand-mode #pageShell {
+  transform-origin: top center;
+}
