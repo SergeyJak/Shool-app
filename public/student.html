@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Shool App · Ученик</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-role="student">
+  <header>
+    <div>
+      <strong>Ученик</strong>
+      <span id="status">подключение…</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <button id="penBtn" class="active">Ручка</button>
+      <button id="eraserBtn">Ластик</button>
+      <button id="undoBtn">↶ Отменить</button>
+      <span class="spacer"></span>
+      <button id="prevBtn">‹</button>
+      <span id="pageInfo">—</span>
+      <button id="nextBtn">›</button>
+    </div>
+
+    <div id="emptyState">Ждём, пока учитель загрузит PDF.</div>
+    <div id="stage" hidden>
+      <div id="pageShell">
+        <canvas id="pdfCanvas"></canvas>
+        <canvas id="drawCanvas"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs" type="module"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
