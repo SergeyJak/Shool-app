@@ -397,7 +397,7 @@ async function start() {
   await annotations.createIndex({ page: 1, createdAt: 1 });
 
   server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Shool-app listening on :${PORT}`);
+    console.log(`School App listening on :${PORT}`);
   });
 }
 
