@@ -90,11 +90,11 @@ test("live drawing uses throttled preview chunks", () => {
 test("live performance metrics cover RTT page render and remote stroke latency", () => {
   const client = read("public/app.js");
   const server = read("server.js");
-  const teacher = read("public/teacher.html");
-  const student = read("public/student.html");
+  const dashboard = read("public/performance.html");
 
-  assert.match(teacher, /id="perfStats"/);
-  assert.match(student, /id="perfStats"/);
+  assert.match(dashboard, /id="rttAvg"/);
+  assert.match(dashboard, /id="pageAvg"/);
+  assert.match(dashboard, /id="strokeAvg"/);
   assert.match(client, /perf:ping/);
   assert.match(client, /perf:preview:seen/);
   assert.match(client, /perfMetrics\.rtt/);
