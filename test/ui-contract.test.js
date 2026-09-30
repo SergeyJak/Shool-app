@@ -21,9 +21,14 @@ for (const page of ["public/teacher.html", "public/student.html"]) {
   });
 }
 
-test("teacher alone gets the PDF upload control", () => {
-  assert.match(read("public/teacher.html"), /id="pdfUpload"/);
-  assert.doesNotMatch(read("public/student.html"), /id="pdfUpload"/);
+test("teacher alone gets teacher-only controls", () => {
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+  assert.match(teacher, /id="pdfUpload"/);
+  assert.doesNotMatch(student, /id="pdfUpload"/);
+  assert.match(teacher, /id="followBtn"/);
+  assert.doesNotMatch(student, /id="followBtn"/);
+  assert.match(student, /id="followStatus"/);
 });
 
 test("landing page links to both roles and contains help instructions", () => {
@@ -43,6 +48,9 @@ test("client keeps PDF cache versioning, loading progress and page persistence",
   assert.match(js, /legacyPageStorageKey/);
   assert.match(js, /erase:path/);
   assert.match(js, /stroke:preview/);
+  assert.match(js, /teacher:follow:state/);
+  assert.match(js, /teacher:page/);
+  assert.match(js, /forcedByTeacher/);
 });
 
 test("server protects the PDF role gate, versioned cache and health route", () => {
@@ -51,4 +59,7 @@ test("server protects the PDF role gate, versioned cache and health route", () =
   assert.match(js, /Cache-Control", "public, max-age=31536000, immutable"/);
   assert.match(js, /app\.get\("\/health"/);
   assert.match(js, /db = client\.db\("school_app"\)/);
+  assert.match(js, /teacher:follow:start/);
+  assert.match(js, /teacher:follow:stop/);
+  assert.match(js, /teacher:page/);
 });
