@@ -210,3 +210,15 @@ test("desktop toolbar keeps compact grouped shapes and stable zoom width", () =>
   assert.match(css, /\.zoom-controls\s*\{[\s\S]*flex:\s*0 0 auto/);
   assert.match(css, /\.desktop-shape-tool\s*\{[\s\S]*width:\s*44px/);
 });
+
+test("pen and eraser use compact accessible icons", () => {
+  const css = read("public/styles.css");
+  for (const page of ["public/teacher.html", "public/student.html"]) {
+    const html = read(page);
+    assert.match(html, /id="penBtn"[^>]*tool-icon-btn[^>]*aria-label="Ручка"/);
+    assert.match(html, /id="eraserBtn"[^>]*tool-icon-btn[^>]*aria-label="Ластик"/);
+    assert.match(html, /class="tool-icon"/);
+  }
+  assert.match(css, /\.tool-icon-btn\s*\{[\s\S]*width:\s*44px/);
+  assert.match(css, /\.tool-icon\s*\{[\s\S]*stroke:\s*currentColor/);
+});
