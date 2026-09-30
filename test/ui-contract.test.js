@@ -184,14 +184,29 @@ test("desktop swaps Hand for precision shape tools while touch layouts keep them
     }
   }
 
-  assert.match(css, /\.desktop-shape-tool\s*\{\s*display:\s*none/);
+  assert.match(css, /\.desktop-shape-group[\s\S]*\.desktop-shape-tool\s*\{\s*display:\s*none/);
   assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)/);
   assert.match(css, /#handBtn\s*\{\s*display:\s*none/);
-  assert.match(css, /\.desktop-shape-tool\s*\{\s*display:\s*inline-flex/);
+  assert.match(css, /\.desktop-shape-group\s*\{[\s\S]*display:\s*inline-flex/);
+  assert.match(css, /\.desktop-shape-tool\s*\{[\s\S]*display:\s*inline-grid/);
+  assert.match(css, /#zoomResetBtn\s*\{[\s\S]*width:\s*70px/);
 
   assert.match(client, /shapeToolActive/);
   assert.match(client, /buildShapeStroke/);
   assert.match(client, /\["line", "arrow", "circle", "oval"\]/);
   assert.match(client, /activeShape/);
   assert.match(client, /socket\.emit\("stroke:commit", finished\)/);
+});
+
+test("desktop toolbar keeps compact grouped shapes and stable zoom width", () => {
+  const css = read("public/styles.css");
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+
+  assert.match(teacher, /class="desktop-shape-group"/);
+  assert.match(student, /class="desktop-shape-group"/);
+  assert.match(css, /width:\s*min\(1280px, calc\(100vw - 24px\)\)/);
+  assert.match(css, /flex-wrap:\s*wrap/);
+  assert.match(css, /\.zoom-controls\s*\{[\s\S]*flex:\s*0 0 auto/);
+  assert.match(css, /\.desktop-shape-tool\s*\{[\s\S]*width:\s*44px/);
 });
