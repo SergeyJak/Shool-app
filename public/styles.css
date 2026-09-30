@@ -339,3 +339,36 @@ canvas { display: block; }
   border-style: solid;
   box-shadow: 0 0 0 2px rgba(229,57,53,.12);
 }
+
+.text-size-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid #d8dee5;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+  color: #5d6670;
+}
+.text-size-control select {
+  min-width: 58px;
+  border: 0;
+  background: transparent;
+  color: #17202a;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+@media (max-width: 600px) {
+  .text-size-control {
+    padding: 0 6px;
+  }
+  .text-size-control span {
+    display: none;
+  }
+  .text-size-control select {
+    min-width: 50px;
+  }
+}
