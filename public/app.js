@@ -421,8 +421,10 @@ async function loadDocument() {
     };
 
     pdfDoc = await loadingTask.promise;
+    const pageKey = `school:lastPage:${documentMeta.id}:${role}`;
+    const legacyPageKey = `shool:lastPage:${documentMeta.id}:${role}`;
     const savedPage = Number(
-      localStorage.getItem(`shool:lastPage:${documentMeta.id}:${role}`)
+      localStorage.getItem(pageKey) ?? localStorage.getItem(legacyPageKey)
     );
     if (Number.isInteger(savedPage) && savedPage >= 1) {
       pageNumber = Math.min(savedPage, pdfDoc.numPages);
@@ -505,7 +507,7 @@ async function renderPage() {
   syncPageControls();
   if (currentDocumentId) {
     localStorage.setItem(
-      `shool:lastPage:${currentDocumentId}:${role}`,
+      `school:lastPage:${currentDocumentId}:${role}`,
       String(pageNumber)
     );
   }
