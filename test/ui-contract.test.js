@@ -147,10 +147,14 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
 
   assert.match(teacher, /id="textBtn"/);
   assert.match(client, /openTextEditor/);
+  assert.match(client, /syncTextEditorGeometry/);
   assert.match(client, /textSizeSelect/);
   assert.match(client, /textFontSize/);
   assert.match(client, /editor\.style\.fontSize/);
-  assert.match(client, /function onPointerUp[\s\S]*activeTextBox[\s\S]*openTextEditor/);
+  assert.match(client, /tool === "text"[\s\S]*textAtPoint\(point\)[\s\S]*openTextEditor\(point\)/);
+  assert.match(client, /activeTextMove/);
+  assert.match(client, /socket\.emit\("text:commit", item\)/);
+  assert.doesNotMatch(client, /activeTextBox/);
   assert.match(client, /text:commit/);
   assert.match(client, /text:committed/);
   assert.match(client, /drawTextAnnotation/);
