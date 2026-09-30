@@ -39,6 +39,7 @@ const penBtn = document.getElementById("penBtn");
 const eraserBtn = document.getElementById("eraserBtn");
 const handBtn = document.getElementById("handBtn");
 const textBtn = document.getElementById("textBtn");
+const textSizeSelect = document.getElementById("textSizeSelect");
 const zoomOutBtn = document.getElementById("zoomOutBtn");
 const zoomResetBtn = document.getElementById("zoomResetBtn");
 const zoomInBtn = document.getElementById("zoomInBtn");
@@ -118,6 +119,7 @@ let activeStroke = null;
 let activeErasePath = null;
 let activeTextBox = null;
 let textEditor = null;
+let textFontSize = Number(textSizeSelect?.value) || 18;
 let previewStrokes = new Map();
 let teacherFollowEnabled = false;
 let teacherFollowPage = 1;
@@ -319,6 +321,14 @@ penBtn.addEventListener("click", () => setTool("pen"));
 eraserBtn.addEventListener("click", () => setTool("eraser"));
 handBtn.addEventListener("click", () => setTool("hand"));
 textBtn?.addEventListener("click", () => setTool("text"));
+textSizeSelect?.addEventListener("change", () => {
+  const next = Number(textSizeSelect.value);
+  textFontSize = Number.isFinite(next) ? Math.min(48, Math.max(10, next)) : 18;
+  if (textEditor) {
+    textEditor.style.fontSize = `${textFontSize}px`;
+    textEditor._annotation.fontSize = textFontSize;
+  }
+});
 zoomOutBtn.addEventListener("click", () => setZoom(zoom - 0.25));
 zoomResetBtn.addEventListener("click", () => setZoom(1));
 zoomInBtn.addEventListener("click", () => setZoom(zoom + 0.25));
@@ -543,13 +553,14 @@ function openTextEditor(box) {
   editor.style.top = `${box.y * 100}%`;
   editor.style.width = `${box.w * 100}%`;
   editor.style.height = `${box.h * 100}%`;
+  editor.style.fontSize = `${textFontSize}px`;
   editor._annotation = {
     id: crypto.randomUUID(),
     type: "text",
     page: pageNumber,
     role: "teacher",
     color: "#e53935",
-    fontSize: 18,
+    fontSize: textFontSize,
     box,
     text: "",
   };
