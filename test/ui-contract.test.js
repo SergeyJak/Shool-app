@@ -37,8 +37,8 @@ test("teacher alone gets teacher-only controls", () => {
   assert.doesNotMatch(student, /id="perfLogButton"/);
 });
 
-test("landing page links to both roles, help, and owner performance dashboard", () => {
-  const html = read("public/index.html");
+test("cabinet links to both roles, help, and owner performance dashboard", () => {
+  const html = read("public/dashboard.html");
   assert.match(html, /href="\/teacher"/);
   assert.match(html, /href="\/student"/);
   assert.match(html, /id="infoBtn"/);
