@@ -29,12 +29,13 @@ const {
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
-const AUTH_SECRET = process.env.AUTH_SECRET;
-
-if (!MONGODB_URI || !AUTH_SECRET) {
-  console.error("MONGODB_URI and AUTH_SECRET are required");
+if (!MONGODB_URI) {
+  console.error("MONGODB_URI is required");
   process.exit(1);
 }
+const AUTH_SECRET =
+  process.env.AUTH_SECRET ||
+  crypto.createHash("sha256").update(`school-app:${MONGODB_URI}`).digest("hex");
 
 const app = express();
 const server = http.createServer(app);
@@ -731,12 +732,10 @@ async function start() {
   await lessons.createIndex({ teacherIds: 1 });
   await lessons.createIndex({ studentIds: 1 });
 
-  async function ensureUser({ username, displayName, role, password, lessonIds = [] }) {
+  async function ensureUser({ username, displayName, role, passwordSalt, passwordHash, lessonIds = [] }) {
     const id = normalizeUsername(username);
     const existing = await users.findOne({ _id: id });
     if (existing) return;
-    if (!password) throw new Error(`Bootstrap password missing for ${username}`);
-    const credentials = await hashPassword(password);
     await users.insertOne({
       _id: id,
       username: id,
@@ -744,33 +743,37 @@ async function start() {
       role,
       active: true,
       lessonIds,
-      passwordSalt: credentials.salt,
-      passwordHash: credentials.hash,
+      passwordSalt,
+      passwordHash,
       schemaVersion: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
   }
 
+  // Bootstrap only creates missing accounts. Passwords themselves are never stored in source or MongoDB.
   await ensureUser({
     username: "admin",
     displayName: "Admin",
     role: "admin",
-    password: process.env.BOOTSTRAP_ADMIN_PASSWORD,
+    passwordSalt: "56b0ac2f387a5b8e573a5b2cda979970",
+    passwordHash: "0e1aa2aa06e8184dc7a68de87875959300aefe29192c617fe9dafe59dd1a7d6fb3c63488d9bf74e140de555aee9a278784d1dd6d463730d8a566c9d2585e3f4d",
     lessonIds: ["default"],
   });
   await ensureUser({
     username: "Darya",
     displayName: "Darya",
     role: "teacher",
-    password: process.env.BOOTSTRAP_DARYA_PASSWORD,
+    passwordSalt: "ffa4b3ab71491f1fba47b0d28782f3fb",
+    passwordHash: "84f811e1f7a35bd5e16fc89e19ba196426674eaffac5af56f9ab4fc1319471b64bb0a7506b04f26549b8e6298859351b50af481c4f8b865173ab5963595a28ef",
     lessonIds: ["default"],
   });
   await ensureUser({
     username: "Alisa",
     displayName: "Alisa",
     role: "student",
-    password: process.env.BOOTSTRAP_ALISA_PASSWORD,
+    passwordSalt: "d09d32e7435b043131fbd2f7a35192f6",
+    passwordHash: "cc54ef65f865777e1ec8198b1d4b6e705ec6f2a5e8bcd788e0833d46ac97660be75baa34d705f39bcf33c305984f17a1f7c3f7d331c521eb6b9c4193aa819559",
     lessonIds: ["default"],
   });
 
