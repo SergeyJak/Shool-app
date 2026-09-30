@@ -255,3 +255,44 @@ h1 {
 .landing-side-button:hover {
   transform: translateX(-2px);
 }
+
+.account-strip {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 12px;
+  border: 1px solid rgba(23,32,42,.10);
+  border-radius: 14px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 8px 24px rgba(23,32,42,.10);
+  backdrop-filter: blur(10px);
+  font-size: 13px;
+  font-weight: 650;
+}
+.account-strip button {
+  border: 0;
+  border-radius: 9px;
+  padding: 7px 10px;
+  background: #17202a;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+[hidden] { display: none !important; }
+@media (max-width: 620px) {
+  .account-strip {
+    top: 8px;
+    right: 8px;
+    max-width: calc(100vw - 16px);
+  }
+  #accountName {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
