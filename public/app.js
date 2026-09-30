@@ -19,6 +19,7 @@ const color = role === "teacher" ? "#e53935" : "#1565c0";
 const socket = io({ auth: { role } });
 
 const statusEl = document.getElementById("status");
+const perfStatsEl = document.getElementById("perfStats");
 const pdfCanvas = document.getElementById("pdfCanvas");
 const drawCanvas = document.getElementById("drawCanvas");
 const pdfCtx = pdfCanvas.getContext("2d");
@@ -119,18 +120,49 @@ let teacherFollowEnabled = false;
 let teacherFollowPage = 1;
 let previewFlushTimer = null;
 let previewSentPointCount = 0;
+let pingTimer = null;
+let lastPreviewMetricAt = 0;
+const previewMetricStarts = new Map();
+const perfMetrics = {
+  rtt: null,
+  page: null,
+  stroke: null,
+};
+
+function updatePerfStats() {
+  if (!perfStatsEl) return;
+  const format = (value) => Number.isFinite(value) ? `${Math.round(value)}мс` : "—";
+  perfStatsEl.textContent =
+    `RTT ${format(perfMetrics.rtt)} · стр. ${format(perfMetrics.page)} · штрих ${format(perfMetrics.stroke)}`;
+}
+
+function measureSocketRtt() {
+  if (!socket.connected) return;
+  const started = performance.now();
+  socket.timeout(4000).emit("perf:ping", {}, (error) => {
+    if (error) return;
+    perfMetrics.rtt = performance.now() - started;
+    updatePerfStats();
+  });
+}
 
 socket.on("connect", () => {
   statusEl.textContent = "онлайн";
+  clearInterval(pingTimer);
+  measureSocketRtt();
+  pingTimer = setInterval(measureSocketRtt, 5000);
 });
 socket.on("disconnect", () => {
   statusEl.textContent = "нет связи";
+  clearInterval(pingTimer);
+  pingTimer = null;
 });
 
 socket.on("document:changed", async () => {
   pageNumber = 1;
   updateZoomControls();
-  await loadDocument();
+  await updatePerfStats();
+loadDocument();
 });
 
 socket.on("stroke:preview", (stroke) => {
@@ -138,6 +170,13 @@ socket.on("stroke:preview", (stroke) => {
   const current = previewStrokes.get(stroke.id);
   previewStrokes.set(stroke.id, mergePreviewStroke(current, stroke));
   redrawInk();
+
+  if (stroke.metricId && stroke.perfOriginId) {
+    socket.emit("perf:preview:seen", {
+      metricId: stroke.metricId,
+      originId: stroke.perfOriginId,
+    });
+  }
 });
 
 socket.on("stroke:committed", (stroke) => {
@@ -158,6 +197,14 @@ socket.on("stroke:deleted", ({ id, page }) => {
 
 socket.on("annotations:refresh", ({ page }) => {
   if (page === pageNumber) loadAnnotations();
+});
+
+socket.on("perf:preview:seen", ({ metricId } = {}) => {
+  const started = previewMetricStarts.get(metricId);
+  if (!Number.isFinite(started)) return;
+  previewMetricStarts.delete(metricId);
+  perfMetrics.stroke = performance.now() - started;
+  updatePerfStats();
 });
 
 socket.on("teacher:follow:state", async ({ enabled, page } = {}) => {
@@ -399,6 +446,16 @@ function flushStrokePreview() {
 
   const chunk = buildPreviewChunk(activeStroke, previewSentPointCount);
   if (!chunk) return;
+
+  const now = performance.now();
+  if (now - lastPreviewMetricAt >= 2000) {
+    const metricId = crypto.randomUUID();
+    chunk.metricId = metricId;
+    previewMetricStarts.set(metricId, now);
+    lastPreviewMetricAt = now;
+
+    setTimeout(() => previewMetricStarts.delete(metricId), 10000);
+  }
 
   socket.emit("stroke:preview", chunk);
   previewSentPointCount = activeStroke.points.length;
@@ -642,6 +699,7 @@ function syncPageControls() {
 }
 
 async function renderPage() {
+  const renderStarted = performance.now();
   const page = await pdfDoc.getPage(pageNumber);
 
   const availableWidth = Math.min(window.innerWidth - 20, 1100);
@@ -680,6 +738,8 @@ async function renderPage() {
   }
 
   await loadAnnotations();
+  perfMetrics.page = performance.now() - renderStarted;
+  updatePerfStats();
 }
 
 async function loadAnnotations() {
