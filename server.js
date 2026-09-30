@@ -344,6 +344,7 @@ app.get("/api/annotations/:page", async (req, res, next) => {
         text: row.text,
         box: row.box,
         fontSize: row.fontSize,
+        fontScale: row.fontScale,
         createdAt: row.createdAt,
       }))
     );
@@ -477,6 +478,10 @@ io.on("connection", (socket) => {
         text: item.text,
         box: item.box,
         fontSize: Number.isFinite(item.fontSize) ? Math.min(48, Math.max(10, item.fontSize)) : 18,
+        fontScale:
+          Number.isFinite(item.fontScale) && item.fontScale > 0 && item.fontScale < 0.25
+            ? item.fontScale
+            : null,
         createdAt: new Date(),
       };
 
