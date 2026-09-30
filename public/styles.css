@@ -319,3 +319,23 @@ canvas { display: block; }
     border-radius: 12px 0 0 12px;
   }
 }
+
+.text-annotation-editor {
+  position: absolute;
+  z-index: 6;
+  min-width: 80px;
+  min-height: 44px;
+  resize: none;
+  border: 2px dashed #e53935;
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: rgba(255,255,255,.86);
+  color: #e53935;
+  font: 18px/1.2 system-ui, sans-serif;
+  outline: none;
+  overflow: auto;
+}
+.text-annotation-editor:focus {
+  border-style: solid;
+  box-shadow: 0 0 0 2px rgba(229,57,53,.12);
+}
