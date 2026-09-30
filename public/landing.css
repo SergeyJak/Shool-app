@@ -232,3 +232,26 @@ h1 {
     margin-bottom: 22px;
   }
 }
+
+.landing-side-button {
+  position: fixed;
+  right: 0;
+  top: 116px;
+  z-index: 8;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d8dee5;
+  border-right: 0;
+  border-radius: 14px 0 0 14px;
+  background: rgba(255,255,255,.94);
+  color: #17202a;
+  text-decoration: none;
+  font-size: 20px;
+  box-shadow: 0 8px 24px rgba(23,32,42,.12);
+  backdrop-filter: blur(10px);
+}
+.landing-side-button:hover {
+  transform: translateX(-2px);
+}
