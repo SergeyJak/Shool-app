@@ -151,6 +151,8 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
   assert.match(client, /textSizeSelect/);
   assert.match(client, /textFontSize/);
   assert.match(client, /editor\.style\.fontSize/);
+  assert.match(client, /fontScale/);
+  assert.match(client, /drawCanvas\.getBoundingClientRect\(\)\.width/);
   assert.match(client, /tool === "text"[\s\S]*textAtPoint\(point\)[\s\S]*openTextEditor\(point\)/);
   assert.match(client, /activeTextMove/);
   assert.match(client, /socket\.emit\("text:commit", item\)/);
@@ -163,5 +165,6 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
   assert.match(server, /isValidTextAnnotation/);
   assert.match(server, /socket\.on\("text:commit"/);
   assert.match(server, /type: "text"/);
+  assert.match(server, /fontScale/);
   assert.match(server, /erasePathHitsBox/);
 });
