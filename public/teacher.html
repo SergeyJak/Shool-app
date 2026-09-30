@@ -27,10 +27,12 @@
       <button id="penBtn" class="active">Ручка</button>
       <button id="eraserBtn">Ластик</button>
       <button id="handBtn">Рука</button>
-      <button id="lineBtn" class="desktop-shape-tool" type="button" title="Прямая линия">╱ Линия</button>
-      <button id="arrowBtn" class="desktop-shape-tool" type="button" title="Стрелка">→ Стрелка</button>
-      <button id="circleBtn" class="desktop-shape-tool" type="button" title="Круг">○ Круг</button>
-      <button id="ovalBtn" class="desktop-shape-tool" type="button" title="Овал">⬭ Овал</button>
+      <div class="desktop-shape-group" aria-label="Фигуры">
+        <button id="lineBtn" class="desktop-shape-tool" type="button" title="Прямая линия" aria-label="Линия">╱</button>
+        <button id="arrowBtn" class="desktop-shape-tool" type="button" title="Стрелка" aria-label="Стрелка">→</button>
+        <button id="circleBtn" class="desktop-shape-tool" type="button" title="Круг" aria-label="Круг">○</button>
+        <button id="ovalBtn" class="desktop-shape-tool" type="button" title="Овал" aria-label="Овал">⬭</button>
+      </div>
       <button id="textBtn">Текст</button>
       <label class="text-size-control" title="Размер текста">
         <span>Шрифт</span>
