@@ -84,3 +84,22 @@ test("live drawing uses throttled preview chunks", () => {
   assert.match(js, /scheduleStrokePreview/);
   assert.match(js, /flushStrokePreview/);
 });
+
+test("live performance metrics cover RTT page render and remote stroke latency", () => {
+  const client = read("public/app.js");
+  const server = read("server.js");
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+
+  assert.match(teacher, /id="perfStats"/);
+  assert.match(student, /id="perfStats"/);
+  assert.match(client, /perf:ping/);
+  assert.match(client, /perf:preview:seen/);
+  assert.match(client, /perfMetrics\.rtt/);
+  assert.match(client, /perfMetrics\.page/);
+  assert.match(client, /perfMetrics\.stroke/);
+  assert.match(client, /renderStarted = performance\.now\(\)/);
+  assert.match(server, /socket\.on\("perf:ping"/);
+  assert.match(server, /socket\.on\("perf:preview:seen"/);
+  assert.match(server, /perfOriginId/);
+});
