@@ -225,6 +225,16 @@ io.on("connection", (socket) => {
 
   socket.emit("teacher:follow:state", teacherFollow.snapshot());
 
+  socket.on("perf:ping", (_payload, ack) => {
+    ack?.({ ok: true });
+  });
+
+  socket.on("perf:preview:seen", ({ metricId, originId } = {}) => {
+    if (typeof metricId !== "string" || metricId.length > 100) return;
+    if (typeof originId !== "string" || originId.length > 100) return;
+    io.to(originId).emit("perf:preview:seen", { metricId });
+  });
+
   socket.on("teacher:follow:start", ({ page } = {}, ack) => {
     if (role !== "teacher" || !teacherFollow.start(page)) {
       return ack?.({ ok: false });
@@ -256,7 +266,11 @@ io.on("connection", (socket) => {
 
   socket.on("stroke:preview", (stroke) => {
     if (!isValidStroke(stroke)) return;
-    socket.broadcast.emit("stroke:preview", { ...stroke, role });
+    socket.broadcast.emit("stroke:preview", {
+      ...stroke,
+      role,
+      perfOriginId: stroke.metricId ? socket.id : undefined,
+    });
   });
 
   socket.on("stroke:commit", async (stroke, ack) => {
