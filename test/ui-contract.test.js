@@ -243,9 +243,11 @@ test("root is login and cabinet preserves role-aware navigation", () => {
   assert.match(server, /requirePageAuth/);
   assert.match(server, /requireApiRole/);
   assert.match(server, /io\.use\(async \(socket, next\)/);
-  assert.match(server, /BOOTSTRAP_ADMIN_PASSWORD/);
-  assert.match(server, /BOOTSTRAP_DARYA_PASSWORD/);
-  assert.match(server, /BOOTSTRAP_ALISA_PASSWORD/);
+  assert.match(server, /username: "admin"/);
+  assert.match(server, /username: "Darya"/);
+  assert.match(server, /username: "Alisa"/);
+  assert.doesNotMatch(server, /Parole\.123!/);
+  assert.doesNotMatch(server, /12345678/);
   assert.match(server, /db\.collection\("users"\)/);
   assert.match(server, /db\.collection\("lessons"\)/);
 });
