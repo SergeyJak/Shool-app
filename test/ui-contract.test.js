@@ -145,6 +145,7 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
 
   assert.match(teacher, /id="textBtn"/);
   assert.match(client, /openTextEditor/);
+  assert.match(client, /function onPointerUp[\s\S]*activeTextBox[\s\S]*openTextEditor/);
   assert.match(client, /text:commit/);
   assert.match(client, /text:committed/);
   assert.match(client, /drawTextAnnotation/);
