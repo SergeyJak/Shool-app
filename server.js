@@ -335,11 +335,15 @@ app.get("/api/annotations/:page", async (req, res, next) => {
     res.json(
       rows.map((row) => ({
         id: row._id,
+        type: row.type || "stroke",
         page: row.page,
         role: row.role,
         color: row.color,
         width: row.width,
         points: row.points,
+        text: row.text,
+        box: row.box,
+        fontSize: row.fontSize,
         createdAt: row.createdAt,
       }))
     );
@@ -347,6 +351,36 @@ app.get("/api/annotations/:page", async (req, res, next) => {
     next(err);
   }
 });
+
+function isValidTextAnnotation(item) {
+  if (!item || typeof item.id !== "string") return false;
+  if (!Number.isInteger(item.page) || item.page < 1) return false;
+  if (typeof item.text !== "string" || item.text.length > 5000) return false;
+  const box = item.box;
+  if (!box) return false;
+  for (const key of ["x", "y", "w", "h"]) {
+    if (!Number.isFinite(box[key])) return false;
+  }
+  return (
+    box.x >= 0 && box.x <= 1 &&
+    box.y >= 0 && box.y <= 1 &&
+    box.w > 0 && box.w <= 1 &&
+    box.h > 0 && box.h <= 1 &&
+    box.x + box.w <= 1.001 &&
+    box.y + box.h <= 1.001
+  );
+}
+
+function erasePathHitsBox(erase, box) {
+  const pad = erase.radius;
+  return erase.points.some(
+    (p) =>
+      p.x >= box.x - pad &&
+      p.x <= box.x + box.w + pad &&
+      p.y >= box.y - pad &&
+      p.y <= box.y + box.h + pad
+  );
+}
 
 io.on("connection", (socket) => {
   const role = socket.handshake.auth?.role === "teacher" ? "teacher" : "student";
@@ -427,6 +461,34 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("text:commit", async (item, ack) => {
+    try {
+      if (role !== "teacher") return ack?.({ ok: false, error: "TEACHER_ONLY" });
+      if (!isValidTextAnnotation(item)) {
+        return ack?.({ ok: false, error: "INVALID_TEXT" });
+      }
+
+      const row = {
+        _id: item.id,
+        type: "text",
+        page: item.page,
+        role,
+        color: "#e53935",
+        text: item.text,
+        box: item.box,
+        fontSize: Number.isFinite(item.fontSize) ? Math.min(48, Math.max(10, item.fontSize)) : 18,
+        createdAt: new Date(),
+      };
+
+      await annotations.updateOne({ _id: row._id }, { $set: row }, { upsert: true });
+      io.emit("text:committed", { ...row, id: row._id });
+      ack?.({ ok: true, id: row._id });
+    } catch (err) {
+      console.error(err);
+      ack?.({ ok: false, error: "SAVE_FAILED" });
+    }
+  });
+
   socket.on("stroke:delete", async ({ id }) => {
     const row = await annotations.findOne({ _id: id });
     if (!row) return;
@@ -449,6 +511,13 @@ io.on("connection", (socket) => {
       let changed = false;
 
       for (const stroke of pageStrokes) {
+        if (stroke.type === "text") {
+          if (!stroke.box || !erasePathHitsBox(erase, stroke.box)) continue;
+          changed = true;
+          await annotations.deleteOne({ _id: stroke._id });
+          continue;
+        }
+
         const parts = splitStrokeByErasePath(stroke, erase);
         const unchanged =
           parts.length === 1 &&
