@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>School App · Кабинет</title>
+  <link rel="stylesheet" href="/landing.css?v=20260930-auth1" />
+</head>
+<body class="landing-body">
+  <div class="account-strip">
+    <span id="accountName">Кабинет</span>
+    <button id="logoutBtn" type="button">Выйти</button>
+  </div>
+  <a id="perfLogButton" class="landing-side-button admin-only" href="/performance" title="Performance" aria-label="Открыть performance">📈</a>
+  <main class="landing-shell">
+    <section class="landing-card" aria-labelledby="welcomeTitle">
+      <button id="infoBtn" class="info-button" type="button" aria-label="Как пользоваться">i</button>
+
+      <div class="landing-mark">PDF</div>
+      <h1 id="welcomeTitle">Совместный урок</h1>
+      <p class="landing-lead">
+        Один учебник, две стороны и общие пометки в реальном времени.
+      </p>
+
+      <div class="role-grid" id="roleGrid">
+        <a class="role-card teacher-card role-teacher" href="/teacher">
+          <span class="role-kicker">Я веду урок</span>
+          <strong>Учитель</strong>
+          <span>Загрузить PDF, проверять и делать пометки</span>
+        </a>
+
+        <a class="role-card student-card role-student" href="/student">
+          <span class="role-kicker">Я занимаюсь</span>
+          <strong>Ученик</strong>
+          <span>Открыть учебник, писать и выполнять задания</span>
+        </a>
+      </div>
+
+      <p class="landing-note" id="landingNote">Выберите свою роль, чтобы продолжить.</p>
+    </section>
+  </main>
+
+  <dialog id="helpDialog" class="help-dialog">
+    <form method="dialog">
+      <div class="help-header">
+        <div>
+          <span class="help-eyebrow">Краткая инструкция</span>
+          <h2>Как пользоваться</h2>
+        </div>
+        <button class="dialog-close" value="close" aria-label="Закрыть">×</button>
+      </div>
+
+      <div class="help-list">
+        <div><b>1.</b><span>Учитель загружает PDF. Ученик автоматически видит тот же документ.</span></div>
+        <div><b>2.</b><span>Пометки и текст синхронизируются в реальном времени.</span></div>
+        <div><b>3.</b><span>У каждого пользователя свой кабинет и роль. Уроки и учебники будут привязываться к пользователям отдельно.</span></div>
+      </div>
+
+      <button class="dialog-ok" value="close">Понятно</button>
+    </form>
+  </dialog>
+
+  <script src="/cabinet.js?v=20260930-auth1"></script>
+</body>
+</html>
