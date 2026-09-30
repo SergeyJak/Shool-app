@@ -552,6 +552,7 @@ function syncTextEditorGeometry() {
     h: Math.min(1, heightPx / shell.clientHeight),
   };
   item.fontSize = textFontSize;
+  item.fontScale = textFontSize / shell.clientWidth;
 }
 
 function closeTextEditor({ save = true } = {}) {
@@ -606,6 +607,7 @@ function openTextEditor(point) {
     role: "teacher",
     color: "#e53935",
     fontSize: textFontSize,
+    fontScale: textFontSize / shell.clientWidth,
     box: {
       x: leftPx / shell.clientWidth,
       y: topPx / shell.clientHeight,
@@ -651,8 +653,12 @@ function drawTextAnnotation(item) {
   const px = x * drawCanvas.width;
   const py = y * drawCanvas.height;
   const maxWidth = Math.max(1, w * drawCanvas.width);
-  const scale = window.devicePixelRatio || 1;
-  const fontSize = (item.fontSize || 18) * scale;
+  const outputScale = drawCanvas.width / Math.max(1, drawCanvas.getBoundingClientRect().width);
+  const legacyCssPx = item.fontSize || 18;
+  const cssFontSize = Number.isFinite(item.fontScale)
+    ? item.fontScale * drawCanvas.getBoundingClientRect().width
+    : legacyCssPx;
+  const fontSize = cssFontSize * outputScale;
 
   drawCtx.save();
   drawCtx.fillStyle = item.color || "#e53935";
