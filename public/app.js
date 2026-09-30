@@ -26,6 +26,9 @@ const lastBtn = document.getElementById("lastBtn");
 const penBtn = document.getElementById("penBtn");
 const eraserBtn = document.getElementById("eraserBtn");
 const handBtn = document.getElementById("handBtn");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+const zoomResetBtn = document.getElementById("zoomResetBtn");
+const zoomInBtn = document.getElementById("zoomInBtn");
 const undoBtn = document.getElementById("undoBtn");
 const uploadInput = document.getElementById("pdfUpload");
 
@@ -93,6 +96,7 @@ let pageNumber = 1;
 let zoom = 1;
 let pinchStartDistance = null;
 let pinchStartZoom = 1;
+let zoomRenderTimer = null;
 let tool = "pen";
 let strokes = [];
 let activeStroke = null;
@@ -108,7 +112,8 @@ socket.on("disconnect", () => {
 
 socket.on("document:changed", async () => {
   pageNumber = 1;
-  await loadDocument();
+  await updateZoomControls();
+loadDocument();
 });
 
 socket.on("stroke:preview", (stroke) => {
@@ -164,6 +169,9 @@ pageInput.addEventListener("keydown", (event) => {
 penBtn.addEventListener("click", () => setTool("pen"));
 eraserBtn.addEventListener("click", () => setTool("eraser"));
 handBtn.addEventListener("click", () => setTool("hand"));
+zoomOutBtn.addEventListener("click", () => setZoom(zoom - 0.25));
+zoomResetBtn.addEventListener("click", () => setZoom(1));
+zoomInBtn.addEventListener("click", () => setZoom(zoom + 0.25));
 undoBtn.addEventListener("click", () => {
   socket.emit("stroke:undo", { page: pageNumber });
 });
@@ -236,6 +244,33 @@ drawCanvas.addEventListener("pointerdown", onPointerDown);
 drawCanvas.addEventListener("pointermove", onPointerMove);
 drawCanvas.addEventListener("pointerup", onPointerUp);
 drawCanvas.addEventListener("pointercancel", onPointerUp);
+
+function clampZoom(value) {
+  return Math.min(3, Math.max(0.75, value));
+}
+
+function updateZoomControls() {
+  const percent = Math.round(zoom * 100);
+  zoomResetBtn.textContent = `${percent}%`;
+  zoomOutBtn.disabled = zoom <= 0.75;
+  zoomInBtn.disabled = zoom >= 3;
+}
+
+function setZoom(nextZoom) {
+  const clamped = clampZoom(nextZoom);
+  if (Math.abs(clamped - zoom) < 0.001) {
+    updateZoomControls();
+    return;
+  }
+
+  zoom = clamped;
+  updateZoomControls();
+
+  clearTimeout(zoomRenderTimer);
+  zoomRenderTimer = setTimeout(() => {
+    if (pdfDoc) renderPage();
+  }, 70);
+}
 
 function setTool(nextTool) {
   tool = nextTool;
@@ -585,11 +620,10 @@ stage.addEventListener("touchmove", (event) => {
   event.preventDefault();
   const nextDistance = touchDistance(event.touches);
   const factor = nextDistance / pinchStartDistance;
-  const nextZoom = Math.min(3, Math.max(0.75, pinchStartZoom * factor));
+  const nextZoom = clampZoom(pinchStartZoom * factor);
 
   if (Math.abs(nextZoom - zoom) < 0.03) return;
-  zoom = nextZoom;
-  renderPage();
+  setZoom(nextZoom);
 }, { passive: false });
 
 stage.addEventListener("touchend", (event) => {
