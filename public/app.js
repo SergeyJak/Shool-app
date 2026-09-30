@@ -20,6 +20,7 @@ const socket = io({ auth: { role } });
 
 const statusEl = document.getElementById("status");
 const perfStatsEl = document.getElementById("perfStats");
+const perfLogButton = document.getElementById("perfLogButton");
 const pdfCanvas = document.getElementById("pdfCanvas");
 const drawCanvas = document.getElementById("drawCanvas");
 const pdfCtx = pdfCanvas.getContext("2d");
@@ -121,8 +122,15 @@ let teacherFollowPage = 1;
 let previewFlushTimer = null;
 let previewSentPointCount = 0;
 let pingTimer = null;
+let perfLogTimer = null;
+let reconnects = 0;
+let disconnects = 0;
+let hasConnectedOnce = false;
 let lastPreviewMetricAt = 0;
 const previewMetricStarts = new Map();
+const perfSessionId =
+  sessionStorage.getItem("school:perfSessionId") || crypto.randomUUID();
+sessionStorage.setItem("school:perfSessionId", perfSessionId);
 const perfMetrics = {
   rtt: null,
   page: null,
@@ -146,16 +154,53 @@ function measureSocketRtt() {
   });
 }
 
+function sendPerformanceLog() {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const payload = {
+    role,
+    sessionId: perfSessionId,
+    documentId: currentDocumentId,
+    page: pageNumber,
+    rtt: perfMetrics.rtt,
+    pageMs: perfMetrics.page,
+    strokeMs: perfMetrics.stroke,
+    network: connection?.effectiveType || connection?.type || null,
+    downlink: Number.isFinite(connection?.downlink) ? connection.downlink : null,
+    browserRtt: Number.isFinite(connection?.rtt) ? connection.rtt : null,
+    connected: socket.connected,
+    reconnects,
+    disconnects,
+  };
+
+  fetch("/api/performance", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => {
+    // Diagnostics must never disturb the lesson.
+  });
+}
+
 socket.on("connect", () => {
   statusEl.textContent = "онлайн";
+  if (hasConnectedOnce) reconnects += 1;
+  hasConnectedOnce = true;
   clearInterval(pingTimer);
   measureSocketRtt();
   pingTimer = setInterval(measureSocketRtt, 5000);
+
+  clearInterval(perfLogTimer);
+  perfLogTimer = setInterval(sendPerformanceLog, 20000);
 });
 socket.on("disconnect", () => {
   statusEl.textContent = "нет связи";
+  disconnects += 1;
   clearInterval(pingTimer);
   pingTimer = null;
+  clearInterval(perfLogTimer);
+  perfLogTimer = null;
+  sendPerformanceLog();
 });
 
 socket.on("document:changed", async () => {
@@ -267,6 +312,12 @@ zoomInBtn.addEventListener("click", () => setZoom(zoom + 0.25));
 undoBtn.addEventListener("click", () => {
   socket.emit("stroke:undo", { page: pageNumber });
 });
+
+if (perfLogButton) {
+  perfLogButton.addEventListener("click", () => {
+    window.location.href = "/performance";
+  });
+}
 
 if (followBtn) {
   followBtn.addEventListener("click", () => {
