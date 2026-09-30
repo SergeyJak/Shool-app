@@ -13,6 +13,7 @@ const {
   isValidErasePath,
   isValidStroke,
 } = require("./lib/annotation-utils");
+const { createFollowState } = require("./lib/follow-state");
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -37,6 +38,7 @@ let db;
 let bucket;
 let annotations;
 let settings;
+const teacherFollow = createFollowState();
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -195,6 +197,37 @@ app.get("/api/annotations/:page", async (req, res, next) => {
 io.on("connection", (socket) => {
   const role = socket.handshake.auth?.role === "teacher" ? "teacher" : "student";
   socket.data.role = role;
+
+  socket.emit("teacher:follow:state", teacherFollow.snapshot());
+
+  socket.on("teacher:follow:start", ({ page } = {}, ack) => {
+    if (role !== "teacher" || !teacherFollow.start(page)) {
+      return ack?.({ ok: false });
+    }
+
+    const state = teacherFollow.snapshot();
+    io.emit("teacher:follow:state", state);
+    ack?.({ ok: true, ...state });
+  });
+
+  socket.on("teacher:page", ({ page } = {}) => {
+    if (role !== "teacher" || !teacherFollow.move(page)) return;
+    io.emit("teacher:page", { page: teacherFollow.snapshot().page });
+  });
+
+  socket.on("teacher:follow:stop", (_payload, ack) => {
+    if (role !== "teacher") return ack?.({ ok: false });
+    teacherFollow.stop();
+    const state = teacherFollow.snapshot();
+    io.emit("teacher:follow:state", state);
+    ack?.({ ok: true, ...state });
+  });
+
+  socket.on("disconnect", () => {
+    if (role !== "teacher" || !teacherFollow.snapshot().enabled) return;
+    teacherFollow.stop();
+    io.emit("teacher:follow:state", teacherFollow.snapshot());
+  });
 
   socket.on("stroke:preview", (stroke) => {
     if (!isValidStroke(stroke)) return;
