@@ -7,6 +7,15 @@ header {
 }
 header strong { margin-right: 10px; }
 #status { font-size: 13px; opacity: .65; }
+.perf-stats {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.2;
+  opacity: .52;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .upload, button {
   border: 1px solid #cfd6dd; background: white; border-radius: 9px; padding: 8px 12px;
   font: inherit; cursor: pointer;
