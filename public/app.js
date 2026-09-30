@@ -1,4 +1,10 @@
 import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs";
+import {
+  clampPage,
+  clampZoom,
+  pageStorageKey,
+  legacyPageStorageKey,
+} from "./app-utils.mjs";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs";
@@ -144,7 +150,7 @@ socket.on("annotations:refresh", ({ page }) => {
 
 async function goToPage(nextPage) {
   if (!pdfDoc) return;
-  const clamped = Math.max(1, Math.min(pdfDoc.numPages, Number(nextPage) || 1));
+  const clamped = clampPage(nextPage, pdfDoc.numPages);
   if (clamped === pageNumber) {
     syncPageControls();
     return;
@@ -244,10 +250,6 @@ drawCanvas.addEventListener("pointerdown", onPointerDown);
 drawCanvas.addEventListener("pointermove", onPointerMove);
 drawCanvas.addEventListener("pointerup", onPointerUp);
 drawCanvas.addEventListener("pointercancel", onPointerUp);
-
-function clampZoom(value) {
-  return Math.min(3, Math.max(0.75, value));
-}
 
 function updateZoomControls() {
   const percent = Math.round(zoom * 100);
@@ -456,8 +458,8 @@ async function loadDocument() {
     };
 
     pdfDoc = await loadingTask.promise;
-    const pageKey = `school:lastPage:${documentMeta.id}:${role}`;
-    const legacyPageKey = `shool:lastPage:${documentMeta.id}:${role}`;
+    const pageKey = pageStorageKey(documentMeta.id, role);
+    const legacyPageKey = legacyPageStorageKey(documentMeta.id, role);
     const savedPage = Number(
       localStorage.getItem(pageKey) ?? localStorage.getItem(legacyPageKey)
     );
@@ -542,7 +544,7 @@ async function renderPage() {
   syncPageControls();
   if (currentDocumentId) {
     localStorage.setItem(
-      `school:lastPage:${currentDocumentId}:${role}`,
+      pageStorageKey(currentDocumentId, role),
       String(pageNumber)
     );
   }
