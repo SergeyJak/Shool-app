@@ -282,3 +282,7 @@ canvas { display: block; }
     text-align: center;
   }
 }
+
+.follow-button.pending {
+  opacity: .65;
+}
