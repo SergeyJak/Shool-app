@@ -39,6 +39,7 @@ let db;
 let bucket;
 let annotations;
 let settings;
+let performanceLogs;
 const teacherFollow = createFollowState();
 
 app.use(express.json({ limit: "1mb" }));
@@ -52,6 +53,9 @@ app.get("/teacher", (_req, res) =>
 );
 app.get("/student", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
+);
+app.get("/performance", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "performance.html"))
 );
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
@@ -190,6 +194,131 @@ app.post("/api/document", upload.single("pdf"), async (req, res, next) => {
     next(err);
   }
 });
+
+
+function finiteMetric(value, max = 60000) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 && number <= max ? number : null;
+}
+
+function percentile(values, ratio) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.ceil(sorted.length * ratio) - 1);
+  return sorted[Math.max(0, index)];
+}
+
+function metricSummary(rows, key) {
+  const values = rows.map((row) => row[key]).filter(Number.isFinite);
+  if (!values.length) return { avg: null, p95: null };
+  return {
+    avg: values.reduce((sum, value) => sum + value, 0) / values.length,
+    p95: percentile(values, 0.95),
+  };
+}
+
+app.post("/api/performance", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const role = body.role === "teacher" ? "teacher" : "student";
+    const sessionId =
+      typeof body.sessionId === "string" && body.sessionId.length <= 100
+        ? body.sessionId
+        : null;
+
+    if (!sessionId) return res.status(400).json({ error: "INVALID_SESSION" });
+
+    const row = {
+      createdAt: new Date(),
+      role,
+      sessionId,
+      documentId:
+        typeof body.documentId === "string" && body.documentId.length <= 100
+          ? body.documentId
+          : null,
+      page: Number.isInteger(Number(body.page)) && Number(body.page) > 0
+        ? Number(body.page)
+        : null,
+      rtt: finiteMetric(body.rtt),
+      pageMs: finiteMetric(body.pageMs),
+      strokeMs: finiteMetric(body.strokeMs),
+      network:
+        typeof body.network === "string" && body.network.length <= 40
+          ? body.network
+          : null,
+      downlink: finiteMetric(body.downlink, 10000),
+      browserRtt: finiteMetric(body.browserRtt, 60000),
+      connected: Boolean(body.connected),
+      reconnects:
+        Number.isInteger(Number(body.reconnects)) && Number(body.reconnects) >= 0
+          ? Math.min(Number(body.reconnects), 10000)
+          : 0,
+      disconnects:
+        Number.isInteger(Number(body.disconnects)) && Number(body.disconnects) >= 0
+          ? Math.min(Number(body.disconnects), 10000)
+          : 0,
+    };
+
+    await performanceLogs.insertOne(row);
+    res.status(202).json({ ok: true });
+  } catch (err) {
+    // Performance logging must never affect the lesson.
+    console.error("Performance log write failed:", err);
+    res.status(202).json({ ok: false });
+  }
+});
+
+app.get("/api/performance", async (req, res, next) => {
+  try {
+    const hours = Math.min(24 * 30, Math.max(1, Number(req.query.hours) || 24));
+    const limit = Math.min(1000, Math.max(1, Number(req.query.limit) || 500));
+    const role =
+      req.query.role === "teacher" || req.query.role === "student"
+        ? req.query.role
+        : null;
+
+    const query = {
+      createdAt: { $gte: new Date(Date.now() - hours * 60 * 60 * 1000) },
+    };
+    if (role) query.role = role;
+
+    const rows = await performanceLogs
+      .find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .toArray();
+
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      summary: {
+        rtt: metricSummary(rows, "rtt"),
+        page: metricSummary(rows, "pageMs"),
+        stroke: metricSummary(rows, "strokeMs"),
+        sessions: new Set(rows.map((row) => row.sessionId).filter(Boolean)).size,
+        samples: rows.length,
+      },
+      rows: rows.map((row) => ({
+        createdAt: row.createdAt,
+        role: row.role,
+        sessionId: row.sessionId,
+        documentId: row.documentId,
+        page: row.page,
+        rtt: row.rtt,
+        pageMs: row.pageMs,
+        strokeMs: row.strokeMs,
+        network: row.network,
+        downlink: row.downlink,
+        browserRtt: row.browserRtt,
+        connected: row.connected,
+        reconnects: row.reconnects,
+        disconnects: row.disconnects,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 app.get("/api/annotations/:page", async (req, res, next) => {
   try {
@@ -380,8 +509,14 @@ async function start() {
   bucket = new GridFSBucket(db, { bucketName: "pdfs" });
   annotations = db.collection("annotations");
   settings = db.collection("settings");
+  performanceLogs = db.collection("performance_logs");
 
   await annotations.createIndex({ page: 1, createdAt: 1 });
+  await performanceLogs.createIndex(
+    { createdAt: 1 },
+    { expireAfterSeconds: 30 * 24 * 60 * 60 }
+  );
+  await performanceLogs.createIndex({ role: 1, createdAt: -1 });
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`School App listening on :${PORT}`);
