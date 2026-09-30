@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>School App · Performance</title>
+  <link rel="stylesheet" href="/performance.css?v=20260930-perf-log1" />
+</head>
+<body>
+  <header class="perf-header">
+    <div>
+      <a class="back-link" href="/teacher">← Урок</a>
+      <h1>Performance</h1>
+      <p>Тихий мониторинг качества связи и отклика урока</p>
+    </div>
+    <button id="refreshBtn" type="button">Обновить</button>
+  </header>
+
+  <main class="perf-shell">
+    <section class="filters">
+      <label>Период
+        <select id="hoursFilter">
+          <option value="1">1 час</option>
+          <option value="6">6 часов</option>
+          <option value="24" selected>24 часа</option>
+          <option value="168">7 дней</option>
+        </select>
+      </label>
+      <label>Роль
+        <select id="roleFilter">
+          <option value="">Все</option>
+          <option value="teacher">Учитель</option>
+          <option value="student">Ученик</option>
+        </select>
+      </label>
+      <span id="updatedAt" class="updated-at">—</span>
+    </section>
+
+    <section class="metric-grid">
+      <article class="metric-card">
+        <span>RTT</span>
+        <strong id="rttAvg">—</strong>
+        <small id="rttP95">p95 —</small>
+      </article>
+      <article class="metric-card">
+        <span>Страница</span>
+        <strong id="pageAvg">—</strong>
+        <small id="pageP95">p95 —</small>
+      </article>
+      <article class="metric-card">
+        <span>Штрих round-trip</span>
+        <strong id="strokeAvg">—</strong>
+        <small id="strokeP95">p95 —</small>
+      </article>
+      <article class="metric-card">
+        <span>Сессии</span>
+        <strong id="sessionCount">—</strong>
+        <small id="sampleCount">— замеров</small>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Последние замеры</h2>
+          <p>Логи пишутся отдельно и не блокируют урок.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Время</th>
+              <th>Роль</th>
+              <th>RTT</th>
+              <th>Страница</th>
+              <th>Штрих</th>
+              <th>Стр.</th>
+              <th>Сеть</th>
+            </tr>
+          </thead>
+          <tbody id="logRows"></tbody>
+        </table>
+      </div>
+      <div id="emptyLogs" class="empty" hidden>Пока нет замеров.</div>
+    </section>
+  </main>
+
+  <script type="module" src="/performance.js?v=20260930-perf-log1"></script>
+</body>
+</html>
