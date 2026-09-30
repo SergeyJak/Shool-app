@@ -14,6 +14,7 @@ const {
   isValidStroke,
 } = require("./lib/annotation-utils");
 const { createFollowState } = require("./lib/follow-state");
+const { parseSingleByteRange } = require("./lib/http-range");
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -84,14 +85,38 @@ app.get("/api/document/file", async (req, res, next) => {
     }
 
     const fileId = new ObjectId(current.fileId);
-    const files = await db.collection("pdfs.files").find({ _id: fileId }).toArray();
-    if (!files.length) return res.status(404).end();
+    const file = await db.collection("pdfs.files").findOne({ _id: fileId });
+    if (!file) return res.status(404).end();
+
+    const size = Number(file.length);
+    const etag = `"${currentId}"`;
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(current.name)}"`);
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    res.setHeader("ETag", `"${currentId}"`);
-    bucket.openDownloadStream(fileId).pipe(res);
+    res.setHeader("ETag", etag);
+    res.setHeader("Accept-Ranges", "bytes");
+
+    const range = parseSingleByteRange(req.get("range"), size);
+
+    if (range?.invalid || range?.unsatisfiable) {
+      res.setHeader("Content-Range", `bytes */${size}`);
+      return res.status(416).end();
+    }
+
+    if (range) {
+      res.status(206);
+      res.setHeader("Content-Range", `bytes ${range.start}-${range.end}/${size}`);
+      res.setHeader("Content-Length", String(range.length));
+
+      // GridFS end is exclusive, while HTTP byte ranges are inclusive.
+      return bucket
+        .openDownloadStream(fileId, { start: range.start, end: range.end + 1 })
+        .pipe(res);
+    }
+
+    res.setHeader("Content-Length", String(size));
+    return bucket.openDownloadStream(fileId).pipe(res);
   } catch (err) {
     next(err);
   }
