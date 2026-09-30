@@ -326,14 +326,16 @@ canvas { display: block; }
   min-width: 80px;
   min-height: 44px;
   resize: none;
-  border: 2px dashed #e53935;
+  border: 2px solid #e53935;
   border-radius: 6px;
   padding: 4px 6px;
   background: rgba(255,255,255,.86);
   color: #e53935;
   font: 18px/1.2 system-ui, sans-serif;
   outline: none;
-  overflow: auto;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 .text-annotation-editor:focus {
   border-style: solid;
