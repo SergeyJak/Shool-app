@@ -10,7 +10,7 @@ for (const page of ["public/teacher.html", "public/student.html"]) {
   test(`${page} exposes drawing, erasing, hand, zoom and page navigation controls`, () => {
     const html = read(page);
     for (const id of [
-      "penBtn", "eraserBtn", "handBtn", "undoBtn",
+      "penBtn", "eraserBtn", "handBtn", "lineBtn", "arrowBtn", "circleBtn", "ovalBtn", "undoBtn",
       "zoomOutBtn", "zoomResetBtn", "zoomInBtn",
       "firstBtn", "prevBtn", "pageInput", "nextBtn", "lastBtn",
       "pdfCanvas", "drawCanvas",
@@ -169,4 +169,29 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
   assert.match(server, /type: "text"/);
   assert.match(server, /fontScale/);
   assert.match(server, /erasePathHitsBox/);
+});
+
+test("desktop swaps Hand for precision shape tools while touch layouts keep them hidden", () => {
+  const css = read("public/styles.css");
+  const client = read("public/app.js");
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+
+  for (const html of [teacher, student]) {
+    for (const id of ["lineBtn", "arrowBtn", "circleBtn", "ovalBtn"]) {
+      assert.match(html, new RegExp(`id=["']${id}["']`));
+      assert.match(html, new RegExp(`id=["']${id}["'][^>]*desktop-shape-tool`));
+    }
+  }
+
+  assert.match(css, /\.desktop-shape-tool\s*\{\s*display:\s*none/);
+  assert.match(css, /@media \(hover: hover\) and \(pointer: fine\)/);
+  assert.match(css, /#handBtn\s*\{\s*display:\s*none/);
+  assert.match(css, /\.desktop-shape-tool\s*\{\s*display:\s*inline-flex/);
+
+  assert.match(client, /shapeToolActive/);
+  assert.match(client, /buildShapeStroke/);
+  assert.match(client, /\["line", "arrow", "circle", "oval"\]/);
+  assert.match(client, /activeShape/);
+  assert.match(client, /socket\.emit\("stroke:commit", finished\)/);
 });
