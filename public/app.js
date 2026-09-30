@@ -709,14 +709,6 @@ function onPointerMove(event) {
     return;
   }
 
-  if (activeTextBox) {
-    const box = normalizeBox(activeTextBox.start, activeTextBox.current);
-    activeTextBox = null;
-    redrawInk();
-    openTextEditor(box);
-    return;
-  }
-
   if (activeErasePath) {
     activeErasePath.points.push(point);
     redrawInk();
@@ -731,6 +723,14 @@ function onPointerMove(event) {
 
 function onPointerUp(event) {
   if (tool === "hand") return;
+
+  if (activeTextBox) {
+    const box = normalizeBox(activeTextBox.start, activeTextBox.current);
+    activeTextBox = null;
+    redrawInk();
+    openTextEditor(box);
+    return;
+  }
 
   if (activeErasePath) {
     const erase = activeErasePath;
