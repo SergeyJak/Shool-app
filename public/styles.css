@@ -247,3 +247,38 @@ canvas { display: block; }
     grid-row: 4;
   }
 }
+
+.lesson-sync-row {
+  max-width: 1100px;
+  min-height: 38px;
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.follow-button {
+  font-weight: 650;
+}
+.follow-button.active {
+  background: #17202a;
+  color: white;
+  border-color: #17202a;
+}
+.follow-status {
+  padding: 8px 12px;
+  border: 1px solid #cfd6dd;
+  border-radius: 10px;
+  background: white;
+  font-size: 13px;
+  font-weight: 650;
+}
+@media (max-width: 600px) {
+  .lesson-sync-row {
+    margin-bottom: 6px;
+  }
+  .follow-button,
+  .follow-status {
+    width: 100%;
+    text-align: center;
+  }
+}
