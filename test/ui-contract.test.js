@@ -75,3 +75,12 @@ test("teacher follow button stays clickable and reports failures instead of rema
   assert.match(js, /teacher:follow:stop/);
   assert.match(js, /Не удалось связать страницы/);
 });
+
+test("live drawing uses throttled preview chunks", () => {
+  const js = read("public/app.js");
+  assert.match(js, /PREVIEW_INTERVAL_MS/);
+  assert.match(js, /buildPreviewChunk/);
+  assert.match(js, /mergePreviewStroke/);
+  assert.match(js, /scheduleStrokePreview/);
+  assert.match(js, /flushStrokePreview/);
+});
