@@ -67,3 +67,11 @@ test("server protects the PDF role gate, versioned cache and health route", () =
   assert.match(js, /teacher:follow:stop/);
   assert.match(js, /teacher:page/);
 });
+
+test("teacher follow button stays clickable and reports failures instead of remaining disabled", () => {
+  const js = read("public/app.js");
+  assert.match(js, /followBtn\.disabled = false/);
+  assert.match(js, /teacher:follow:start/);
+  assert.match(js, /teacher:follow:stop/);
+  assert.match(js, /Не удалось связать страницы/);
+});
