@@ -155,6 +155,8 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
   assert.match(client, /drawCanvas\.getBoundingClientRect\(\)\.width/);
   assert.match(client, /tool === "text"[\s\S]*textAtPoint\(point\)[\s\S]*openTextEditor\(point\)/);
   assert.match(client, /activeTextMove/);
+  assert.match(client, /remainingWidthPx/);
+  assert.match(client, /const leftPx = clickX/);
   assert.match(client, /socket\.emit\("text:commit", item\)/);
   assert.doesNotMatch(client, /activeTextBox/);
   assert.match(client, /text:commit/);
