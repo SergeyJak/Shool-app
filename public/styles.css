@@ -449,3 +449,26 @@ canvas { display: block; }
     height: 40px;
   }
 }
+
+.tool-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+}
+.tool-icon {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@media (max-width: 600px) {
+  .tool-icon-btn {
+    width: auto;
+    min-width: 0;
+  }
+}
