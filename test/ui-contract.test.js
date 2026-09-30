@@ -29,15 +29,17 @@ test("teacher alone gets teacher-only controls", () => {
   assert.match(teacher, /id="followBtn"/);
   assert.doesNotMatch(student, /id="followBtn"/);
   assert.match(student, /id="followStatus"/);
-  assert.match(teacher, /id="perfLogButton"/);
+  assert.doesNotMatch(teacher, /id="perfLogButton"/);
   assert.doesNotMatch(student, /id="perfLogButton"/);
 });
 
-test("landing page links to both roles and contains help instructions", () => {
+test("landing page links to both roles, help, and owner performance dashboard", () => {
   const html = read("public/index.html");
   assert.match(html, /href="\/teacher"/);
   assert.match(html, /href="\/student"/);
   assert.match(html, /id="infoBtn"/);
+  assert.match(html, /id="perfLogButton"/);
+  assert.match(html, /href="\/performance"/);
   assert.match(html, /Как пользоваться/);
   assert.match(html, /School App/);
 });
@@ -124,12 +126,12 @@ test("performance logging is isolated from the lesson and persisted separately",
   assert.match(dashboard, /Штрих round-trip/);
 });
 
-test("lesson pages hide inline metrics and keep performance behind teacher side button", () => {
+test("lesson pages hide owner performance navigation and inline metrics", () => {
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
 
   assert.doesNotMatch(teacher, /id="perfStats"/);
   assert.doesNotMatch(student, /id="perfStats"/);
-  assert.match(teacher, /id="perfLogButton"/);
+  assert.doesNotMatch(teacher, /id="perfLogButton"/);
   assert.doesNotMatch(student, /id="perfLogButton"/);
 });
