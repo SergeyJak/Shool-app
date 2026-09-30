@@ -472,3 +472,31 @@ canvas { display: block; }
     min-width: 0;
   }
 }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cabinet-link {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 11px;
+  border: 1px solid #cfd6dd;
+  border-radius: 9px;
+  background: #fff;
+  color: #17202a;
+  text-decoration: none;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.cabinet-link:hover { background: #f6f8fa; }
+@media (max-width: 600px) {
+  .cabinet-link {
+    padding: 8px 9px;
+    font-size: 13px;
+  }
+  .header-actions { gap: 6px; }
+}
