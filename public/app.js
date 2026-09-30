@@ -38,6 +38,7 @@ const lastBtn = document.getElementById("lastBtn");
 const penBtn = document.getElementById("penBtn");
 const eraserBtn = document.getElementById("eraserBtn");
 const handBtn = document.getElementById("handBtn");
+const textBtn = document.getElementById("textBtn");
 const zoomOutBtn = document.getElementById("zoomOutBtn");
 const zoomResetBtn = document.getElementById("zoomResetBtn");
 const zoomInBtn = document.getElementById("zoomInBtn");
@@ -115,6 +116,8 @@ let tool = "pen";
 let strokes = [];
 let activeStroke = null;
 let activeErasePath = null;
+let activeTextBox = null;
+let textEditor = null;
 let previewStrokes = new Map();
 let teacherFollowEnabled = false;
 let teacherFollowPage = 1;
@@ -232,6 +235,15 @@ socket.on("stroke:committed", (stroke) => {
   }
 });
 
+socket.on("text:committed", (item) => {
+  const normalized = { ...item, id: item.id || item._id, type: "text" };
+  if (normalized.page !== pageNumber) return;
+  const index = strokes.findIndex((x) => x.id === normalized.id);
+  if (index >= 0) strokes[index] = normalized;
+  else strokes.push(normalized);
+  redrawInk();
+});
+
 socket.on("stroke:deleted", ({ id, page }) => {
   previewStrokes.delete(id);
   if (page !== pageNumber) return;
@@ -271,6 +283,7 @@ socket.on("teacher:page", async ({ page } = {}) => {
 });
 
 async function goToPage(nextPage, { forcedByTeacher = false } = {}) {
+  closeTextEditor({ save: true });
   if (!pdfDoc) return;
   if (role === "student" && teacherFollowEnabled && !forcedByTeacher) {
     syncPageControls();
@@ -305,6 +318,7 @@ pageInput.addEventListener("keydown", (event) => {
 penBtn.addEventListener("click", () => setTool("pen"));
 eraserBtn.addEventListener("click", () => setTool("eraser"));
 handBtn.addEventListener("click", () => setTool("hand"));
+textBtn?.addEventListener("click", () => setTool("text"));
 zoomOutBtn.addEventListener("click", () => setZoom(zoom - 0.25));
 zoomResetBtn.addEventListener("click", () => setZoom(1));
 zoomInBtn.addEventListener("click", () => setZoom(zoom + 0.25));
@@ -465,6 +479,7 @@ function setTool(nextTool) {
   penBtn.classList.toggle("active", tool === "pen");
   eraserBtn.classList.toggle("active", tool === "eraser");
   handBtn.classList.toggle("active", tool === "hand");
+  textBtn?.classList.toggle("active", tool === "text");
 
   if (tool === "hand") {
     drawCanvas.style.pointerEvents = "none";
@@ -472,7 +487,8 @@ function setTool(nextTool) {
     stage.classList.add("hand-mode");
   } else {
     drawCanvas.style.pointerEvents = "auto";
-    drawCanvas.style.cursor = tool === "eraser" ? "cell" : "crosshair";
+    drawCanvas.style.cursor =
+      tool === "eraser" ? "cell" : tool === "text" ? "text" : "crosshair";
     stage.classList.remove("hand-mode");
   }
 }
@@ -483,6 +499,130 @@ function pointFromEvent(event) {
     x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
     y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height)),
   };
+}
+
+function normalizeBox(a, b) {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    w: Math.max(0.01, Math.abs(a.x - b.x)),
+    h: Math.max(0.025, Math.abs(a.y - b.y)),
+  };
+}
+
+function closeTextEditor({ save = true } = {}) {
+  if (!textEditor) return;
+  const editor = textEditor;
+  textEditor = null;
+  const text = editor.value.trim();
+  const item = editor._annotation;
+  editor.remove();
+
+  if (!save || !text || !item) {
+    redrawInk();
+    return;
+  }
+
+  const saved = { ...item, text };
+  const index = strokes.findIndex((x) => x.id === saved.id);
+  if (index >= 0) strokes[index] = saved;
+  else strokes.push(saved);
+  socket.emit("text:commit", saved);
+  redrawInk();
+}
+
+function openTextEditor(box) {
+  closeTextEditor({ save: true });
+  const shell = document.getElementById("pageShell");
+  const editor = document.createElement("textarea");
+  editor.className = "text-annotation-editor";
+  editor.placeholder = "Введите текст…";
+  editor.style.left = `${box.x * 100}%`;
+  editor.style.top = `${box.y * 100}%`;
+  editor.style.width = `${box.w * 100}%`;
+  editor.style.height = `${box.h * 100}%`;
+  editor._annotation = {
+    id: crypto.randomUUID(),
+    type: "text",
+    page: pageNumber,
+    role: "teacher",
+    color: "#e53935",
+    fontSize: 18,
+    box,
+    text: "",
+  };
+
+  editor.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeTextEditor({ save: false });
+    } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      closeTextEditor({ save: true });
+    }
+  });
+  editor.addEventListener("blur", () => closeTextEditor({ save: true }), { once: true });
+
+  shell.appendChild(editor);
+  textEditor = editor;
+  requestAnimationFrame(() => editor.focus());
+}
+
+function erasePathHitsTextBox(erase, box) {
+  if (!box) return false;
+  const pad = erase.radius;
+  return erase.points.some(
+    (p) =>
+      p.x >= box.x - pad &&
+      p.x <= box.x + box.w + pad &&
+      p.y >= box.y - pad &&
+      p.y <= box.y + box.h + pad
+  );
+}
+
+function drawTextAnnotation(item) {
+  if (!item.box || !item.text) return;
+  const { x, y, w, h } = item.box;
+  const px = x * drawCanvas.width;
+  const py = y * drawCanvas.height;
+  const maxWidth = w * drawCanvas.width;
+  const maxHeight = h * drawCanvas.height;
+  const scale = window.devicePixelRatio || 1;
+  const fontSize = (item.fontSize || 18) * scale;
+
+  drawCtx.save();
+  drawCtx.beginPath();
+  drawCtx.rect(px, py, maxWidth, maxHeight);
+  drawCtx.clip();
+  drawCtx.fillStyle = item.color || "#e53935";
+  drawCtx.font = `${fontSize}px system-ui, sans-serif`;
+  drawCtx.textBaseline = "top";
+
+  const lineHeight = fontSize * 1.2;
+  let cursorY = py;
+  for (const paragraph of String(item.text).split("\n")) {
+    const words = paragraph.split(/\s+/);
+    let line = "";
+    for (const word of words) {
+      const test = line ? `${line} ${word}` : word;
+      if (drawCtx.measureText(test).width > maxWidth && line) {
+        drawCtx.fillText(line, px, cursorY);
+        cursorY += lineHeight;
+        line = word;
+        if (cursorY > py + maxHeight - lineHeight) break;
+      } else {
+        line = test;
+      }
+    }
+    if (cursorY <= py + maxHeight - lineHeight && line) {
+      drawCtx.fillText(line, px, cursorY);
+      cursorY += lineHeight;
+    }
+    if (cursorY > py + maxHeight - lineHeight) break;
+  }
+  drawCtx.restore();
 }
 
 function flushStrokePreview() {
@@ -528,6 +668,13 @@ function onPointerDown(event) {
   drawCanvas.setPointerCapture(event.pointerId);
   const point = pointFromEvent(event);
 
+  if (tool === "text") {
+    if (role !== "teacher") return;
+    activeTextBox = { start: point, current: point };
+    redrawInk();
+    return;
+  }
+
   if (tool === "eraser") {
     activeErasePath = {
       page: pageNumber,
@@ -556,6 +703,20 @@ function onPointerMove(event) {
   if (tool === "hand") return;
   const point = pointFromEvent(event);
 
+  if (activeTextBox) {
+    activeTextBox.current = point;
+    redrawInk();
+    return;
+  }
+
+  if (activeTextBox) {
+    const box = normalizeBox(activeTextBox.start, activeTextBox.current);
+    activeTextBox = null;
+    redrawInk();
+    openTextEditor(box);
+    return;
+  }
+
   if (activeErasePath) {
     activeErasePath.points.push(point);
     redrawInk();
@@ -580,6 +741,9 @@ function onPointerUp(event) {
     // The server persists the same erase path and then refreshes authoritative strokes.
     strokes = strokes.flatMap((stroke) => {
       if (role !== "teacher" && stroke.role !== role) return [stroke];
+      if (stroke.type === "text") {
+        return erasePathHitsTextBox(erase, stroke.box) ? [] : [stroke];
+      }
       return splitStrokeForErase(stroke, erase);
     });
 
@@ -797,10 +961,30 @@ function redrawInk() {
   drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
 
   for (const stroke of strokes) {
+    if (stroke.type === "text") {
+      if (!activeErasePath || !erasePathHitsTextBox(activeErasePath, stroke.box)) {
+        drawTextAnnotation(stroke);
+      }
+      continue;
+    }
     for (const visiblePart of erasePreviewSegments(stroke)) drawStroke(visiblePart);
   }
   for (const stroke of previewStrokes.values()) drawStroke(stroke);
   if (activeStroke) drawStroke(activeStroke);
+  if (activeTextBox) {
+    const box = normalizeBox(activeTextBox.start, activeTextBox.current);
+    drawCtx.save();
+    drawCtx.strokeStyle = "#e53935";
+    drawCtx.setLineDash([8, 6]);
+    drawCtx.lineWidth = 2;
+    drawCtx.strokeRect(
+      box.x * drawCanvas.width,
+      box.y * drawCanvas.height,
+      box.w * drawCanvas.width,
+      box.h * drawCanvas.height
+    );
+    drawCtx.restore();
+  }
   if (activeErasePath?.points?.length) drawEraserCursor(activeErasePath.points.at(-1));
 }
 
@@ -818,6 +1002,7 @@ function drawEraserCursor(point) {
 }
 
 function drawStroke(stroke) {
+  if (stroke.type === "text") return drawTextAnnotation(stroke);
   if (!stroke.points?.length) return;
 
   drawCtx.save();
