@@ -374,3 +374,10 @@ canvas { display: block; }
     min-width: 50px;
   }
 }
+
+/* Desktop-only precision tools. Touch devices keep the Hand tool instead. */
+.desktop-shape-tool { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  #handBtn { display: none; }
+  .desktop-shape-tool { display: inline-flex; align-items: center; justify-content: center; }
+}
