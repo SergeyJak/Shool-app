@@ -1,0 +1,37 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; font-family: system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#17202a; }
+body {
+  min-height:100dvh;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(21,101,192,.13), transparent 34%),
+    radial-gradient(circle at 88% 84%, rgba(229,57,53,.09), transparent 32%),
+    #f4f6f8;
+}
+.login-shell { min-height:100dvh; display:grid; place-items:center; padding:20px; }
+.login-card {
+  width:min(100%,440px); padding:34px; border:1px solid rgba(23,32,42,.08); border-radius:24px;
+  background:rgba(255,255,255,.94); box-shadow:0 24px 70px rgba(23,32,42,.12); backdrop-filter:blur(12px);
+}
+.login-mark {
+  width:54px; height:54px; display:grid; place-items:center; border-radius:16px;
+  background:#17202a; color:white; font-weight:800; letter-spacing:.06em; margin-bottom:24px;
+}
+.eyebrow { color:#7a8490; font-size:12px; text-transform:uppercase; letter-spacing:.1em; font-weight:700; }
+h1 { margin:6px 0 8px; font-size:34px; letter-spacing:-.035em; }
+.login-copy p { margin:0 0 26px; color:#68727d; line-height:1.5; }
+form { display:grid; gap:15px; }
+label { display:grid; gap:7px; font-size:13px; font-weight:650; color:#4f5964; }
+input {
+  width:100%; border:1px solid #cfd6dd; border-radius:12px; padding:12px 13px;
+  font:inherit; font-size:16px; color:#17202a; background:#fff; outline:none;
+}
+input:focus { border-color:#17202a; box-shadow:0 0 0 3px rgba(23,32,42,.08); }
+#loginBtn {
+  margin-top:4px; border:0; border-radius:12px; padding:13px 16px; background:#17202a; color:white;
+  font:inherit; font-weight:750; cursor:pointer;
+}
+#loginBtn:disabled { opacity:.62; cursor:wait; }
+.login-error {
+  padding:10px 12px; border-radius:10px; background:#fff0ef; color:#a62924; font-size:13px; line-height:1.4;
+}
+@media(max-width:520px){ .login-card{padding:28px 20px;border-radius:20px;} h1{font-size:30px;} }
