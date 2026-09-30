@@ -38,6 +38,10 @@ const lastBtn = document.getElementById("lastBtn");
 const penBtn = document.getElementById("penBtn");
 const eraserBtn = document.getElementById("eraserBtn");
 const handBtn = document.getElementById("handBtn");
+const lineBtn = document.getElementById("lineBtn");
+const arrowBtn = document.getElementById("arrowBtn");
+const circleBtn = document.getElementById("circleBtn");
+const ovalBtn = document.getElementById("ovalBtn");
 const textBtn = document.getElementById("textBtn");
 const textSizeSelect = document.getElementById("textSizeSelect");
 const zoomOutBtn = document.getElementById("zoomOutBtn");
@@ -117,6 +121,7 @@ let tool = "pen";
 let strokes = [];
 let activeStroke = null;
 let activeErasePath = null;
+let activeShape = null;
 let activeTextMove = null;
 let textEditor = null;
 let textFontSize = Number(textSizeSelect?.value) || 18;
@@ -320,6 +325,10 @@ pageInput.addEventListener("keydown", (event) => {
 penBtn.addEventListener("click", () => setTool("pen"));
 eraserBtn.addEventListener("click", () => setTool("eraser"));
 handBtn.addEventListener("click", () => setTool("hand"));
+lineBtn?.addEventListener("click", () => setTool("line"));
+arrowBtn?.addEventListener("click", () => setTool("arrow"));
+circleBtn?.addEventListener("click", () => setTool("circle"));
+ovalBtn?.addEventListener("click", () => setTool("oval"));
 textBtn?.addEventListener("click", () => setTool("text"));
 textSizeSelect?.addEventListener("change", () => {
   const next = Number(textSizeSelect.value);
@@ -490,6 +499,10 @@ function setTool(nextTool) {
   penBtn.classList.toggle("active", tool === "pen");
   eraserBtn.classList.toggle("active", tool === "eraser");
   handBtn.classList.toggle("active", tool === "hand");
+  lineBtn?.classList.toggle("active", tool === "line");
+  arrowBtn?.classList.toggle("active", tool === "arrow");
+  circleBtn?.classList.toggle("active", tool === "circle");
+  ovalBtn?.classList.toggle("active", tool === "oval");
   textBtn?.classList.toggle("active", tool === "text");
 
   if (tool === "hand") {
@@ -726,6 +739,93 @@ function resetStrokePreviewQueue() {
   previewSentPointCount = 0;
 }
 
+function shapeToolActive() {
+  return ["line", "arrow", "circle", "oval"].includes(tool);
+}
+
+function clampPoint(point) {
+  return {
+    x: Math.max(0, Math.min(1, point.x)),
+    y: Math.max(0, Math.min(1, point.y)),
+  };
+}
+
+function buildShapeStroke(shape) {
+  if (!shape) return null;
+  const start = shape.start;
+  const end = shape.current;
+  const rect = drawCanvas.getBoundingClientRect();
+  const width = Math.max(1, rect.width);
+  const height = Math.max(1, rect.height);
+  let points = [];
+
+  if (shape.kind === "line") {
+    points = [start, end];
+  } else if (shape.kind === "arrow") {
+    const sx = start.x * width;
+    const sy = start.y * height;
+    const ex = end.x * width;
+    const ey = end.y * height;
+    const dx = ex - sx;
+    const dy = ey - sy;
+    const length = Math.max(1, Math.hypot(dx, dy));
+    const ux = dx / length;
+    const uy = dy / length;
+    const head = Math.max(10, Math.min(28, length * 0.22));
+    const wing = head * 0.58;
+    const baseX = ex - ux * head;
+    const baseY = ey - uy * head;
+    const perpX = -uy;
+    const perpY = ux;
+    const left = clampPoint({
+      x: (baseX + perpX * wing) / width,
+      y: (baseY + perpY * wing) / height,
+    });
+    const right = clampPoint({
+      x: (baseX - perpX * wing) / width,
+      y: (baseY - perpY * wing) / height,
+    });
+    points = [start, end, left, end, right];
+  } else {
+    let x1 = start.x;
+    let y1 = start.y;
+    let x2 = end.x;
+    let y2 = end.y;
+
+    if (shape.kind === "circle") {
+      const dxPx = (end.x - start.x) * width;
+      const dyPx = (end.y - start.y) * height;
+      const sizePx = Math.max(Math.abs(dxPx), Math.abs(dyPx));
+      x2 = start.x + Math.sign(dxPx || 1) * (sizePx / width);
+      y2 = start.y + Math.sign(dyPx || 1) * (sizePx / height);
+      x2 = Math.max(0, Math.min(1, x2));
+      y2 = Math.max(0, Math.min(1, y2));
+    }
+
+    const cx = (x1 + x2) / 2;
+    const cy = (y1 + y2) / 2;
+    const rx = Math.abs(x2 - x1) / 2;
+    const ry = Math.abs(y2 - y1) / 2;
+    const steps = 48;
+    for (let i = 0; i <= steps; i += 1) {
+      const angle = (i / steps) * Math.PI * 2;
+      points.push({
+        x: cx + Math.cos(angle) * rx,
+        y: cy + Math.sin(angle) * ry,
+      });
+    }
+  }
+
+  return {
+    id: shape.id,
+    page: pageNumber,
+    role,
+    color,
+    width: 2.5,
+    points,
+  };
+}
+
 function onPointerDown(event) {
   if (!pdfDoc || tool === "hand") return;
 
@@ -748,6 +848,17 @@ function onPointerDown(event) {
     }
 
     openTextEditor(point);
+    return;
+  }
+
+  if (shapeToolActive()) {
+    activeShape = {
+      id: crypto.randomUUID(),
+      kind: tool,
+      start: point,
+      current: point,
+    };
+    redrawInk();
     return;
   }
 
@@ -791,6 +902,12 @@ function onPointerMove(event) {
     return;
   }
 
+  if (activeShape) {
+    activeShape.current = point;
+    redrawInk();
+    return;
+  }
+
   if (activeErasePath) {
     activeErasePath.points.push(point);
     redrawInk();
@@ -810,6 +927,18 @@ function onPointerUp(event) {
     const item = strokes.find((x) => x.id === activeTextMove.id && x.type === "text");
     activeTextMove = null;
     if (item) socket.emit("text:commit", item);
+    redrawInk();
+    return;
+  }
+
+  if (activeShape) {
+    activeShape.current = pointFromEvent(event);
+    const finished = buildShapeStroke(activeShape);
+    activeShape = null;
+    if (finished?.points?.length >= 2) {
+      strokes.push(finished);
+      socket.emit("stroke:commit", finished);
+    }
     redrawInk();
     return;
   }
@@ -1066,6 +1195,10 @@ function redrawInk() {
       );
       drawCtx.restore();
     }
+  }
+  if (activeShape) {
+    const shapePreview = buildShapeStroke(activeShape);
+    if (shapePreview) drawStroke(shapePreview);
   }
   if (activeErasePath?.points?.length) drawEraserCursor(activeErasePath.points.at(-1));
 }
