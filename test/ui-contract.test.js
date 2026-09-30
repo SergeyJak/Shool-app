@@ -29,7 +29,9 @@ test("teacher alone gets teacher-only controls", () => {
   assert.match(teacher, /id="followBtn"/);
   assert.doesNotMatch(student, /id="followBtn"/);
   assert.match(teacher, /id="textBtn"/);
+  assert.match(teacher, /id="textSizeSelect"/);
   assert.doesNotMatch(student, /id="textBtn"/);
+  assert.doesNotMatch(student, /id="textSizeSelect"/);
   assert.match(student, /id="followStatus"/);
   assert.doesNotMatch(teacher, /id="perfLogButton"/);
   assert.doesNotMatch(student, /id="perfLogButton"/);
@@ -145,6 +147,9 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
 
   assert.match(teacher, /id="textBtn"/);
   assert.match(client, /openTextEditor/);
+  assert.match(client, /textSizeSelect/);
+  assert.match(client, /textFontSize/);
+  assert.match(client, /editor\.style\.fontSize/);
   assert.match(client, /function onPointerUp[\s\S]*activeTextBox[\s\S]*openTextEditor/);
   assert.match(client, /text:commit/);
   assert.match(client, /text:committed/);
