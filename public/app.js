@@ -20,7 +20,6 @@ const socket = io({ auth: { role } });
 
 const statusEl = document.getElementById("status");
 const perfStatsEl = document.getElementById("perfStats");
-const perfLogButton = document.getElementById("perfLogButton");
 const pdfCanvas = document.getElementById("pdfCanvas");
 const drawCanvas = document.getElementById("drawCanvas");
 const pdfCtx = pdfCanvas.getContext("2d");
@@ -312,12 +311,6 @@ zoomInBtn.addEventListener("click", () => setZoom(zoom + 0.25));
 undoBtn.addEventListener("click", () => {
   socket.emit("stroke:undo", { page: pageNumber });
 });
-
-if (perfLogButton) {
-  perfLogButton.addEventListener("click", () => {
-    window.location.href = "/performance";
-  });
-}
 
 if (followBtn) {
   followBtn.addEventListener("click", () => {
