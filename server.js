@@ -15,12 +15,24 @@ const {
 } = require("./lib/annotation-utils");
 const { createFollowState } = require("./lib/follow-state");
 const { parseSingleByteRange } = require("./lib/http-range");
+const {
+  SESSION_COOKIE,
+  normalizeUsername,
+  hashPassword,
+  verifyPassword,
+  createSessionToken,
+  parseSessionToken,
+  parseCookies,
+  sessionCookie,
+  clearSessionCookie,
+} = require("./lib/auth");
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
+const AUTH_SECRET = process.env.AUTH_SECRET;
 
-if (!MONGODB_URI) {
-  console.error("MONGODB_URI is required");
+if (!MONGODB_URI || !AUTH_SECRET) {
+  console.error("MONGODB_URI and AUTH_SECRET are required");
   process.exit(1);
 }
 
@@ -40,21 +52,134 @@ let bucket;
 let annotations;
 let settings;
 let performanceLogs;
+let users;
+let lessons;
 const teacherFollow = createFollowState();
 
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/", (_req, res) =>
-  res.sendFile(path.join(__dirname, "public", "index.html"))
+function requestIsSecure(req) {
+  return req.secure || String(req.get("x-forwarded-proto") || "").split(",")[0].trim() === "https";
+}
+
+async function userFromCookieHeader(cookieHeader) {
+  const token = parseCookies(cookieHeader || "")[SESSION_COOKIE];
+  const payload = parseSessionToken(token, AUTH_SECRET);
+  if (!payload || !users) return null;
+  return users.findOne({ _id: payload.uid, active: true });
+}
+
+async function attachUser(req, _res, next) {
+  try {
+    req.user = await userFromCookieHeader(req.headers.cookie);
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+function requireAuth(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: "AUTH_REQUIRED" });
+  next();
+}
+
+function requirePageAuth(...roles) {
+  return (req, res, next) => {
+    if (!req.user) return res.redirect("/");
+    if (roles.length && req.user.role !== "admin" && !roles.includes(req.user.role)) {
+      return res.redirect("/cabinet");
+    }
+    next();
+  };
+}
+
+function requireApiRole(...roles) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: "AUTH_REQUIRED" });
+    if (req.user.role !== "admin" && !roles.includes(req.user.role)) {
+      return res.status(403).json({ error: "FORBIDDEN" });
+    }
+    next();
+  };
+}
+
+function homeForRole(role) {
+  if (role === "teacher") return "/teacher";
+  if (role === "student") return "/student";
+  return "/cabinet";
+}
+
+app.use(attachUser);
+
+app.post("/api/auth/login", async (req, res, next) => {
+  try {
+    const username = normalizeUsername(req.body?.username);
+    const password = String(req.body?.password || "");
+    const user = await users.findOne({ _id: username, active: true });
+    const valid = user && await verifyPassword(password, user.passwordSalt, user.passwordHash);
+    if (!valid) return res.status(401).json({ error: "INVALID_CREDENTIALS" });
+
+    const token = createSessionToken(user, AUTH_SECRET);
+    res.setHeader("Set-Cookie", sessionCookie(token, { secure: requestIsSecure(req) }));
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      redirect: homeForRole(user.role),
+      user: { username: user.username, displayName: user.displayName, role: user.role },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/auth/logout", (req, res) => {
+  res.setHeader("Set-Cookie", clearSessionCookie({ secure: requestIsSecure(req) }));
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ ok: true });
+});
+
+app.get("/api/auth/me", requireAuth, (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    user: {
+      username: req.user.username,
+      displayName: req.user.displayName,
+      role: req.user.role,
+      lessonIds: req.user.lessonIds || [],
+    },
+  });
+});
+
+// Protect direct .html access too, not only friendly routes.
+app.get("/dashboard.html", requirePageAuth("teacher", "student"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"))
 );
-app.get("/teacher", (_req, res) =>
+app.get("/teacher.html", requirePageAuth("teacher"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "teacher.html"))
 );
-app.get("/student", (_req, res) =>
+app.get("/student.html", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
 );
-app.get("/performance", (_req, res) =>
+app.get("/performance.html", requirePageAuth("admin"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "performance.html"))
+);
+
+app.use(express.static(path.join(__dirname, "public"), { index: false }));
+
+app.get("/", (req, res) => {
+  if (req.user) return res.redirect(homeForRole(req.user.role));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+app.get("/cabinet", requirePageAuth("teacher", "student"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"))
+);
+app.get("/teacher", requirePageAuth("teacher"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "teacher.html"))
+);
+app.get("/student", requirePageAuth("student"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "student.html"))
+);
+app.get("/performance", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "performance.html"))
 );
 app.get("/health", (_req, res) => res.json({ ok: true }));
@@ -63,7 +188,7 @@ async function getCurrentDocument() {
   return settings.findOne({ _id: "currentDocument" });
 }
 
-app.get("/api/document", async (_req, res, next) => {
+app.get("/api/document", requireApiRole("teacher", "student"), async (_req, res, next) => {
   try {
     const current = await getCurrentDocument();
     if (!current) return res.status(404).json({ error: "NO_DOCUMENT" });
@@ -77,7 +202,7 @@ app.get("/api/document", async (_req, res, next) => {
   }
 });
 
-app.get("/api/document/file", async (req, res, next) => {
+app.get("/api/document/file", requireApiRole("teacher", "student"), async (req, res, next) => {
   try {
     const current = await getCurrentDocument();
     if (!current) return res.status(404).end();
@@ -126,12 +251,8 @@ app.get("/api/document/file", async (req, res, next) => {
   }
 });
 
-app.post("/api/document", upload.single("pdf"), async (req, res, next) => {
+app.post("/api/document", requireApiRole("teacher"), upload.single("pdf"), async (req, res, next) => {
   try {
-    // MVP role gate. Proper auth/PIN can be added later.
-    if (req.get("x-role") !== "teacher") {
-      return res.status(403).json({ error: "TEACHER_ONLY" });
-    }
     if (!req.file) {
       return res.status(400).json({ error: "PDF_REQUIRED" });
     }
@@ -163,6 +284,7 @@ app.post("/api/document", upload.single("pdf"), async (req, res, next) => {
           fileId,
           name: req.file.originalname,
           uploadedAt: new Date(),
+          uploadedBy: req.user._id,
         },
       },
       { upsert: true }
@@ -217,10 +339,12 @@ function metricSummary(rows, key) {
   };
 }
 
-app.post("/api/performance", async (req, res) => {
+app.post("/api/performance", requireApiRole("teacher", "student"), async (req, res) => {
   try {
     const body = req.body || {};
-    const role = body.role === "teacher" ? "teacher" : "student";
+    const role = req.user.role === "admin"
+      ? (body.role === "teacher" ? "teacher" : "student")
+      : req.user.role;
     const sessionId =
       typeof body.sessionId === "string" && body.sessionId.length <= 100
         ? body.sessionId
@@ -231,6 +355,7 @@ app.post("/api/performance", async (req, res) => {
     const row = {
       createdAt: new Date(),
       role,
+      userId: req.user._id,
       sessionId,
       documentId:
         typeof body.documentId === "string" && body.documentId.length <= 100
@@ -268,7 +393,7 @@ app.post("/api/performance", async (req, res) => {
   }
 });
 
-app.get("/api/performance", async (req, res, next) => {
+app.get("/api/performance", requireApiRole("admin"), async (req, res, next) => {
   try {
     const hours = Math.min(24 * 30, Math.max(1, Number(req.query.hours) || 24));
     const limit = Math.min(1000, Math.max(1, Number(req.query.limit) || 500));
@@ -320,7 +445,7 @@ app.get("/api/performance", async (req, res, next) => {
 });
 
 
-app.get("/api/annotations/:page", async (req, res, next) => {
+app.get("/api/annotations/:page", requireApiRole("teacher", "student"), async (req, res, next) => {
   try {
     const page = Number(req.params.page);
     if (!Number.isInteger(page) || page < 1) {
@@ -383,8 +508,21 @@ function erasePathHitsBox(erase, box) {
   );
 }
 
+io.use(async (socket, next) => {
+  try {
+    const user = await userFromCookieHeader(socket.handshake.headers.cookie);
+    if (!user) return next(new Error("AUTH_REQUIRED"));
+    socket.data.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 io.on("connection", (socket) => {
-  const role = socket.handshake.auth?.role === "teacher" ? "teacher" : "student";
+  const requestedRole = socket.handshake.auth?.role === "teacher" ? "teacher" : "student";
+  const accountRole = socket.data.user.role;
+  const role = accountRole === "admin" ? requestedRole : accountRole;
   socket.data.role = role;
 
   socket.emit("teacher:follow:state", teacherFollow.snapshot());
@@ -447,6 +585,7 @@ io.on("connection", (socket) => {
         _id: stroke.id || crypto.randomUUID(),
         page: stroke.page,
         role,
+        userId: socket.data.user._id,
         color: stroke.color,
         width: stroke.width,
         points: stroke.points,
@@ -474,6 +613,7 @@ io.on("connection", (socket) => {
         type: "text",
         page: item.page,
         role,
+        userId: socket.data.user._id,
         color: "#e53935",
         text: item.text,
         box: item.box,
@@ -584,6 +724,71 @@ async function start() {
   annotations = db.collection("annotations");
   settings = db.collection("settings");
   performanceLogs = db.collection("performance_logs");
+  users = db.collection("users");
+  lessons = db.collection("lessons");
+
+  await users.createIndex({ role: 1, active: 1 });
+  await lessons.createIndex({ teacherIds: 1 });
+  await lessons.createIndex({ studentIds: 1 });
+
+  async function ensureUser({ username, displayName, role, password, lessonIds = [] }) {
+    const id = normalizeUsername(username);
+    const existing = await users.findOne({ _id: id });
+    if (existing) return;
+    if (!password) throw new Error(`Bootstrap password missing for ${username}`);
+    const credentials = await hashPassword(password);
+    await users.insertOne({
+      _id: id,
+      username: id,
+      displayName,
+      role,
+      active: true,
+      lessonIds,
+      passwordSalt: credentials.salt,
+      passwordHash: credentials.hash,
+      schemaVersion: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  await ensureUser({
+    username: "admin",
+    displayName: "Admin",
+    role: "admin",
+    password: process.env.BOOTSTRAP_ADMIN_PASSWORD,
+    lessonIds: ["default"],
+  });
+  await ensureUser({
+    username: "Darya",
+    displayName: "Darya",
+    role: "teacher",
+    password: process.env.BOOTSTRAP_DARYA_PASSWORD,
+    lessonIds: ["default"],
+  });
+  await ensureUser({
+    username: "Alisa",
+    displayName: "Alisa",
+    role: "student",
+    password: process.env.BOOTSTRAP_ALISA_PASSWORD,
+    lessonIds: ["default"],
+  });
+
+  await lessons.updateOne(
+    { _id: "default" },
+    {
+      $setOnInsert: {
+        title: "Основной урок",
+        teacherIds: ["darya"],
+        studentIds: ["alisa"],
+        bookIds: [],
+        active: true,
+        createdAt: new Date(),
+        schemaVersion: 1,
+      },
+    },
+    { upsert: true }
+  );
 
   await annotations.createIndex({ page: 1, createdAt: 1 });
   await performanceLogs.createIndex(
