@@ -5,6 +5,11 @@ import {
   pageStorageKey,
   legacyPageStorageKey,
 } from "./app-utils.mjs";
+import {
+  PREVIEW_INTERVAL_MS,
+  buildPreviewChunk,
+  mergePreviewStroke,
+} from "./realtime-preview.mjs";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs";
@@ -112,6 +117,8 @@ let activeErasePath = null;
 let previewStrokes = new Map();
 let teacherFollowEnabled = false;
 let teacherFollowPage = 1;
+let previewFlushTimer = null;
+let previewSentPointCount = 0;
 
 socket.on("connect", () => {
   statusEl.textContent = "онлайн";
@@ -128,7 +135,8 @@ socket.on("document:changed", async () => {
 
 socket.on("stroke:preview", (stroke) => {
   if (stroke.page !== pageNumber) return;
-  previewStrokes.set(stroke.id, stroke);
+  const current = previewStrokes.get(stroke.id);
+  previewStrokes.set(stroke.id, mergePreviewStroke(current, stroke));
   redrawInk();
 });
 
@@ -386,6 +394,31 @@ function pointFromEvent(event) {
   };
 }
 
+function flushStrokePreview() {
+  if (!activeStroke) return;
+
+  const chunk = buildPreviewChunk(activeStroke, previewSentPointCount);
+  if (!chunk) return;
+
+  socket.emit("stroke:preview", chunk);
+  previewSentPointCount = activeStroke.points.length;
+}
+
+function scheduleStrokePreview() {
+  if (previewFlushTimer) return;
+
+  previewFlushTimer = setTimeout(() => {
+    previewFlushTimer = null;
+    flushStrokePreview();
+  }, PREVIEW_INTERVAL_MS);
+}
+
+function resetStrokePreviewQueue() {
+  clearTimeout(previewFlushTimer);
+  previewFlushTimer = null;
+  previewSentPointCount = 0;
+}
+
 function onPointerDown(event) {
   if (!pdfDoc || tool === "hand") return;
 
@@ -413,7 +446,8 @@ function onPointerDown(event) {
     points: [point, point],
   };
 
-  socket.emit("stroke:preview", activeStroke);
+  resetStrokePreviewQueue();
+  flushStrokePreview();
   redrawInk();
 }
 
@@ -429,7 +463,7 @@ function onPointerMove(event) {
 
   if (!activeStroke) return;
   activeStroke.points.push(point);
-  socket.emit("stroke:preview", activeStroke);
+  scheduleStrokePreview();
   redrawInk();
 }
 
@@ -454,8 +488,10 @@ function onPointerUp(event) {
   }
 
   if (!activeStroke) return;
+  flushStrokePreview();
   const finished = activeStroke;
   activeStroke = null;
+  resetStrokePreviewQueue();
   strokes.push(finished);
   previewStrokes.delete(finished.id);
   socket.emit("stroke:commit", finished);
