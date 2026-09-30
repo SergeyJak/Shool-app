@@ -1,0 +1,55 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; font-family: system-ui, sans-serif; background: #f3f5f7; color: #17202a; }
+body { padding: 0 0 40px; }
+.perf-header {
+  min-height: 76px;
+  padding: 18px clamp(16px, 4vw, 40px);
+  background: white;
+  border-bottom: 1px solid #dfe4ea;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.perf-header h1 { margin: 2px 0 0; font-size: 24px; }
+.perf-header p { margin: 4px 0 0; opacity: .62; font-size: 13px; }
+.back-link { color: inherit; text-decoration: none; font-size: 13px; opacity: .7; }
+button, select {
+  border: 1px solid #cfd6dd;
+  background: white;
+  border-radius: 9px;
+  padding: 9px 12px;
+  font: inherit;
+}
+button { cursor: pointer; }
+.perf-shell { max-width: 1180px; margin: 0 auto; padding: 20px; }
+.filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 16px; }
+.filters label { display: grid; gap: 5px; font-size: 12px; opacity: .8; }
+.updated-at { margin-left: auto; font-size: 12px; opacity: .55; padding-bottom: 8px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.metric-card, .panel {
+  background: white;
+  border: 1px solid #dfe4ea;
+  border-radius: 14px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.04);
+}
+.metric-card { padding: 16px; display: grid; gap: 6px; }
+.metric-card span { font-size: 12px; opacity: .58; }
+.metric-card strong { font-size: 28px; font-variant-numeric: tabular-nums; }
+.metric-card small { opacity: .56; }
+.panel { overflow: hidden; }
+.panel-head { padding: 16px 18px; border-bottom: 1px solid #e7ebef; }
+.panel-head h2 { margin: 0; font-size: 18px; }
+.panel-head p { margin: 4px 0 0; font-size: 12px; opacity: .58; }
+.table-wrap { overflow: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 760px; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid #edf0f2; font-size: 13px; }
+th { position: sticky; top: 0; background: #fafbfc; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+td.num { font-variant-numeric: tabular-nums; }
+.empty { padding: 28px; text-align: center; opacity: .55; }
+.role-pill { display: inline-block; padding: 3px 7px; border-radius: 999px; background: #eef2f5; font-size: 11px; }
+@media (max-width: 760px) {
+  .perf-shell { padding: 12px; }
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .updated-at { width: 100%; margin-left: 0; }
+}
