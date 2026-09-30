@@ -161,8 +161,8 @@ socket.on("disconnect", () => {
 socket.on("document:changed", async () => {
   pageNumber = 1;
   updateZoomControls();
-  await updatePerfStats();
-loadDocument();
+  updatePerfStats();
+  await loadDocument();
 });
 
 socket.on("stroke:preview", (stroke) => {
