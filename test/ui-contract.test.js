@@ -57,6 +57,10 @@ test("server protects the PDF role gate, versioned cache and health route", () =
   const js = read("server.js");
   assert.match(js, /TEACHER_ONLY/);
   assert.match(js, /Cache-Control", "public, max-age=31536000, immutable"/);
+  assert.match(js, /Accept-Ranges", "bytes"/);
+  assert.match(js, /Content-Range/);
+  assert.match(js, /status\(206\)/);
+  assert.match(js, /status\(416\)/);
   assert.match(js, /app\.get\("\/health"/);
   assert.match(js, /db = client\.db\("school_app"\)/);
   assert.match(js, /teacher:follow:start/);
