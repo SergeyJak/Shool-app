@@ -28,6 +28,8 @@ test("teacher alone gets teacher-only controls", () => {
   assert.doesNotMatch(student, /id="pdfUpload"/);
   assert.match(teacher, /id="followBtn"/);
   assert.doesNotMatch(student, /id="followBtn"/);
+  assert.match(teacher, /id="textBtn"/);
+  assert.doesNotMatch(student, /id="textBtn"/);
   assert.match(student, /id="followStatus"/);
   assert.doesNotMatch(teacher, /id="perfLogButton"/);
   assert.doesNotMatch(student, /id="perfLogButton"/);
@@ -134,4 +136,22 @@ test("lesson pages hide owner performance navigation and inline metrics", () => 
   assert.doesNotMatch(student, /id="perfStats"/);
   assert.doesNotMatch(teacher, /id="perfLogButton"/);
   assert.doesNotMatch(student, /id="perfLogButton"/);
+});
+
+test("teacher keyboard text annotations can be selected, saved, synced and erased", () => {
+  const client = read("public/app.js");
+  const server = read("server.js");
+  const teacher = read("public/teacher.html");
+
+  assert.match(teacher, /id="textBtn"/);
+  assert.match(client, /openTextEditor/);
+  assert.match(client, /text:commit/);
+  assert.match(client, /text:committed/);
+  assert.match(client, /drawTextAnnotation/);
+  assert.match(client, /erasePathHitsTextBox/);
+  assert.match(client, /Ctrl|ctrlKey|metaKey/);
+  assert.match(server, /isValidTextAnnotation/);
+  assert.match(server, /socket\.on\("text:commit"/);
+  assert.match(server, /type: "text"/);
+  assert.match(server, /erasePathHitsBox/);
 });
