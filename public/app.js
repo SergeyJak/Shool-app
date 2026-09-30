@@ -587,13 +587,12 @@ function openTextEditor(point) {
   editor.className = "text-annotation-editor";
   editor.placeholder = "Введите текст…";
 
-  const widthPx = Math.min(
-    Math.max(180, shell.clientWidth * 0.38),
-    Math.max(120, shell.clientWidth - 8)
-  );
-  const clickX = point.x * shell.clientWidth;
-  const clickY = point.y * shell.clientHeight;
-  const leftPx = Math.max(0, Math.min(clickX, shell.clientWidth - widthPx));
+  const clickX = Math.max(0, Math.min(point.x * shell.clientWidth, shell.clientWidth - 1));
+  const clickY = Math.max(0, Math.min(point.y * shell.clientHeight, shell.clientHeight - 1));
+  const preferredWidthPx = Math.max(180, shell.clientWidth * 0.38);
+  const remainingWidthPx = Math.max(1, shell.clientWidth - clickX);
+  const widthPx = Math.min(preferredWidthPx, remainingWidthPx);
+  const leftPx = clickX;
   const topPx = Math.max(0, Math.min(clickY, shell.clientHeight - textFontSize * 1.6));
 
   editor.style.left = `${leftPx}px`;
