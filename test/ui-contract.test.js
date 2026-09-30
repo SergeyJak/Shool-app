@@ -29,6 +29,8 @@ test("teacher alone gets teacher-only controls", () => {
   assert.match(teacher, /id="followBtn"/);
   assert.doesNotMatch(student, /id="followBtn"/);
   assert.match(student, /id="followStatus"/);
+  assert.match(teacher, /id="perfLogButton"/);
+  assert.doesNotMatch(student, /id="perfLogButton"/);
 });
 
 test("landing page links to both roles and contains help instructions", () => {
@@ -102,4 +104,32 @@ test("live performance metrics cover RTT page render and remote stroke latency",
   assert.match(server, /socket\.on\("perf:ping"/);
   assert.match(server, /socket\.on\("perf:preview:seen"/);
   assert.match(server, /perfOriginId/);
+});
+
+test("performance logging is isolated from the lesson and persisted separately", () => {
+  const client = read("public/app.js");
+  const server = read("server.js");
+  const dashboard = read("public/performance.html");
+
+  assert.match(client, /setInterval\(sendPerformanceLog, 20000\)/);
+  assert.match(client, /fetch\("\/api\/performance"/);
+  assert.match(client, /keepalive: true/);
+  assert.match(client, /Diagnostics must never disturb the lesson/);
+  assert.match(server, /performance_logs/);
+  assert.match(server, /app\.post\("\/api\/performance"/);
+  assert.match(server, /app\.get\("\/api\/performance"/);
+  assert.match(server, /expireAfterSeconds: 30 \* 24 \* 60 \* 60/);
+  assert.match(server, /app\.get\("\/performance"/);
+  assert.match(dashboard, /Последние замеры/);
+  assert.match(dashboard, /Штрих round-trip/);
+});
+
+test("lesson pages hide inline metrics and keep performance behind teacher side button", () => {
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+
+  assert.doesNotMatch(teacher, /id="perfStats"/);
+  assert.doesNotMatch(student, /id="perfStats"/);
+  assert.match(teacher, /id="perfLogButton"/);
+  assert.doesNotMatch(student, /id="perfLogButton"/);
 });
