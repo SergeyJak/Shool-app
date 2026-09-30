@@ -206,3 +206,44 @@ canvas { display: block; }
 #stage.hand-mode #pageShell {
   transform-origin: top center;
 }
+
+.zoom-controls {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #cfd6dd;
+  border-radius: 9px;
+  overflow: hidden;
+  background: white;
+}
+.zoom-controls button {
+  min-width: 42px;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 10px;
+}
+.zoom-controls button + button {
+  border-left: 1px solid #e2e6ea;
+}
+#zoomResetBtn {
+  min-width: 64px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 600px) {
+  .zoom-controls {
+    grid-column: 1 / span 4;
+    grid-row: 2;
+    justify-self: stretch;
+  }
+  .zoom-controls button {
+    flex: 1;
+  }
+  #firstBtn, #prevBtn, #nextBtn, #lastBtn { grid-row: 3; }
+  #firstBtn { grid-column: 1; }
+  #prevBtn { grid-column: 2; }
+  #nextBtn { grid-column: 3; }
+  #lastBtn { grid-column: 4; }
+  #pageInfo {
+    grid-column: 1 / span 4;
+    grid-row: 4;
+  }
+}
