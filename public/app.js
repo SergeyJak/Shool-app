@@ -215,11 +215,39 @@ undoBtn.addEventListener("click", () => {
 
 if (followBtn) {
   followBtn.addEventListener("click", () => {
+    followBtn.classList.add("pending");
+
     if (teacherFollowEnabled) {
-      socket.emit("teacher:follow:stop", {});
-    } else if (pdfDoc) {
-      socket.emit("teacher:follow:start", { page: pageNumber });
+      socket.emit("teacher:follow:stop", {}, (result) => {
+        followBtn.classList.remove("pending");
+        if (!result?.ok) {
+          showSnackbar({
+            title: "Не удалось отключить связь страниц",
+            message: "Проверьте соединение и попробуйте ещё раз.",
+          });
+        }
+      });
+      return;
     }
+
+    if (!currentDocumentId) {
+      followBtn.classList.remove("pending");
+      showSnackbar({
+        title: "Сначала откройте PDF",
+        message: "Режим ведения ученика доступен после загрузки учебника.",
+      });
+      return;
+    }
+
+    socket.emit("teacher:follow:start", { page: pageNumber }, (result) => {
+      followBtn.classList.remove("pending");
+      if (!result?.ok) {
+        showSnackbar({
+          title: "Не удалось связать страницы",
+          message: "Проверьте соединение и попробуйте ещё раз.",
+        });
+      }
+    });
   });
 }
 
@@ -298,7 +326,7 @@ function updateFollowControls() {
     followBtn.textContent = teacherFollowEnabled
       ? "🔗 Страницы связаны"
       : "🔗 Вести ученика";
-    followBtn.disabled = !pdfDoc;
+    followBtn.disabled = false;
     followBtn.setAttribute("aria-pressed", String(teacherFollowEnabled));
   }
 
