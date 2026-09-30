@@ -117,7 +117,7 @@ let tool = "pen";
 let strokes = [];
 let activeStroke = null;
 let activeErasePath = null;
-let activeTextBox = null;
+let activeTextMove = null;
 let textEditor = null;
 let textFontSize = Number(textSizeSelect?.value) || 18;
 let previewStrokes = new Map();
@@ -327,6 +327,7 @@ textSizeSelect?.addEventListener("change", () => {
   if (textEditor) {
     textEditor.style.fontSize = `${textFontSize}px`;
     textEditor._annotation.fontSize = textFontSize;
+    syncTextEditorGeometry();
   }
 });
 zoomOutBtn.addEventListener("click", () => setZoom(zoom - 0.25));
@@ -511,19 +512,52 @@ function pointFromEvent(event) {
   };
 }
 
-function normalizeBox(a, b) {
-  const x = Math.min(a.x, b.x);
-  const y = Math.min(a.y, b.y);
-  return {
-    x,
-    y,
-    w: Math.max(0.01, Math.abs(a.x - b.x)),
-    h: Math.max(0.025, Math.abs(a.y - b.y)),
+function textAtPoint(point) {
+  for (let i = strokes.length - 1; i >= 0; i -= 1) {
+    const item = strokes[i];
+    if (item.type !== "text" || !item.box) continue;
+    const { x, y, w, h } = item.box;
+    if (point.x >= x && point.x <= x + w && point.y >= y && point.y <= y + h) {
+      return item;
+    }
+  }
+  return null;
+}
+
+function syncTextEditorGeometry() {
+  if (!textEditor) return;
+  const shell = document.getElementById("pageShell");
+  const editor = textEditor;
+  const item = editor._annotation;
+  if (!shell || !item) return;
+
+  editor.style.height = "auto";
+  const heightPx = Math.max(textFontSize * 1.45, editor.scrollHeight + 2);
+  editor.style.height = `${heightPx}px`;
+
+  const widthPx = editor.offsetWidth;
+  let leftPx = Number.parseFloat(editor.style.left) || 0;
+  let topPx = Number.parseFloat(editor.style.top) || 0;
+
+  leftPx = Math.max(0, Math.min(leftPx, Math.max(0, shell.clientWidth - widthPx)));
+  topPx = Math.max(0, Math.min(topPx, Math.max(0, shell.clientHeight - heightPx)));
+
+  editor.style.left = `${leftPx}px`;
+  editor.style.top = `${topPx}px`;
+
+  item.box = {
+    x: leftPx / shell.clientWidth,
+    y: topPx / shell.clientHeight,
+    w: Math.min(1, widthPx / shell.clientWidth),
+    h: Math.min(1, heightPx / shell.clientHeight),
   };
+  item.fontSize = textFontSize;
 }
 
 function closeTextEditor({ save = true } = {}) {
   if (!textEditor) return;
+  syncTextEditorGeometry();
+
   const editor = textEditor;
   textEditor = null;
   const text = editor.value.trim();
@@ -543,16 +577,27 @@ function closeTextEditor({ save = true } = {}) {
   redrawInk();
 }
 
-function openTextEditor(box) {
+function openTextEditor(point) {
   closeTextEditor({ save: true });
   const shell = document.getElementById("pageShell");
+  if (!shell) return;
+
   const editor = document.createElement("textarea");
   editor.className = "text-annotation-editor";
   editor.placeholder = "Введите текст…";
-  editor.style.left = `${box.x * 100}%`;
-  editor.style.top = `${box.y * 100}%`;
-  editor.style.width = `${box.w * 100}%`;
-  editor.style.height = `${box.h * 100}%`;
+
+  const widthPx = Math.min(
+    Math.max(180, shell.clientWidth * 0.38),
+    Math.max(120, shell.clientWidth - 8)
+  );
+  const clickX = point.x * shell.clientWidth;
+  const clickY = point.y * shell.clientHeight;
+  const leftPx = Math.max(0, Math.min(clickX, shell.clientWidth - widthPx));
+  const topPx = Math.max(0, Math.min(clickY, shell.clientHeight - textFontSize * 1.6));
+
+  editor.style.left = `${leftPx}px`;
+  editor.style.top = `${topPx}px`;
+  editor.style.width = `${widthPx}px`;
   editor.style.fontSize = `${textFontSize}px`;
   editor._annotation = {
     id: crypto.randomUUID(),
@@ -561,10 +606,16 @@ function openTextEditor(box) {
     role: "teacher",
     color: "#e53935",
     fontSize: textFontSize,
-    box,
+    box: {
+      x: leftPx / shell.clientWidth,
+      y: topPx / shell.clientHeight,
+      w: widthPx / shell.clientWidth,
+      h: Math.min(1, (textFontSize * 1.6) / shell.clientHeight),
+    },
     text: "",
   };
 
+  editor.addEventListener("input", syncTextEditorGeometry);
   editor.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -578,6 +629,7 @@ function openTextEditor(box) {
 
   shell.appendChild(editor);
   textEditor = editor;
+  syncTextEditorGeometry();
   requestAnimationFrame(() => editor.focus());
 }
 
@@ -595,18 +647,14 @@ function erasePathHitsTextBox(erase, box) {
 
 function drawTextAnnotation(item) {
   if (!item.box || !item.text) return;
-  const { x, y, w, h } = item.box;
+  const { x, y, w } = item.box;
   const px = x * drawCanvas.width;
   const py = y * drawCanvas.height;
-  const maxWidth = w * drawCanvas.width;
-  const maxHeight = h * drawCanvas.height;
+  const maxWidth = Math.max(1, w * drawCanvas.width);
   const scale = window.devicePixelRatio || 1;
   const fontSize = (item.fontSize || 18) * scale;
 
   drawCtx.save();
-  drawCtx.beginPath();
-  drawCtx.rect(px, py, maxWidth, maxHeight);
-  drawCtx.clip();
   drawCtx.fillStyle = item.color || "#e53935";
   drawCtx.font = `${fontSize}px system-ui, sans-serif`;
   drawCtx.textBaseline = "top";
@@ -614,6 +662,10 @@ function drawTextAnnotation(item) {
   const lineHeight = fontSize * 1.2;
   let cursorY = py;
   for (const paragraph of String(item.text).split("\n")) {
+    if (!paragraph) {
+      cursorY += lineHeight;
+      continue;
+    }
     const words = paragraph.split(/\s+/);
     let line = "";
     for (const word of words) {
@@ -622,16 +674,14 @@ function drawTextAnnotation(item) {
         drawCtx.fillText(line, px, cursorY);
         cursorY += lineHeight;
         line = word;
-        if (cursorY > py + maxHeight - lineHeight) break;
       } else {
         line = test;
       }
     }
-    if (cursorY <= py + maxHeight - lineHeight && line) {
+    if (line) {
       drawCtx.fillText(line, px, cursorY);
       cursorY += lineHeight;
     }
-    if (cursorY > py + maxHeight - lineHeight) break;
   }
   drawCtx.restore();
 }
@@ -674,15 +724,25 @@ function resetStrokePreviewQueue() {
 function onPointerDown(event) {
   if (!pdfDoc || tool === "hand") return;
 
-  // In pen/eraser mode both finger and stylus work.
-  // Scroll is available through the explicit Hand tool.
   drawCanvas.setPointerCapture(event.pointerId);
   const point = pointFromEvent(event);
 
   if (tool === "text") {
     if (role !== "teacher") return;
-    activeTextBox = { start: point, current: point };
-    redrawInk();
+
+    const existing = textAtPoint(point);
+    if (existing) {
+      closeTextEditor({ save: true });
+      activeTextMove = {
+        id: existing.id,
+        offsetX: point.x - existing.box.x,
+        offsetY: point.y - existing.box.y,
+      };
+      redrawInk();
+      return;
+    }
+
+    openTextEditor(point);
     return;
   }
 
@@ -714,8 +774,14 @@ function onPointerMove(event) {
   if (tool === "hand") return;
   const point = pointFromEvent(event);
 
-  if (activeTextBox) {
-    activeTextBox.current = point;
+  if (activeTextMove) {
+    const item = strokes.find((x) => x.id === activeTextMove.id && x.type === "text");
+    if (!item?.box) return;
+    item.box = {
+      ...item.box,
+      x: Math.max(0, Math.min(1 - item.box.w, point.x - activeTextMove.offsetX)),
+      y: Math.max(0, Math.min(1 - item.box.h, point.y - activeTextMove.offsetY)),
+    };
     redrawInk();
     return;
   }
@@ -735,11 +801,11 @@ function onPointerMove(event) {
 function onPointerUp(event) {
   if (tool === "hand") return;
 
-  if (activeTextBox) {
-    const box = normalizeBox(activeTextBox.start, activeTextBox.current);
-    activeTextBox = null;
+  if (activeTextMove) {
+    const item = strokes.find((x) => x.id === activeTextMove.id && x.type === "text");
+    activeTextMove = null;
+    if (item) socket.emit("text:commit", item);
     redrawInk();
-    openTextEditor(box);
     return;
   }
 
@@ -748,8 +814,6 @@ function onPointerUp(event) {
     activeErasePath = null;
     if (erase.points.length === 1) erase.points.push(erase.points[0]);
 
-    // Optimistic erase: keep the visual result immediately after finger/stylus release.
-    // The server persists the same erase path and then refreshes authoritative strokes.
     strokes = strokes.flatMap((stroke) => {
       if (role !== "teacher" && stroke.role !== role) return [stroke];
       if (stroke.type === "text") {
@@ -982,19 +1046,21 @@ function redrawInk() {
   }
   for (const stroke of previewStrokes.values()) drawStroke(stroke);
   if (activeStroke) drawStroke(activeStroke);
-  if (activeTextBox) {
-    const box = normalizeBox(activeTextBox.start, activeTextBox.current);
-    drawCtx.save();
-    drawCtx.strokeStyle = "#e53935";
-    drawCtx.setLineDash([8, 6]);
-    drawCtx.lineWidth = 2;
-    drawCtx.strokeRect(
-      box.x * drawCanvas.width,
-      box.y * drawCanvas.height,
-      box.w * drawCanvas.width,
-      box.h * drawCanvas.height
-    );
-    drawCtx.restore();
+  if (activeTextMove) {
+    const item = strokes.find((x) => x.id === activeTextMove.id && x.type === "text");
+    if (item?.box) {
+      drawCtx.save();
+      drawCtx.strokeStyle = "rgba(229,57,53,.72)";
+      drawCtx.setLineDash([6, 5]);
+      drawCtx.lineWidth = 1.5 * (window.devicePixelRatio || 1);
+      drawCtx.strokeRect(
+        item.box.x * drawCanvas.width,
+        item.box.y * drawCanvas.height,
+        item.box.w * drawCanvas.width,
+        item.box.h * drawCanvas.height
+      );
+      drawCtx.restore();
+    }
   }
   if (activeErasePath?.points?.length) drawEraserCursor(activeErasePath.points.at(-1));
 }
