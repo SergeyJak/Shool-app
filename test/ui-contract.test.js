@@ -222,3 +222,30 @@ test("pen and eraser use compact accessible icons", () => {
   assert.match(css, /\.tool-icon-btn\s*\{[\s\S]*width:\s*44px/);
   assert.match(css, /\.tool-icon\s*\{[\s\S]*stroke:\s*currentColor/);
 });
+
+test("root is login and cabinet preserves role-aware navigation", () => {
+  const login = read("public/index.html");
+  const cabinet = read("public/dashboard.html");
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+  const server = read("server.js");
+
+  assert.match(login, /id="loginForm"/);
+  assert.match(login, /id="username"/);
+  assert.match(login, /id="password"/);
+  assert.match(cabinet, /id="logoutBtn"/);
+  assert.match(cabinet, /role-teacher/);
+  assert.match(cabinet, /role-student/);
+  assert.match(teacher, /href="\/cabinet"/);
+  assert.match(student, /href="\/cabinet"/);
+  assert.match(server, /app\.post\("\/api\/auth\/login"/);
+  assert.match(server, /app\.get\("\/api\/auth\/me"/);
+  assert.match(server, /requirePageAuth/);
+  assert.match(server, /requireApiRole/);
+  assert.match(server, /io\.use\(async \(socket, next\)/);
+  assert.match(server, /BOOTSTRAP_ADMIN_PASSWORD/);
+  assert.match(server, /BOOTSTRAP_DARYA_PASSWORD/);
+  assert.match(server, /BOOTSTRAP_ALISA_PASSWORD/);
+  assert.match(server, /db\.collection\("users"\)/);
+  assert.match(server, /db\.collection\("lessons"\)/);
+});
