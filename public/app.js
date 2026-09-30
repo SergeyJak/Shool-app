@@ -36,6 +36,8 @@ const zoomOutBtn = document.getElementById("zoomOutBtn");
 const zoomResetBtn = document.getElementById("zoomResetBtn");
 const zoomInBtn = document.getElementById("zoomInBtn");
 const undoBtn = document.getElementById("undoBtn");
+const followBtn = document.getElementById("followBtn");
+const followStatus = document.getElementById("followStatus");
 const uploadInput = document.getElementById("pdfUpload");
 
 const snackbar = document.createElement("div");
@@ -108,6 +110,8 @@ let strokes = [];
 let activeStroke = null;
 let activeErasePath = null;
 let previewStrokes = new Map();
+let teacherFollowEnabled = false;
+let teacherFollowPage = 1;
 
 socket.on("connect", () => {
   statusEl.textContent = "онлайн";
@@ -118,8 +122,8 @@ socket.on("disconnect", () => {
 
 socket.on("document:changed", async () => {
   pageNumber = 1;
-  await updateZoomControls();
-loadDocument();
+  updateZoomControls();
+  await loadDocument();
 });
 
 socket.on("stroke:preview", (stroke) => {
@@ -148,8 +152,31 @@ socket.on("annotations:refresh", ({ page }) => {
   if (page === pageNumber) loadAnnotations();
 });
 
-async function goToPage(nextPage) {
+socket.on("teacher:follow:state", async ({ enabled, page } = {}) => {
+  teacherFollowEnabled = Boolean(enabled);
+  if (Number.isInteger(Number(page)) && Number(page) > 0) {
+    teacherFollowPage = Number(page);
+  }
+
+  updateFollowControls();
+
+  if (role === "student" && teacherFollowEnabled && pdfDoc) {
+    await goToPage(teacherFollowPage, { forcedByTeacher: true });
+  }
+});
+
+socket.on("teacher:page", async ({ page } = {}) => {
+  if (role !== "student" || !teacherFollowEnabled) return;
+  teacherFollowPage = Number(page) || teacherFollowPage;
+  await goToPage(teacherFollowPage, { forcedByTeacher: true });
+});
+
+async function goToPage(nextPage, { forcedByTeacher = false } = {}) {
   if (!pdfDoc) return;
+  if (role === "student" && teacherFollowEnabled && !forcedByTeacher) {
+    syncPageControls();
+    return;
+  }
   const clamped = clampPage(nextPage, pdfDoc.numPages);
   if (clamped === pageNumber) {
     syncPageControls();
@@ -157,6 +184,10 @@ async function goToPage(nextPage) {
   }
   pageNumber = clamped;
   await renderPage();
+
+  if (role === "teacher" && teacherFollowEnabled) {
+    socket.emit("teacher:page", { page: pageNumber });
+  }
 }
 
 firstBtn.addEventListener("click", () => goToPage(1));
@@ -181,6 +212,16 @@ zoomInBtn.addEventListener("click", () => setZoom(zoom + 0.25));
 undoBtn.addEventListener("click", () => {
   socket.emit("stroke:undo", { page: pageNumber });
 });
+
+if (followBtn) {
+  followBtn.addEventListener("click", () => {
+    if (teacherFollowEnabled) {
+      socket.emit("teacher:follow:stop", {});
+    } else if (pdfDoc) {
+      socket.emit("teacher:follow:start", { page: pageNumber });
+    }
+  });
+}
 
 if (uploadInput) {
   uploadInput.addEventListener("change", async () => {
@@ -250,6 +291,24 @@ drawCanvas.addEventListener("pointerdown", onPointerDown);
 drawCanvas.addEventListener("pointermove", onPointerMove);
 drawCanvas.addEventListener("pointerup", onPointerUp);
 drawCanvas.addEventListener("pointercancel", onPointerUp);
+
+function updateFollowControls() {
+  if (followBtn) {
+    followBtn.classList.toggle("active", teacherFollowEnabled);
+    followBtn.textContent = teacherFollowEnabled
+      ? "🔗 Страницы связаны"
+      : "🔗 Вести ученика";
+    followBtn.disabled = !pdfDoc;
+    followBtn.setAttribute("aria-pressed", String(teacherFollowEnabled));
+  }
+
+  if (followStatus) {
+    followStatus.hidden = !teacherFollowEnabled;
+    followStatus.textContent = teacherFollowEnabled
+      ? `🔗 Учитель ведёт страницу · ${teacherFollowPage}`
+      : "";
+  }
+}
 
 function updateZoomControls() {
   const percent = Math.round(zoom * 100);
@@ -463,7 +522,9 @@ async function loadDocument() {
     const savedPage = Number(
       localStorage.getItem(pageKey) ?? localStorage.getItem(legacyPageKey)
     );
-    if (Number.isInteger(savedPage) && savedPage >= 1) {
+    if (role === "student" && teacherFollowEnabled) {
+      pageNumber = clampPage(teacherFollowPage, pdfDoc.numPages);
+    } else if (Number.isInteger(savedPage) && savedPage >= 1) {
       pageNumber = Math.min(savedPage, pdfDoc.numPages);
     } else {
       pageNumber = Math.min(pageNumber, pdfDoc.numPages);
@@ -499,16 +560,21 @@ function syncPageControls() {
     prevBtn.disabled = true;
     nextBtn.disabled = true;
     lastBtn.disabled = true;
+    pageInput.disabled = true;
+    updateFollowControls();
     return;
   }
 
   pageInput.value = String(pageNumber);
   pageInput.max = String(pdfDoc.numPages);
   pageTotal.textContent = `/ ${pdfDoc.numPages}`;
-  firstBtn.disabled = pageNumber <= 1;
-  prevBtn.disabled = pageNumber <= 1;
-  nextBtn.disabled = pageNumber >= pdfDoc.numPages;
-  lastBtn.disabled = pageNumber >= pdfDoc.numPages;
+  const lockedToTeacher = role === "student" && teacherFollowEnabled;
+  pageInput.disabled = lockedToTeacher;
+  firstBtn.disabled = lockedToTeacher || pageNumber <= 1;
+  prevBtn.disabled = lockedToTeacher || pageNumber <= 1;
+  nextBtn.disabled = lockedToTeacher || pageNumber >= pdfDoc.numPages;
+  lastBtn.disabled = lockedToTeacher || pageNumber >= pdfDoc.numPages;
+  updateFollowControls();
 }
 
 async function renderPage() {
