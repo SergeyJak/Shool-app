@@ -195,7 +195,7 @@ test("desktop swaps Hand for precision shape tools while touch layouts keep them
   assert.match(client, /buildShapeStroke/);
   assert.match(client, /\["line", "arrow", "circle", "oval"\]/);
   assert.match(client, /activeShape/);
-  assert.match(client, /socket\.emit\("stroke:commit", finished\)/);
+  assert.match(client, /socket\.emit\("stroke:commit", \{ \.\.\.finished, documentId: currentDocumentId \}\)/);
 });
 
 test("desktop toolbar keeps compact grouped shapes and stable zoom width", () => {
@@ -265,4 +265,37 @@ test("teacher and student can download the current PDF", () => {
   assert.match(client, /download=1/);
   assert.match(server, /req\.query\.download === "1" \? "attachment" : "inline"/);
   assert.match(server, /filename\*=UTF-8/);
+});
+
+
+test("lesson realtime and data are scoped by lessonId", () => {
+  const client = read("public/app.js");
+  const server = read("server.js");
+  const cabinet = read("public/cabinet.js");
+
+  assert.match(client, /const lessonId = new URLSearchParams\(location\.search\)\.get\("lesson"\) \|\| "default"/);
+  assert.match(client, /io\(\{ auth: \{ role, lessonId \} \}\)/);
+  assert.match(client, /\/api\/document\?lesson=\$\{lessonParam\}/);
+  assert.match(client, /\/api\/annotations\/\$\{pageNumber\}\?lesson=\$\{lessonParam\}/);
+
+  assert.match(server, /function requireLessonAccess/);
+  assert.match(server, /function lessonRoom/);
+  assert.match(server, /socket\.join\(room\)/);
+  assert.match(server, /socket\.to\(room\)\.emit\("stroke:preview"/);
+  assert.match(server, /io\.to\(room\)\.emit\("teacher:follow:state"/);
+  assert.match(server, /lessonId,/);
+  assert.match(server, /documentId:/);
+  assert.match(server, /annotationLessonFilter/);
+  assert.match(server, /app\.get\("\/api\/lessons"/);
+
+  assert.match(cabinet, /fetch\("\/api\/lessons"/);
+  assert.match(cabinet, /lessonUrl/);
+  assert.match(cabinet, /encodeURIComponent\(lessonId\)/);
+});
+
+test("lesson access is derived from persisted lesson membership", () => {
+  const server = read("server.js");
+  assert.match(server, /lesson\.teacherIds\?\.includes\(user\._id\)/);
+  assert.match(server, /lesson\.studentIds\?\.includes\(user\._id\)/);
+  assert.match(server, /LESSON_FORBIDDEN/);
 });
