@@ -500,3 +500,16 @@ canvas { display: block; }
   }
   .header-actions { gap: 6px; }
 }
+
+.observer-mode #drawCanvas { pointer-events: none !important; cursor: default !important; }
+.observer-toolbar { justify-content: flex-end; }
+.observer-badge {
+  margin-left: auto;
+  padding: 8px 12px;
+  border: 1px solid #cfd6dd;
+  border-radius: 10px;
+  background: #fff;
+  color: #68727d;
+  font-size: 13px;
+  font-weight: 650;
+}
