@@ -359,3 +359,27 @@ test("admin management UI is responsive", () => {
   assert.match(css, /\.admin-member-grid/);
   assert.match(css, /@media \(max-width: 720px\)/);
 });
+
+
+test("cabinet opens concrete lessons and admin gets a read-only control action", () => {
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const monitor = read("public/monitor.html");
+  const server = read("server.js");
+
+  assert.doesNotMatch(dashboard, /role-grid/);
+  assert.match(cabinet, /Открыть урок/);
+  assert.match(cabinet, /Как учитель/);
+  assert.match(cabinet, /Как ученик/);
+  assert.match(cabinet, /Контроль/);
+  assert.match(cabinet, /\/monitor\?lesson=/);
+
+  assert.match(monitor, /data-role="observer"/);
+  assert.match(monitor, /Только просмотр/);
+  assert.doesNotMatch(monitor, /pdfUpload/);
+  assert.doesNotMatch(monitor, /textBtn/);
+
+  assert.match(server, /app\.get\("\/monitor"/);
+  assert.match(server, /role === "observer"/);
+  assert.match(server, /READ_ONLY/);
+});
