@@ -422,6 +422,9 @@ app.get("/teacher.html", requirePageAuth("teacher"), (_req, res) =>
 app.get("/student.html", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
 );
+app.get("/monitor.html", requirePageAuth("admin"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "monitor.html"))
+);
 app.get("/performance.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "performance.html"))
 );
@@ -440,6 +443,9 @@ app.get("/teacher", requirePageAuth("teacher"), (_req, res) =>
 );
 app.get("/student", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
+);
+app.get("/monitor", requirePageAuth("admin"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "monitor.html"))
 );
 app.get("/performance", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "performance.html"))
@@ -828,7 +834,12 @@ io.use(async (socket, next) => {
 });
 
 io.on("connection", (socket) => {
-  const requestedRole = socket.handshake.auth?.role === "teacher" ? "teacher" : "student";
+  const requestedRole =
+    socket.handshake.auth?.role === "teacher"
+      ? "teacher"
+      : socket.handshake.auth?.role === "observer"
+        ? "observer"
+        : "student";
   const accountRole = socket.data.user.role;
   const role = accountRole === "admin" ? requestedRole : accountRole;
   socket.data.role = role;
@@ -879,7 +890,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stroke:preview", (stroke) => {
-    if (!isValidStroke(stroke)) return;
+    if (role === "observer" || !isValidStroke(stroke)) return;
     socket.to(room).emit("stroke:preview", {
       ...stroke,
       role,
@@ -889,6 +900,7 @@ io.on("connection", (socket) => {
 
   socket.on("stroke:commit", async (stroke, ack) => {
     try {
+      if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
       if (!isValidStroke(stroke)) {
         return ack?.({ ok: false, error: "INVALID_STROKE" });
       }
@@ -987,6 +999,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stroke:delete", async ({ id }) => {
+    if (role === "observer") return;
     const row = await annotations.findOne({ $and: [{ _id: id }, annotationLessonFilter(lessonId)] });
     if (!row) return;
 
@@ -999,7 +1012,7 @@ io.on("connection", (socket) => {
 
   socket.on("erase:path", async (erase) => {
     try {
-      if (!isValidErasePath(erase)) return;
+      if (role === "observer" || !isValidErasePath(erase)) return;
 
       const documentId = await currentDocumentIdForLesson(lessonId);
       if (!documentId || erase.documentId !== documentId) return;
@@ -1054,6 +1067,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stroke:undo", async ({ page, documentId: requestedDocumentId }, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const documentId = await currentDocumentIdForLesson(lessonId);
     if (!documentId || requestedDocumentId !== documentId) {
       return ack?.({ ok: false, error: "DOCUMENT_MISMATCH" });
