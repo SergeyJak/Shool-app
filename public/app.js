@@ -55,6 +55,8 @@ const followBtn = document.getElementById("followBtn");
 const followStatus = document.getElementById("followStatus");
 const uploadInput = document.getElementById("pdfUpload");
 const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+const observerTeacherPage = document.getElementById("observerTeacherPage");
+let teacherLivePage = null;
 
 const snackbar = document.createElement("div");
 snackbar.className = "snackbar";
@@ -295,6 +297,17 @@ socket.on("teacher:page", async ({ page } = {}) => {
   await goToPage(teacherFollowPage, { forcedByTeacher: true });
 });
 
+socket.on("teacher:monitor:page", ({ page } = {}) => {
+  const nextPage = Number(page);
+  if (!Number.isInteger(nextPage) || nextPage < 1) return;
+  teacherLivePage = nextPage;
+  if (observerTeacherPage) {
+    observerTeacherPage.hidden = false;
+    observerTeacherPage.textContent = `Урок сейчас: стр. ${nextPage}`;
+    observerTeacherPage.title = `Перейти на страницу ${nextPage}`;
+  }
+});
+
 async function goToPage(nextPage, { forcedByTeacher = false } = {}) {
   closeTextEditor({ save: true });
   if (!pdfDoc) return;
@@ -348,6 +361,9 @@ textSizeSelect?.addEventListener("change", () => {
 zoomOutBtn.addEventListener("click", () => setZoom(zoom - 0.25));
 zoomResetBtn.addEventListener("click", () => setZoom(1));
 zoomInBtn.addEventListener("click", () => setZoom(zoom + 0.25));
+observerTeacherPage?.addEventListener("click", () => {
+  if (teacherLivePage) goToPage(teacherLivePage, { forcedByTeacher: true });
+});
 undoBtn.addEventListener("click", () => {
   socket.emit("stroke:undo", { page: pageNumber, documentId: currentDocumentId });
 });
@@ -1187,7 +1203,10 @@ async function renderPage() {
   await loadAnnotations();
   perfMetrics.page = performance.now() - renderStarted;
   updatePerfStats();
-}
+  if (role === "teacher") {
+    socket.emit("teacher:monitor:page", { page: pageNumber });
+  }
+
 
 async function loadAnnotations() {
   previewStrokes.clear();
