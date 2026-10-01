@@ -971,6 +971,26 @@ async function start() {
     { upsert: true }
   );
 
+  // Preview-only fixture for validating that two simultaneous lessons never cross-talk.
+  // It is enabled only by an explicit Railway variable on the preview service.
+  if (process.env.SCHOOL_PREVIEW_TEST_LESSON === "1") {
+    await lessons.updateOne(
+      { _id: "test-lesson-2" },
+      {
+        $setOnInsert: {
+          title: "Тестовый урок 2",
+          teacherIds: ["darya"],
+          studentIds: ["alisa"],
+          bookIds: [],
+          active: true,
+          createdAt: new Date(),
+          schemaVersion: 1,
+        },
+      },
+      { upsert: true }
+    );
+  }
+
   await annotations.createIndex({ lessonId: 1, documentId: 1, page: 1, createdAt: 1 });
   await performanceLogs.createIndex(
     { createdAt: 1 },
