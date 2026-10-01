@@ -260,6 +260,24 @@ async function getCurrentDocument(lessonId) {
   return null;
 }
 
+function annotationDocumentFilter(lessonId, documentId) {
+  if (lessonId === "default") {
+    return {
+      $or: [
+        { documentId },
+        { documentId: { $exists: false } },
+        { documentId: null },
+      ],
+    };
+  }
+  return { documentId };
+}
+
+async function currentDocumentIdForLesson(lessonId) {
+  const current = await getCurrentDocument(lessonId);
+  return current?.fileId ? String(current.fileId) : null;
+}
+
 app.get("/api/document", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
   try {
     const current = await getCurrentDocument(req.lessonId);
@@ -532,8 +550,17 @@ app.get("/api/annotations/:page", requireApiRole("teacher", "student"), requireL
       return res.status(400).json({ error: "INVALID_PAGE" });
     }
 
+    const documentId = await currentDocumentIdForLesson(req.lessonId);
+    if (!documentId) return res.json([]);
+
     const rows = await annotations
-      .find({ $and: [annotationLessonFilter(req.lessonId), { page }] })
+      .find({
+        $and: [
+          annotationLessonFilter(req.lessonId),
+          annotationDocumentFilter(req.lessonId, documentId),
+          { page },
+        ],
+      })
       .sort({ createdAt: 1 })
       .toArray();
 
@@ -673,10 +700,15 @@ io.on("connection", (socket) => {
         return ack?.({ ok: false, error: "INVALID_STROKE" });
       }
 
+      const documentId = await currentDocumentIdForLesson(lessonId);
+      if (!documentId || stroke.documentId !== documentId) {
+        return ack?.({ ok: false, error: "DOCUMENT_MISMATCH" });
+      }
+
       const row = {
         _id: stroke.id || crypto.randomUUID(),
         lessonId,
-        documentId: typeof stroke.documentId === "string" ? stroke.documentId : null,
+        documentId,
         page: stroke.page,
         role,
         userId: socket.data.user._id,
@@ -685,6 +717,19 @@ io.on("connection", (socket) => {
         points: stroke.points,
         createdAt: new Date(),
       };
+
+      const existing = await annotations.findOne({ _id: row._id });
+      if (
+        existing &&
+        !(
+          (existing.lessonId === lessonId ||
+            (lessonId === "default" && existing.lessonId == null)) &&
+          (existing.documentId === documentId ||
+            (lessonId === "default" && existing.documentId == null))
+        )
+      ) {
+        return ack?.({ ok: false, error: "ANNOTATION_FORBIDDEN" });
+      }
 
       await annotations.updateOne({ _id: row._id }, { $setOnInsert: row }, { upsert: true });
       socket.to(room).emit("stroke:committed", row);
@@ -702,12 +747,19 @@ io.on("connection", (socket) => {
         return ack?.({ ok: false, error: "INVALID_TEXT" });
       }
 
+      const documentId = await currentDocumentIdForLesson(lessonId);
+      if (!documentId || item.documentId !== documentId) {
+        return ack?.({ ok: false, error: "DOCUMENT_MISMATCH" });
+      }
+
       const existing = await annotations.findOne({ _id: item.id });
       if (
         existing &&
         !(
-          existing.lessonId === lessonId ||
-          (lessonId === "default" && existing.lessonId == null)
+          (existing.lessonId === lessonId ||
+            (lessonId === "default" && existing.lessonId == null)) &&
+          (existing.documentId === documentId ||
+            (lessonId === "default" && existing.documentId == null))
         )
       ) {
         return ack?.({ ok: false, error: "ANNOTATION_FORBIDDEN" });
@@ -717,7 +769,7 @@ io.on("connection", (socket) => {
         _id: item.id,
         type: "text",
         lessonId,
-        documentId: typeof item.documentId === "string" ? item.documentId : null,
+        documentId,
         page: item.page,
         role,
         userId: socket.data.user._id,
@@ -756,7 +808,16 @@ io.on("connection", (socket) => {
     try {
       if (!isValidErasePath(erase)) return;
 
-      const query = { $and: [annotationLessonFilter(lessonId), { page: erase.page }] };
+      const documentId = await currentDocumentIdForLesson(lessonId);
+      if (!documentId || erase.documentId !== documentId) return;
+
+      const query = {
+        $and: [
+          annotationLessonFilter(lessonId),
+          annotationDocumentFilter(lessonId, documentId),
+          { page: erase.page },
+        ],
+      };
       if (role !== "teacher") query.$and.push({ role });
 
       const pageStrokes = await annotations.find(query).toArray();
@@ -799,8 +860,19 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("stroke:undo", async ({ page }, ack) => {
-    const query = { $and: [annotationLessonFilter(lessonId), { page: Number(page) }] };
+  socket.on("stroke:undo", async ({ page, documentId: requestedDocumentId }, ack) => {
+    const documentId = await currentDocumentIdForLesson(lessonId);
+    if (!documentId || requestedDocumentId !== documentId) {
+      return ack?.({ ok: false, error: "DOCUMENT_MISMATCH" });
+    }
+
+    const query = {
+      $and: [
+        annotationLessonFilter(lessonId),
+        annotationDocumentFilter(lessonId, documentId),
+        { page: Number(page) },
+      ],
+    };
     if (role !== "teacher") query.$and.push({ role });
 
     const row = await annotations.find(query).sort({ createdAt: -1 }).limit(1).next();
