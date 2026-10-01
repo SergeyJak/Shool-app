@@ -28,8 +28,8 @@ function lessonUrl(role, lessonId) {
   return `/${role}?lesson=${encodeURIComponent(lessonId)}`;
 }
 
-function selectedValues(select) {
-  return [...select.selectedOptions].map((option) => option.value);
+function selectedValues(container) {
+  return [...container.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
 }
 
 function setAdminStatus(message, type = "") {
@@ -111,21 +111,43 @@ function renderLessons(user, lessons) {
   }
 }
 
-function fillMemberSelect(select, role, selected = []) {
-  select.innerHTML = "";
+function fillMemberPicker(container, role, selected = []) {
+  container.innerHTML = "";
   const selectedSet = new Set(selected);
-  for (const user of managedUsers.filter((item) => item.role === role && item.active)) {
-    const option = document.createElement("option");
-    option.value = user.id;
-    option.textContent = user.displayName || user.username;
-    option.selected = selectedSet.has(user.id);
-    select.append(option);
+  const candidates = managedUsers.filter((item) => item.role === role && item.active);
+
+  if (!candidates.length) {
+    const empty = document.createElement("span");
+    empty.className = "member-picker-empty";
+    empty.textContent = role === "teacher" ? "Нет активных учителей" : "Нет активных учеников";
+    container.append(empty);
+    return;
+  }
+
+  for (const user of candidates) {
+    const label = document.createElement("label");
+    label.className = "member-option";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = user.id;
+    checkbox.checked = selectedSet.has(user.id);
+
+    const copy = document.createElement("span");
+    const name = document.createElement("strong");
+    name.textContent = user.displayName || user.username;
+    const username = document.createElement("small");
+    username.textContent = user.username;
+    copy.append(name, username);
+
+    label.append(checkbox, copy);
+    container.append(label);
   }
 }
 
 function renderAdminMemberChoices() {
-  fillMemberSelect(newLessonTeachers, "teacher");
-  fillMemberSelect(newLessonStudents, "student");
+  fillMemberPicker(newLessonTeachers, "teacher");
+  fillMemberPicker(newLessonStudents, "student");
 }
 
 function renderAdminUsers() {
@@ -185,12 +207,11 @@ function renderAdminUsers() {
   }
 }
 
-function memberMultiSelect(role, selected) {
-  const select = document.createElement("select");
-  select.multiple = true;
-  select.size = 3;
-  fillMemberSelect(select, role, selected);
-  return select;
+function memberPicker(role, selected) {
+  const container = document.createElement("div");
+  container.className = "member-picker";
+  fillMemberPicker(container, role, selected);
+  return container;
 }
 
 function renderAdminLessons() {
@@ -212,11 +233,11 @@ function renderAdminLessons() {
     members.className = "admin-member-grid";
     const teacherWrap = document.createElement("label");
     teacherWrap.textContent = "Учителя";
-    const teachers = memberMultiSelect("teacher", lesson.teacherIds || []);
+    const teachers = memberPicker("teacher", lesson.teacherIds || []);
     teacherWrap.append(teachers);
     const studentWrap = document.createElement("label");
     studentWrap.textContent = "Ученики";
-    const students = memberMultiSelect("student", lesson.studentIds || []);
+    const students = memberPicker("student", lesson.studentIds || []);
     studentWrap.append(students);
     members.append(teacherWrap, studentWrap);
 
