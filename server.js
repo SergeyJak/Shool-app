@@ -505,6 +505,7 @@ app.get("/api/performance", requireApiRole("admin"), async (req, res, next) => {
         createdAt: row.createdAt,
         role: row.role,
         sessionId: row.sessionId,
+        lessonId: row.lessonId,
         documentId: row.documentId,
         page: row.page,
         rtt: row.rtt,
@@ -699,6 +700,17 @@ io.on("connection", (socket) => {
       if (role !== "teacher") return ack?.({ ok: false, error: "TEACHER_ONLY" });
       if (!isValidTextAnnotation(item)) {
         return ack?.({ ok: false, error: "INVALID_TEXT" });
+      }
+
+      const existing = await annotations.findOne({ _id: item.id });
+      if (
+        existing &&
+        !(
+          existing.lessonId === lessonId ||
+          (lessonId === "default" && existing.lessonId == null)
+        )
+      ) {
+        return ack?.({ ok: false, error: "ANNOTATION_FORBIDDEN" });
       }
 
       const row = {
