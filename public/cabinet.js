@@ -1,7 +1,5 @@
 const dialog = document.getElementById("helpDialog");
 const accountName = document.getElementById("accountName");
-const teacherCard = document.querySelector(".role-teacher");
-const studentCard = document.querySelector(".role-student");
 const perfButton = document.getElementById("perfLogButton");
 const note = document.getElementById("landingNote");
 const lessonSection = document.getElementById("lessonSection");
@@ -90,10 +88,6 @@ function renderLessons(user, lessons) {
     return;
   }
 
-  const firstLesson = lessons[0];
-  if (user.role === "teacher") teacherCard.href = lessonUrl("teacher", firstLesson.id);
-  if (user.role === "student") studentCard.href = lessonUrl("student", firstLesson.id);
-
   for (const lesson of lessons) {
     const item = document.createElement("div");
     item.className = "lesson-card";
@@ -110,17 +104,26 @@ function renderLessons(user, lessons) {
     const actions = document.createElement("div");
     actions.className = "lesson-actions";
 
-    if (user.role === "teacher" || user.role === "admin") {
+    if (user.role === "admin") {
       const teacherLink = document.createElement("a");
       teacherLink.href = lessonUrl("teacher", lesson.id);
-      teacherLink.textContent = "Учитель";
-      actions.append(teacherLink);
-    }
-    if (user.role === "student" || user.role === "admin") {
+      teacherLink.textContent = "Как учитель";
+
       const studentLink = document.createElement("a");
       studentLink.href = lessonUrl("student", lesson.id);
-      studentLink.textContent = "Ученик";
-      actions.append(studentLink);
+      studentLink.textContent = "Как ученик";
+
+      const monitorLink = document.createElement("a");
+      monitorLink.href = `/monitor?lesson=${encodeURIComponent(lesson.id)}`;
+      monitorLink.textContent = "Контроль";
+      monitorLink.className = "secondary-action";
+
+      actions.append(teacherLink, studentLink, monitorLink);
+    } else {
+      const openLink = document.createElement("a");
+      openLink.href = lessonUrl(user.role, lesson.id);
+      openLink.textContent = "Открыть урок";
+      actions.append(openLink);
     }
 
     item.append(actions);
@@ -386,13 +389,11 @@ async function loadAccount() {
   accountName.textContent = `${user.displayName || user.username} · ${user.role}`;
 
   if (user.role === "teacher") {
-    studentCard.hidden = true;
     perfButton.hidden = true;
-    note.textContent = "Выберите урок. Каждый урок имеет отдельные PDF, пометки и realtime.";
+    note.textContent = "Выберите урок.";
   } else if (user.role === "student") {
-    teacherCard.hidden = true;
     perfButton.hidden = true;
-    note.textContent = "Выберите урок. Материалы и пометки разделены между уроками.";
+    note.textContent = "Выберите урок.";
   } else {
     adminPanel.hidden = false;
     showAdminView("overview");
