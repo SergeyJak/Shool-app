@@ -299,3 +299,21 @@ test("lesson access is derived from persisted lesson membership", () => {
   assert.match(server, /lesson\.studentIds\?\.includes\(user\._id\)/);
   assert.match(server, /LESSON_FORBIDDEN/);
 });
+
+
+test("mobile text editor focuses during the tap instead of a deferred frame", () => {
+  const client = read("public/app.js");
+  assert.match(client, /tool === "text"[\s\S]*event\.preventDefault\(\)/);
+  assert.match(client, /editor\.focus\(\{ preventScroll: true \}\)/);
+  assert.doesNotMatch(client, /requestAnimationFrame\(\(\) => editor\.focus\(\)\)/);
+});
+
+test("annotations are scoped to the current document inside each lesson", () => {
+  const server = read("server.js");
+  assert.match(server, /function annotationDocumentFilter/);
+  assert.match(server, /currentDocumentIdForLesson/);
+  assert.match(server, /DOCUMENT_MISMATCH/);
+  assert.match(server, /annotationDocumentFilter\(req\.lessonId, documentId\)/);
+  assert.match(server, /annotationDocumentFilter\(lessonId, documentId\)/);
+  assert.match(server, /existing\.documentId === documentId/);
+});
