@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>School App · Контроль урока</title>
+  <link rel="stylesheet" href="/styles.css?v=20261001-monitor1" />
+</head>
+<body data-role="observer" class="observer-mode">
+  <header>
+    <div>
+      <strong>Контроль урока</strong>
+      <span id="status">подключение…</span>
+    </div>
+    <div class="header-actions">
+      <a class="cabinet-link" href="/cabinet" title="В кабинет">⌂ Кабинет</a>
+      <a id="downloadPdfBtn" class="cabinet-link" href="#" title="Скачать PDF" hidden>↓ PDF</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="lesson-sync-row">
+      <div id="followStatus" class="follow-status" hidden>🔗 Учитель ведёт страницу</div>
+      <div class="observer-badge">Только просмотр</div>
+    </div>
+
+    <div class="toolbar observer-toolbar">
+      <div class="zoom-controls" aria-label="Масштаб">
+        <button id="zoomOutBtn" type="button" title="Уменьшить">−</button>
+        <button id="zoomResetBtn" type="button" title="Вписать по ширине">100%</button>
+        <button id="zoomInBtn" type="button" title="Увеличить">+</button>
+      </div>
+      <span class="spacer"></span>
+      <button id="firstBtn" title="В начало">«</button>
+      <button id="prevBtn" title="Назад">‹</button>
+      <span id="pageInfo" class="page-jump">
+        <input id="pageInput" type="number" min="1" inputmode="numeric" aria-label="Номер страницы" />
+        <span id="pageTotal">/ —</span>
+      </span>
+      <button id="nextBtn" title="Вперёд">›</button>
+      <button id="lastBtn" title="В конец">»</button>
+    </div>
+
+    <div id="observerHiddenControls" hidden>
+      <button id="penBtn"></button><button id="eraserBtn"></button><button id="handBtn"></button>
+      <button id="lineBtn"></button><button id="arrowBtn"></button><button id="circleBtn"></button><button id="ovalBtn"></button>
+      <button id="undoBtn"></button>
+    </div>
+
+    <div id="loadingState" class="loading-state">
+      <div class="spinner" aria-hidden="true"></div>
+      <div id="loadingText">Подключаемся к уроку…</div>
+    </div>
+    <div id="emptyState" hidden>В этом уроке пока нет PDF.</div>
+    <div id="stage" hidden>
+      <div id="pageShell">
+        <canvas id="pdfCanvas"></canvas>
+        <canvas id="drawCanvas"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs" type="module"></script>
+  <script type="module" src="/app.js?v=20261001-monitor1"></script>
+</body>
+</html>
