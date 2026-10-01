@@ -584,3 +584,68 @@ h1 {
   color: #89919a;
   font-size: 12px;
 }
+
+
+.admin-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 5px;
+  border: 1px solid #dfe4ea;
+  border-radius: 12px;
+  background: #f7f9fb;
+}
+.admin-nav-btn {
+  flex: 1;
+  border: 0;
+  border-radius: 9px;
+  padding: 9px 11px;
+  background: transparent;
+  color: #68727d;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.admin-nav-btn.active {
+  background: #17202a;
+  color: #fff;
+}
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+}
+.admin-summary-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid #dfe4ea;
+  border-radius: 14px;
+  background: #fff;
+}
+.admin-summary-card span {
+  color: #89919a;
+  font-size: 12px;
+}
+.admin-summary-card strong {
+  font-size: 30px;
+}
+.admin-overview-note {
+  margin: 14px 0 0;
+  color: #68727d;
+  font-size: 13px;
+}
+.admin-grid.single-column {
+  grid-template-columns: 1fr;
+}
+@media (max-width: 620px) {
+  .admin-nav {
+    position: sticky;
+    top: 8px;
+    z-index: 4;
+  }
+  .admin-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
