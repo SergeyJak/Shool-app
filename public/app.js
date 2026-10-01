@@ -51,6 +51,7 @@ const undoBtn = document.getElementById("undoBtn");
 const followBtn = document.getElementById("followBtn");
 const followStatus = document.getElementById("followStatus");
 const uploadInput = document.getElementById("pdfUpload");
+const downloadPdfBtn = document.getElementById("downloadPdfBtn");
 
 const snackbar = document.createElement("div");
 snackbar.className = "snackbar";
@@ -1019,6 +1020,10 @@ function erasePreviewSegments(stroke) {
 
 async function loadDocument() {
   pdfDoc = null;
+  if (downloadPdfBtn) {
+    downloadPdfBtn.hidden = true;
+    downloadPdfBtn.removeAttribute("href");
+  }
   stage.hidden = true;
   emptyState.hidden = true;
   loadingState.hidden = false;
@@ -1040,6 +1045,10 @@ async function loadDocument() {
 
     const documentMeta = await res.json();
     currentDocumentId = documentMeta.id;
+    if (downloadPdfBtn) {
+      downloadPdfBtn.href = `/api/document/file?id=${encodeURIComponent(documentMeta.id)}&download=1`;
+      downloadPdfBtn.hidden = false;
+    }
     loadingText.textContent = "Скачиваем PDF…";
 
     const loadingTask = pdfjsLib.getDocument(
