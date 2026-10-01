@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>School App · Контроль урока</title>
-  <link rel="stylesheet" href="/styles.css?v=20261001-monitor1" />
+  <link rel="stylesheet" href="/styles.css?v=20261001-monitor2" />
 </head>
 <body data-role="observer" class="observer-mode">
   <header>
@@ -20,6 +20,7 @@
 
   <main>
     <div class="lesson-sync-row">
+      <button id="observerTeacherPage" class="observer-page-indicator" type="button" hidden>Урок сейчас: стр. —</button>
       <div id="followStatus" class="follow-status" hidden>🔗 Учитель ведёт страницу</div>
       <div class="observer-badge">Только просмотр</div>
     </div>
@@ -62,6 +63,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs" type="module"></script>
-  <script type="module" src="/app.js?v=20261001-monitor1"></script>
+  <script type="module" src="/app.js?v=20261001-monitor2"></script>
 </body>
 </html>
