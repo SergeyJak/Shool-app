@@ -648,7 +648,13 @@ function openTextEditor(point) {
   shell.appendChild(editor);
   textEditor = editor;
   syncTextEditorGeometry();
-  requestAnimationFrame(() => editor.focus());
+  // Focus during the original pointer gesture. Mobile browsers may refuse or
+  // immediately dismiss the soft keyboard when focus is deferred to the next frame.
+  try {
+    editor.focus({ preventScroll: true });
+  } catch {
+    editor.focus();
+  }
 }
 
 function erasePathHitsTextBox(erase, box) {
@@ -833,11 +839,13 @@ function buildShapeStroke(shape) {
 function onPointerDown(event) {
   if (!pdfDoc || tool === "hand") return;
 
-  drawCanvas.setPointerCapture(event.pointerId);
   const point = pointFromEvent(event);
 
   if (tool === "text") {
     if (role !== "teacher") return;
+    // Keep a mobile tap from turning into a follow-up canvas click that
+    // immediately blurs the textarea and dismisses the virtual keyboard.
+    event.preventDefault();
 
     const existing = textAtPoint(point);
     if (existing) {
@@ -854,6 +862,8 @@ function onPointerDown(event) {
     openTextEditor(point);
     return;
   }
+
+  drawCanvas.setPointerCapture(event.pointerId);
 
   if (shapeToolActive()) {
     activeShape = {
