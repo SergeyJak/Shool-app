@@ -649,3 +649,9 @@ h1 {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.lesson-actions a.secondary-action {
+  border: 1px solid #cfd6dd;
+  background: #fff;
+  color: #17202a;
+}
