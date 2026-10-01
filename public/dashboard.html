@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>School App · Кабинет</title>
-  <link rel="stylesheet" href="/landing.css?v=20261001-lessons1" />
+  <link rel="stylesheet" href="/landing.css?v=20261001-admin1" />
 </head>
 <body class="landing-body">
   <div class="account-strip">
@@ -41,6 +41,52 @@
         <div id="lessonList" class="lesson-list"></div>
       </section>
 
+      <section id="adminPanel" class="admin-panel" hidden>
+        <div class="admin-heading">
+          <div>
+            <span class="admin-eyebrow">Управление</span>
+            <h2>Пользователи и уроки</h2>
+          </div>
+          <span id="adminStatus" class="admin-status"></span>
+        </div>
+
+        <div class="admin-grid">
+          <form id="createUserForm" class="admin-card">
+            <h3>Новый пользователь</h3>
+            <label>Логин<input id="newUsername" name="username" required minlength="3" maxlength="50" autocomplete="off"></label>
+            <label>Имя<input id="newDisplayName" name="displayName" required maxlength="80" autocomplete="off"></label>
+            <label>Роль
+              <select id="newUserRole" name="role">
+                <option value="teacher">Учитель</option>
+                <option value="student">Ученик</option>
+              </select>
+            </label>
+            <label>Пароль<input id="newUserPassword" name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+            <button type="submit">Создать пользователя</button>
+          </form>
+
+          <form id="createLessonForm" class="admin-card">
+            <h3>Новый урок</h3>
+            <label>ID урока<input id="newLessonId" name="id" required pattern="[A-Za-z0-9_-]{1,80}" autocomplete="off"></label>
+            <label>Название<input id="newLessonTitle" name="title" required maxlength="120" autocomplete="off"></label>
+            <label>Учителя<select id="newLessonTeachers" name="teacherIds" multiple size="4"></select></label>
+            <label>Ученики<select id="newLessonStudents" name="studentIds" multiple size="4"></select></label>
+            <button type="submit">Создать урок</button>
+          </form>
+        </div>
+
+        <div class="admin-lists">
+          <section>
+            <h3>Пользователи</h3>
+            <div id="adminUserList" class="admin-list"></div>
+          </section>
+          <section>
+            <h3>Все уроки</h3>
+            <div id="adminLessonList" class="admin-list"></div>
+          </section>
+        </div>
+      </section>
+
       <p class="landing-note" id="landingNote">Выберите свою роль, чтобы продолжить.</p>
     </section>
   </main>
@@ -65,6 +111,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261001-lessons1"></script>
+  <script src="/cabinet.js?v=20261001-admin1"></script>
 </body>
 </html>
