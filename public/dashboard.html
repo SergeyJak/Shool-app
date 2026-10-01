@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>School App · Кабинет</title>
-  <link rel="stylesheet" href="/landing.css?v=20261001-admin1" />
+  <link rel="stylesheet" href="/landing.css?v=20261001-admin2" />
 </head>
 <body class="landing-body">
   <div class="account-strip">
@@ -69,8 +69,14 @@
             <h3>Новый урок</h3>
             <label>ID урока<input id="newLessonId" name="id" required pattern="[A-Za-z0-9_-]{1,80}" autocomplete="off"></label>
             <label>Название<input id="newLessonTitle" name="title" required maxlength="120" autocomplete="off"></label>
-            <label>Учителя<select id="newLessonTeachers" name="teacherIds" multiple size="4"></select></label>
-            <label>Ученики<select id="newLessonStudents" name="studentIds" multiple size="4"></select></label>
+            <fieldset class="member-fieldset">
+              <legend>Учителя этого урока</legend>
+              <div id="newLessonTeachers" class="member-picker"></div>
+            </fieldset>
+            <fieldset class="member-fieldset">
+              <legend>Ученики этого урока</legend>
+              <div id="newLessonStudents" class="member-picker"></div>
+            </fieldset>
             <button type="submit">Создать урок</button>
           </form>
         </div>
@@ -111,6 +117,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261001-admin1"></script>
+  <script src="/cabinet.js?v=20261001-admin2"></script>
 </body>
 </html>
