@@ -37,15 +37,18 @@ test("teacher alone gets teacher-only controls", () => {
   assert.doesNotMatch(student, /id="perfLogButton"/);
 });
 
-test("cabinet links to both roles, help, and owner performance dashboard", () => {
+test("cabinet exposes help, performance, and lesson-driven navigation", () => {
   const html = read("public/dashboard.html");
-  assert.match(html, /href="\/teacher"/);
-  assert.match(html, /href="\/student"/);
+  const cabinet = read("public/cabinet.js");
   assert.match(html, /id="infoBtn"/);
   assert.match(html, /id="perfLogButton"/);
   assert.match(html, /href="\/performance"/);
   assert.match(html, /Как пользоваться/);
   assert.match(html, /School App/);
+  assert.doesNotMatch(html, /href="\/teacher"/);
+  assert.doesNotMatch(html, /href="\/student"/);
+  assert.match(cabinet, /lessonUrl\(user\.role, lesson\.id\)/);
+  assert.match(cabinet, /\/monitor\?lesson=/);
 });
 
 test("client keeps PDF cache versioning, loading progress and page persistence", () => {
@@ -223,9 +226,10 @@ test("pen and eraser use compact accessible icons", () => {
   assert.match(css, /\.tool-icon\s*\{[\s\S]*stroke:\s*currentColor/);
 });
 
-test("root is login and cabinet preserves role-aware navigation", () => {
+test("root is login and cabinet preserves account-aware lesson navigation", () => {
   const login = read("public/index.html");
   const cabinet = read("public/dashboard.html");
+  const cabinetJs = read("public/cabinet.js");
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
   const server = read("server.js");
@@ -234,8 +238,11 @@ test("root is login and cabinet preserves role-aware navigation", () => {
   assert.match(login, /id="username"/);
   assert.match(login, /id="password"/);
   assert.match(cabinet, /id="logoutBtn"/);
-  assert.match(cabinet, /role-teacher/);
-  assert.match(cabinet, /role-student/);
+  assert.doesNotMatch(cabinet, /role-teacher/);
+  assert.doesNotMatch(cabinet, /role-student/);
+  assert.match(cabinetJs, /Открыть урок/);
+  assert.match(cabinetJs, /Как учитель/);
+  assert.match(cabinetJs, /Как ученик/);
   assert.match(teacher, /href="\/cabinet"/);
   assert.match(student, /href="\/cabinet"/);
   assert.match(server, /app\.post\("\/api\/auth\/login"/);
