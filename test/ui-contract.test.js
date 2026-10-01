@@ -390,3 +390,19 @@ test("cabinet opens concrete lessons and admin gets a read-only control action",
   assert.match(server, /role === "observer"/);
   assert.match(server, /READ_ONLY/);
 });
+
+
+test("control mode shows the teacher's live lesson page without taking write control", () => {
+  const monitor = read("public/monitor.html");
+  const client = read("public/app.js");
+  const server = read("server.js");
+
+  assert.match(monitor, /id="observerTeacherPage"/);
+  assert.match(monitor, /Урок сейчас: стр/);
+  assert.match(client, /teacher:monitor:page/);
+  assert.match(client, /observerTeacherPage\.textContent/);
+  assert.match(client, /role === "teacher"[\s\S]*teacher:monitor:page/);
+  assert.match(server, /teacherPageByLesson/);
+  assert.match(server, /socket\.on\("teacher:monitor:page"/);
+  assert.match(server, /socket\.to\(room\)\.emit\("teacher:monitor:page"/);
+});
