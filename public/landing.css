@@ -296,3 +296,65 @@ h1 {
     white-space: nowrap;
   }
 }
+
+
+.lesson-section {
+  margin-top: 24px;
+  text-align: left;
+}
+.lesson-section h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+.lesson-list {
+  display: grid;
+  gap: 10px;
+}
+.lesson-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #dfe4ea;
+  border-radius: 14px;
+  background: #fff;
+}
+.lesson-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.lesson-card-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lesson-card-copy span {
+  color: #89919a;
+  font-size: 12px;
+}
+.lesson-actions {
+  display: flex;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+.lesson-actions a {
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: #17202a;
+  color: #fff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 650;
+}
+@media (max-width: 620px) {
+  .lesson-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .lesson-actions a {
+    flex: 1;
+    text-align: center;
+  }
+}
