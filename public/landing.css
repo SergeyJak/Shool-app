@@ -525,3 +525,62 @@ h1 {
     flex: 1;
   }
 }
+
+
+.member-fieldset {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #dfe4ea;
+  border-radius: 12px;
+}
+.member-fieldset legend {
+  padding: 0 5px;
+  color: #68727d;
+  font-size: 12px;
+  font-weight: 650;
+}
+.member-picker {
+  display: grid;
+  gap: 6px;
+}
+.member-option {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 8px !important;
+  padding: 8px 9px;
+  border: 1px solid #e3e7eb;
+  border-radius: 9px;
+  background: #fafbfc;
+  color: #17202a !important;
+  cursor: pointer;
+}
+.member-option input {
+  width: 18px !important;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+}
+.member-option span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.member-option strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+.member-option small {
+  color: #89919a;
+  font-size: 11px;
+}
+.member-option:has(input:checked) {
+  border-color: #7a91ad;
+  background: #eef4fb;
+}
+.member-picker-empty {
+  padding: 8px 4px;
+  color: #89919a;
+  font-size: 12px;
+}
