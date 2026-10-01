@@ -15,8 +15,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs";
 
 const role = document.body.dataset.role;
+const lessonId = new URLSearchParams(location.search).get("lesson") || "default";
+const lessonParam = encodeURIComponent(lessonId);
 const color = role === "teacher" ? "#e53935" : "#1565c0";
-const socket = io({ auth: { role } });
+const socket = io({ auth: { role, lessonId } });
 
 const statusEl = document.getElementById("status");
 const perfStatsEl = document.getElementById("perfStats");
@@ -168,6 +170,7 @@ function sendPerformanceLog() {
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   const payload = {
     role,
+    lessonId,
     sessionId: perfSessionId,
     documentId: currentDocumentId,
     page: pageNumber,
@@ -344,7 +347,7 @@ zoomOutBtn.addEventListener("click", () => setZoom(zoom - 0.25));
 zoomResetBtn.addEventListener("click", () => setZoom(1));
 zoomInBtn.addEventListener("click", () => setZoom(zoom + 0.25));
 undoBtn.addEventListener("click", () => {
-  socket.emit("stroke:undo", { page: pageNumber });
+  socket.emit("stroke:undo", { page: pageNumber, documentId: currentDocumentId });
 });
 
 if (followBtn) {
@@ -404,7 +407,7 @@ if (uploadInput) {
     body.append("pdf", file);
 
     try {
-      const res = await fetch("/api/document", {
+      const res = await fetch(`/api/document?lesson=${lessonParam}`, {
         method: "POST",
         headers: { "x-role": "teacher" },
         body,
@@ -588,7 +591,7 @@ function closeTextEditor({ save = true } = {}) {
   const index = strokes.findIndex((x) => x.id === saved.id);
   if (index >= 0) strokes[index] = saved;
   else strokes.push(saved);
-  socket.emit("text:commit", saved);
+  socket.emit("text:commit", { ...saved, documentId: currentDocumentId });
   redrawInk();
 }
 
@@ -645,7 +648,13 @@ function openTextEditor(point) {
   shell.appendChild(editor);
   textEditor = editor;
   syncTextEditorGeometry();
-  requestAnimationFrame(() => editor.focus());
+  // Focus during the original pointer gesture. Mobile browsers may refuse or
+  // immediately dismiss the soft keyboard when focus is deferred to the next frame.
+  try {
+    editor.focus({ preventScroll: true });
+  } catch {
+    editor.focus();
+  }
 }
 
 function erasePathHitsTextBox(erase, box) {
@@ -721,7 +730,7 @@ function flushStrokePreview() {
     setTimeout(() => previewMetricStarts.delete(metricId), 10000);
   }
 
-  socket.emit("stroke:preview", chunk);
+  socket.emit("stroke:preview", { ...chunk, documentId: currentDocumentId });
   previewSentPointCount = activeStroke.points.length;
 }
 
@@ -830,11 +839,13 @@ function buildShapeStroke(shape) {
 function onPointerDown(event) {
   if (!pdfDoc || tool === "hand") return;
 
-  drawCanvas.setPointerCapture(event.pointerId);
   const point = pointFromEvent(event);
 
   if (tool === "text") {
     if (role !== "teacher") return;
+    // Keep a mobile tap from turning into a follow-up canvas click that
+    // immediately blurs the textarea and dismisses the virtual keyboard.
+    event.preventDefault();
 
     const existing = textAtPoint(point);
     if (existing) {
@@ -851,6 +862,8 @@ function onPointerDown(event) {
     openTextEditor(point);
     return;
   }
+
+  drawCanvas.setPointerCapture(event.pointerId);
 
   if (shapeToolActive()) {
     activeShape = {
@@ -927,7 +940,7 @@ function onPointerUp(event) {
   if (activeTextMove) {
     const item = strokes.find((x) => x.id === activeTextMove.id && x.type === "text");
     activeTextMove = null;
-    if (item) socket.emit("text:commit", item);
+    if (item) socket.emit("text:commit", { ...item, documentId: currentDocumentId });
     redrawInk();
     return;
   }
@@ -938,7 +951,7 @@ function onPointerUp(event) {
     activeShape = null;
     if (finished?.points?.length >= 2) {
       strokes.push(finished);
-      socket.emit("stroke:commit", finished);
+      socket.emit("stroke:commit", { ...finished, documentId: currentDocumentId });
     }
     redrawInk();
     return;
@@ -957,7 +970,7 @@ function onPointerUp(event) {
       return splitStrokeForErase(stroke, erase);
     });
 
-    socket.emit("erase:path", erase);
+    socket.emit("erase:path", { ...erase, documentId: currentDocumentId });
     redrawInk();
     return;
   }
@@ -969,7 +982,7 @@ function onPointerUp(event) {
   resetStrokePreviewQueue();
   strokes.push(finished);
   previewStrokes.delete(finished.id);
-  socket.emit("stroke:commit", finished);
+  socket.emit("stroke:commit", { ...finished, documentId: currentDocumentId });
   redrawInk();
 }
 
@@ -1031,7 +1044,7 @@ async function loadDocument() {
   syncPageControls();
 
   try {
-    const res = await fetch("/api/document", { cache: "no-store" });
+    const res = await fetch(`/api/document?lesson=${lessonParam}`, { cache: "no-store" });
 
     if (res.status === 404) {
       loadingState.hidden = true;
@@ -1046,13 +1059,13 @@ async function loadDocument() {
     const documentMeta = await res.json();
     currentDocumentId = documentMeta.id;
     if (downloadPdfBtn) {
-      downloadPdfBtn.href = `/api/document/file?id=${encodeURIComponent(documentMeta.id)}&download=1`;
+      downloadPdfBtn.href = `/api/document/file?id=${encodeURIComponent(documentMeta.id)}&lesson=${lessonParam}&download=1`;
       downloadPdfBtn.hidden = false;
     }
     loadingText.textContent = "Скачиваем PDF…";
 
     const loadingTask = pdfjsLib.getDocument(
-      `/api/document/file?id=${encodeURIComponent(documentMeta.id)}`
+      `/api/document/file?id=${encodeURIComponent(documentMeta.id)}&lesson=${lessonParam}`
     );
     loadingTask.onProgress = ({ loaded, total }) => {
       if (total > 0) {
@@ -1170,7 +1183,7 @@ async function renderPage() {
 
 async function loadAnnotations() {
   previewStrokes.clear();
-  const res = await fetch(`/api/annotations/${pageNumber}`);
+  const res = await fetch(`/api/annotations/${pageNumber}?lesson=${lessonParam}`);
   strokes = res.ok ? await res.json() : [];
   redrawInk();
 }
