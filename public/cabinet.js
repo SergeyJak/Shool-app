@@ -14,6 +14,10 @@ const createUserForm = document.getElementById("createUserForm");
 const createLessonForm = document.getElementById("createLessonForm");
 const newLessonTeachers = document.getElementById("newLessonTeachers");
 const newLessonStudents = document.getElementById("newLessonStudents");
+const adminNavButtons = [...document.querySelectorAll("[data-admin-view]")];
+const adminSections = [...document.querySelectorAll("[data-admin-section]")];
+const adminUsersCount = document.getElementById("adminUsersCount");
+const adminLessonsCount = document.getElementById("adminLessonsCount");
 
 let currentUser = null;
 let managedUsers = [];
@@ -30,6 +34,19 @@ function lessonUrl(role, lessonId) {
 
 function selectedValues(container) {
   return [...container.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+}
+
+function showAdminView(view) {
+  for (const button of adminNavButtons) {
+    button.classList.toggle("active", button.dataset.adminView === view);
+  }
+  for (const section of adminSections) {
+    section.hidden = section.dataset.adminSection !== view;
+  }
+}
+
+for (const button of adminNavButtons) {
+  button.addEventListener("click", () => showAdminView(button.dataset.adminView));
 }
 
 function setAdminStatus(message, type = "") {
@@ -295,6 +312,8 @@ async function loadAdminData() {
   ]);
   managedUsers = usersPayload.users || [];
   managedLessons = lessonsPayload.lessons || [];
+  if (adminUsersCount) adminUsersCount.textContent = String(managedUsers.length);
+  if (adminLessonsCount) adminLessonsCount.textContent = String(managedLessons.length);
   renderAdminMemberChoices();
   renderAdminUsers();
   renderAdminLessons();
@@ -376,7 +395,8 @@ async function loadAccount() {
     note.textContent = "Выберите урок. Материалы и пометки разделены между уроками.";
   } else {
     adminPanel.hidden = false;
-    note.textContent = "Администратор может управлять пользователями и уроками ниже.";
+    showAdminView("overview");
+    note.textContent = "Управление пользователями и уроками вынесено в отдельные разделы.";
     await loadAdminData();
   }
 
