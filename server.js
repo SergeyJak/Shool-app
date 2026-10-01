@@ -56,6 +56,7 @@ let performanceLogs;
 let users;
 let lessons;
 const teacherFollowByLesson = new Map();
+const teacherPageByLesson = new Map();
 
 app.use(express.json({ limit: "1mb" }));
 
@@ -849,6 +850,9 @@ io.on("connection", (socket) => {
   socket.join(room);
 
   socket.emit("teacher:follow:state", teacherFollow.snapshot());
+  if (teacherPageByLesson.has(lessonId)) {
+    socket.emit("teacher:monitor:page", { page: teacherPageByLesson.get(lessonId) });
+  }
 
   socket.on("perf:ping", (_payload, ack) => {
     ack?.({ ok: true });
@@ -870,9 +874,19 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, ...state });
   });
 
+  socket.on("teacher:monitor:page", ({ page } = {}) => {
+    const nextPage = Number(page);
+    if (role !== "teacher" || !Number.isInteger(nextPage) || nextPage < 1) return;
+    teacherPageByLesson.set(lessonId, nextPage);
+    socket.to(room).emit("teacher:monitor:page", { page: nextPage });
+  });
+
   socket.on("teacher:page", ({ page } = {}) => {
     if (role !== "teacher" || !teacherFollow.move(page)) return;
-    io.to(room).emit("teacher:page", { page: teacherFollow.snapshot().page });
+    const currentPage = teacherFollow.snapshot().page;
+    teacherPageByLesson.set(lessonId, currentPage);
+    io.to(room).emit("teacher:page", { page: currentPage });
+    socket.to(room).emit("teacher:monitor:page", { page: currentPage });
   });
 
   socket.on("teacher:follow:stop", (_payload, ack) => {
