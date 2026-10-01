@@ -317,3 +317,45 @@ test("annotations are scoped to the current document inside each lesson", () => 
   assert.match(server, /annotationDocumentFilter\(lessonId, documentId\)/);
   assert.match(server, /existing\.documentId === documentId/);
 });
+
+
+test("admin can manage users and lessons from the cabinet", () => {
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const server = read("server.js");
+
+  assert.match(dashboard, /id="adminPanel"/);
+  assert.match(dashboard, /id="createUserForm"/);
+  assert.match(dashboard, /id="createLessonForm"/);
+  assert.match(dashboard, /id="adminUserList"/);
+  assert.match(dashboard, /id="adminLessonList"/);
+
+  assert.match(cabinet, /\/api\/admin\/users/);
+  assert.match(cabinet, /\/api\/admin\/lessons/);
+  assert.match(cabinet, /method: "PATCH"/);
+  assert.match(cabinet, /Деактивировать/);
+
+  assert.match(server, /app\.get\("\/api\/admin\/users"/);
+  assert.match(server, /app\.post\("\/api\/admin\/users"/);
+  assert.match(server, /app\.patch\("\/api\/admin\/users\/:id"/);
+  assert.match(server, /app\.get\("\/api\/admin\/lessons"/);
+  assert.match(server, /app\.post\("\/api\/admin\/lessons"/);
+  assert.match(server, /app\.patch\("\/api\/admin\/lessons\/:id"/);
+  assert.match(server, /await hashPassword\(password\)/);
+  assert.match(server, /validateLessonMembers/);
+});
+
+test("login sends every role through the cabinet instead of hardcoding default lesson", () => {
+  const server = read("server.js");
+  assert.match(server, /function homeForRole\(_role\) \{\s*return "\/cabinet";\s*\}/);
+  assert.doesNotMatch(server, /return "\/teacher\?lesson=default"/);
+  assert.doesNotMatch(server, /return "\/student\?lesson=default"/);
+});
+
+test("admin management UI is responsive", () => {
+  const css = read("public/landing.css");
+  assert.match(css, /\.admin-panel/);
+  assert.match(css, /\.admin-grid/);
+  assert.match(css, /\.admin-member-grid/);
+  assert.match(css, /@media \(max-width: 720px\)/);
+});
