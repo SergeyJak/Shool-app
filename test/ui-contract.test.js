@@ -157,7 +157,7 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
   assert.match(client, /activeTextMove/);
   assert.match(client, /remainingWidthPx/);
   assert.match(client, /const leftPx = clickX/);
-  assert.match(client, /socket\.emit\("text:commit", item\)/);
+  assert.match(client, /socket\.emit\("text:commit", \{ \.\.\.item, documentId: currentDocumentId \}\)/);
   assert.doesNotMatch(client, /activeTextBox/);
   assert.match(client, /text:commit/);
   assert.match(client, /text:committed/);
