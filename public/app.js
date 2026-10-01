@@ -15,6 +15,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs";
 
 const role = document.body.dataset.role;
+const isObserver = role === "observer";
 const lessonId = new URLSearchParams(location.search).get("lesson") || "default";
 const lessonParam = encodeURIComponent(lessonId);
 const color = role === "teacher" ? "#e53935" : "#1565c0";
@@ -167,6 +168,7 @@ function measureSocketRtt() {
 }
 
 function sendPerformanceLog() {
+  if (isObserver) return;
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   const payload = {
     role,
@@ -282,13 +284,13 @@ socket.on("teacher:follow:state", async ({ enabled, page } = {}) => {
 
   updateFollowControls();
 
-  if (role === "student" && teacherFollowEnabled && pdfDoc) {
+  if ((role === "student" || isObserver) && teacherFollowEnabled && pdfDoc) {
     await goToPage(teacherFollowPage, { forcedByTeacher: true });
   }
 });
 
 socket.on("teacher:page", async ({ page } = {}) => {
-  if (role !== "student" || !teacherFollowEnabled) return;
+  if ((role !== "student" && !isObserver) || !teacherFollowEnabled) return;
   teacherFollowPage = Number(page) || teacherFollowPage;
   await goToPage(teacherFollowPage, { forcedByTeacher: true });
 });
@@ -296,7 +298,7 @@ socket.on("teacher:page", async ({ page } = {}) => {
 async function goToPage(nextPage, { forcedByTeacher = false } = {}) {
   closeTextEditor({ save: true });
   if (!pdfDoc) return;
-  if (role === "student" && teacherFollowEnabled && !forcedByTeacher) {
+  if ((role === "student" || isObserver) && teacherFollowEnabled && !forcedByTeacher) {
     syncPageControls();
     return;
   }
@@ -452,10 +454,16 @@ if (uploadInput) {
   });
 }
 
-drawCanvas.addEventListener("pointerdown", onPointerDown);
-drawCanvas.addEventListener("pointermove", onPointerMove);
-drawCanvas.addEventListener("pointerup", onPointerUp);
-drawCanvas.addEventListener("pointercancel", onPointerUp);
+if (!isObserver) {
+  drawCanvas.addEventListener("pointerdown", onPointerDown);
+  drawCanvas.addEventListener("pointermove", onPointerMove);
+  drawCanvas.addEventListener("pointerup", onPointerUp);
+  drawCanvas.addEventListener("pointercancel", onPointerUp);
+} else {
+  drawCanvas.style.pointerEvents = "none";
+  drawCanvas.style.cursor = "default";
+  stage.classList.add("hand-mode");
+}
 
 function updateFollowControls() {
   if (followBtn) {
