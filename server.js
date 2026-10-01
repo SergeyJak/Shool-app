@@ -55,7 +55,7 @@ let settings;
 let performanceLogs;
 let users;
 let lessons;
-const teacherFollow = createFollowState();
+const teacherFollowByLesson = new Map();
 
 app.use(express.json({ limit: "1mb" }));
 
@@ -105,9 +105,56 @@ function requireApiRole(...roles) {
 }
 
 function homeForRole(role) {
-  if (role === "teacher") return "/teacher";
-  if (role === "student") return "/student";
+  if (role === "teacher") return "/teacher?lesson=default";
+  if (role === "student") return "/student?lesson=default";
   return "/cabinet";
+}
+
+function normalizeLessonId(value) {
+  const lessonId = String(value || "").trim();
+  return /^[a-zA-Z0-9_-]{1,80}$/.test(lessonId) ? lessonId : null;
+}
+
+function lessonRoom(lessonId) {
+  return `lesson:${lessonId}`;
+}
+
+async function lessonForUser(user, lessonId) {
+  if (!user || !lessonId) return null;
+  const lesson = await lessons.findOne({ _id: lessonId, active: true });
+  if (!lesson) return null;
+  if (user.role === "admin") return lesson;
+  if (user.role === "teacher" && lesson.teacherIds?.includes(user._id)) return lesson;
+  if (user.role === "student" && lesson.studentIds?.includes(user._id)) return lesson;
+  return null;
+}
+
+async function requireLessonAccess(req, res, next) {
+  try {
+    const lessonId = normalizeLessonId(req.query.lesson);
+    if (!lessonId) return res.status(400).json({ error: "LESSON_REQUIRED" });
+    const lesson = await lessonForUser(req.user, lessonId);
+    if (!lesson) return res.status(403).json({ error: "LESSON_FORBIDDEN" });
+    req.lessonId = lessonId;
+    req.lesson = lesson;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+function annotationLessonFilter(lessonId) {
+  if (lessonId === "default") {
+    return { $or: [{ lessonId: "default" }, { lessonId: { $exists: false } }] };
+  }
+  return { lessonId };
+}
+
+function followForLesson(lessonId) {
+  if (!teacherFollowByLesson.has(lessonId)) {
+    teacherFollowByLesson.set(lessonId, createFollowState());
+  }
+  return teacherFollowByLesson.get(lessonId);
 }
 
 app.use(attachUser);
@@ -151,6 +198,27 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
   });
 });
 
+app.get("/api/lessons", requireAuth, async (req, res, next) => {
+  try {
+    const query = { active: true };
+    if (req.user.role === "teacher") query.teacherIds = req.user._id;
+    if (req.user.role === "student") query.studentIds = req.user._id;
+
+    const rows = await lessons.find(query).sort({ title: 1 }).toArray();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      lessons: rows.map((lesson) => ({
+        id: lesson._id,
+        title: lesson.title,
+        teacherIds: lesson.teacherIds || [],
+        studentIds: lesson.studentIds || [],
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Protect direct .html access too, not only friendly routes.
 app.get("/dashboard.html", requirePageAuth("teacher", "student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "dashboard.html"))
@@ -185,13 +253,16 @@ app.get("/performance", requirePageAuth("admin"), (_req, res) =>
 );
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
-async function getCurrentDocument() {
-  return settings.findOne({ _id: "currentDocument" });
+async function getCurrentDocument(lessonId) {
+  const scoped = await settings.findOne({ _id: `currentDocument:${lessonId}` });
+  if (scoped) return scoped;
+  if (lessonId === "default") return settings.findOne({ _id: "currentDocument" });
+  return null;
 }
 
-app.get("/api/document", requireApiRole("teacher", "student"), async (_req, res, next) => {
+app.get("/api/document", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
   try {
-    const current = await getCurrentDocument();
+    const current = await getCurrentDocument(req.lessonId);
     if (!current) return res.status(404).json({ error: "NO_DOCUMENT" });
     res.json({
       id: String(current.fileId),
@@ -203,9 +274,9 @@ app.get("/api/document", requireApiRole("teacher", "student"), async (_req, res,
   }
 });
 
-app.get("/api/document/file", requireApiRole("teacher", "student"), async (req, res, next) => {
+app.get("/api/document/file", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
   try {
-    const current = await getCurrentDocument();
+    const current = await getCurrentDocument(req.lessonId);
     if (!current) return res.status(404).end();
 
     const requestedId = String(req.query.id || "");
@@ -256,13 +327,13 @@ app.get("/api/document/file", requireApiRole("teacher", "student"), async (req, 
   }
 });
 
-app.post("/api/document", requireApiRole("teacher"), upload.single("pdf"), async (req, res, next) => {
+app.post("/api/document", requireApiRole("teacher"), requireLessonAccess, upload.single("pdf"), async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "PDF_REQUIRED" });
     }
 
-    const current = await getCurrentDocument();
+    const current = await getCurrentDocument(req.lessonId);
     const optimized = await optimizePdfBuffer(req.file.buffer);
 
     const fileId = new ObjectId();
@@ -273,6 +344,7 @@ app.post("/api/document", requireApiRole("teacher"), upload.single("pdf"), async
         originalSize: optimized.originalSize,
         storedSize: optimized.finalSize,
         compressed: optimized.compressed,
+        lessonId: req.lessonId,
       },
     });
     stream.end(optimized.buffer);
@@ -283,9 +355,10 @@ app.post("/api/document", requireApiRole("teacher"), upload.single("pdf"), async
     });
 
     await settings.updateOne(
-      { _id: "currentDocument" },
+      { _id: `currentDocument:${req.lessonId}` },
       {
         $set: {
+          lessonId: req.lessonId,
           fileId,
           name: req.file.originalname,
           uploadedAt: new Date(),
@@ -295,7 +368,7 @@ app.post("/api/document", requireApiRole("teacher"), upload.single("pdf"), async
       { upsert: true }
     );
 
-    await annotations.deleteMany({});
+    await annotations.deleteMany(annotationLessonFilter(req.lessonId));
 
     if (current?.fileId) {
       try {
@@ -305,7 +378,7 @@ app.post("/api/document", requireApiRole("teacher"), upload.single("pdf"), async
       }
     }
 
-    io.emit("document:changed", {
+    io.to(lessonRoom(req.lessonId)).emit("document:changed", {
       id: String(fileId),
       name: req.file.originalname,
     });
@@ -361,6 +434,7 @@ app.post("/api/performance", requireApiRole("teacher", "student"), async (req, r
       createdAt: new Date(),
       role,
       userId: req.user._id,
+      lessonId: normalizeLessonId(body.lessonId),
       sessionId,
       documentId:
         typeof body.documentId === "string" && body.documentId.length <= 100
@@ -450,7 +524,7 @@ app.get("/api/performance", requireApiRole("admin"), async (req, res, next) => {
 });
 
 
-app.get("/api/annotations/:page", requireApiRole("teacher", "student"), async (req, res, next) => {
+app.get("/api/annotations/:page", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
   try {
     const page = Number(req.params.page);
     if (!Number.isInteger(page) || page < 1) {
@@ -458,7 +532,7 @@ app.get("/api/annotations/:page", requireApiRole("teacher", "student"), async (r
     }
 
     const rows = await annotations
-      .find({ page })
+      .find({ $and: [annotationLessonFilter(req.lessonId), { page }] })
       .sort({ createdAt: 1 })
       .toArray();
 
@@ -517,7 +591,15 @@ io.use(async (socket, next) => {
   try {
     const user = await userFromCookieHeader(socket.handshake.headers.cookie);
     if (!user) return next(new Error("AUTH_REQUIRED"));
+
+    const lessonId = normalizeLessonId(socket.handshake.auth?.lessonId);
+    if (!lessonId) return next(new Error("LESSON_REQUIRED"));
+    const lesson = await lessonForUser(user, lessonId);
+    if (!lesson) return next(new Error("LESSON_FORBIDDEN"));
+
     socket.data.user = user;
+    socket.data.lessonId = lessonId;
+    socket.data.lesson = lesson;
     next();
   } catch (error) {
     next(error);
@@ -529,6 +611,10 @@ io.on("connection", (socket) => {
   const accountRole = socket.data.user.role;
   const role = accountRole === "admin" ? requestedRole : accountRole;
   socket.data.role = role;
+  const lessonId = socket.data.lessonId;
+  const room = lessonRoom(lessonId);
+  const teacherFollow = followForLesson(lessonId);
+  socket.join(room);
 
   socket.emit("teacher:follow:state", teacherFollow.snapshot());
 
@@ -548,32 +634,32 @@ io.on("connection", (socket) => {
     }
 
     const state = teacherFollow.snapshot();
-    io.emit("teacher:follow:state", state);
+    io.to(room).emit("teacher:follow:state", state);
     ack?.({ ok: true, ...state });
   });
 
   socket.on("teacher:page", ({ page } = {}) => {
     if (role !== "teacher" || !teacherFollow.move(page)) return;
-    io.emit("teacher:page", { page: teacherFollow.snapshot().page });
+    io.to(room).emit("teacher:page", { page: teacherFollow.snapshot().page });
   });
 
   socket.on("teacher:follow:stop", (_payload, ack) => {
     if (role !== "teacher") return ack?.({ ok: false });
     teacherFollow.stop();
     const state = teacherFollow.snapshot();
-    io.emit("teacher:follow:state", state);
+    io.to(room).emit("teacher:follow:state", state);
     ack?.({ ok: true, ...state });
   });
 
   socket.on("disconnect", () => {
     if (role !== "teacher" || !teacherFollow.snapshot().enabled) return;
     teacherFollow.stop();
-    io.emit("teacher:follow:state", teacherFollow.snapshot());
+    io.to(room).emit("teacher:follow:state", teacherFollow.snapshot());
   });
 
   socket.on("stroke:preview", (stroke) => {
     if (!isValidStroke(stroke)) return;
-    socket.broadcast.emit("stroke:preview", {
+    socket.to(room).emit("stroke:preview", {
       ...stroke,
       role,
       perfOriginId: stroke.metricId ? socket.id : undefined,
@@ -588,6 +674,8 @@ io.on("connection", (socket) => {
 
       const row = {
         _id: stroke.id || crypto.randomUUID(),
+        lessonId,
+        documentId: typeof stroke.documentId === "string" ? stroke.documentId : null,
         page: stroke.page,
         role,
         userId: socket.data.user._id,
@@ -598,7 +686,7 @@ io.on("connection", (socket) => {
       };
 
       await annotations.updateOne({ _id: row._id }, { $setOnInsert: row }, { upsert: true });
-      socket.broadcast.emit("stroke:committed", row);
+      socket.to(room).emit("stroke:committed", row);
       ack?.({ ok: true, id: row._id });
     } catch (err) {
       console.error(err);
@@ -616,6 +704,8 @@ io.on("connection", (socket) => {
       const row = {
         _id: item.id,
         type: "text",
+        lessonId,
+        documentId: typeof item.documentId === "string" ? item.documentId : null,
         page: item.page,
         role,
         userId: socket.data.user._id,
@@ -631,7 +721,7 @@ io.on("connection", (socket) => {
       };
 
       await annotations.updateOne({ _id: row._id }, { $set: row }, { upsert: true });
-      io.emit("text:committed", { ...row, id: row._id });
+      io.to(room).emit("text:committed", { ...row, id: row._id });
       ack?.({ ok: true, id: row._id });
     } catch (err) {
       console.error(err);
@@ -640,22 +730,22 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stroke:delete", async ({ id }) => {
-    const row = await annotations.findOne({ _id: id });
+    const row = await annotations.findOne({ $and: [{ _id: id }, annotationLessonFilter(lessonId)] });
     if (!row) return;
 
     // Teacher can correct either side. Student can only remove own strokes.
     if (role !== "teacher" && row.role !== role) return;
 
     await annotations.deleteOne({ _id: id });
-    io.emit("stroke:deleted", { id, page: row.page });
+    io.to(room).emit("stroke:deleted", { id, page: row.page });
   });
 
   socket.on("erase:path", async (erase) => {
     try {
       if (!isValidErasePath(erase)) return;
 
-      const query = { page: erase.page };
-      if (role !== "teacher") query.role = role;
+      const query = { $and: [annotationLessonFilter(lessonId), { page: erase.page }] };
+      if (role !== "teacher") query.$and.push({ role });
 
       const pageStrokes = await annotations.find(query).toArray();
       let changed = false;
@@ -691,21 +781,21 @@ io.on("connection", (socket) => {
         }
       }
 
-      if (changed) io.emit("annotations:refresh", { page: erase.page });
+      if (changed) io.to(room).emit("annotations:refresh", { page: erase.page });
     } catch (err) {
       console.error(err);
     }
   });
 
   socket.on("stroke:undo", async ({ page }, ack) => {
-    const query = { page: Number(page) };
-    if (role !== "teacher") query.role = role;
+    const query = { $and: [annotationLessonFilter(lessonId), { page: Number(page) }] };
+    if (role !== "teacher") query.$and.push({ role });
 
     const row = await annotations.find(query).sort({ createdAt: -1 }).limit(1).next();
     if (!row) return ack?.({ ok: false });
 
     await annotations.deleteOne({ _id: row._id });
-    io.emit("stroke:deleted", { id: row._id, page: row.page });
+    io.to(room).emit("stroke:deleted", { id: row._id, page: row.page });
     ack?.({ ok: true, id: row._id });
   });
 });
@@ -797,7 +887,7 @@ async function start() {
     { upsert: true }
   );
 
-  await annotations.createIndex({ page: 1, createdAt: 1 });
+  await annotations.createIndex({ lessonId: 1, documentId: 1, page: 1, createdAt: 1 });
   await performanceLogs.createIndex(
     { createdAt: 1 },
     { expireAfterSeconds: 30 * 24 * 60 * 60 }
