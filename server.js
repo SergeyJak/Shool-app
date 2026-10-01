@@ -221,8 +221,12 @@ app.get("/api/document/file", requireApiRole("teacher", "student"), async (req, 
     const size = Number(file.length);
     const etag = `"${currentId}"`;
 
+    const disposition = req.query.download === "1" ? "attachment" : "inline";
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(current.name)}"`);
+    res.setHeader(
+      "Content-Disposition",
+      `${disposition}; filename*=UTF-8''${encodeURIComponent(current.name)}`
+    );
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.setHeader("ETag", etag);
     res.setHeader("Accept-Ranges", "bytes");
