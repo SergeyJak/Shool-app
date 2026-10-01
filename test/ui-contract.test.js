@@ -251,3 +251,18 @@ test("root is login and cabinet preserves role-aware navigation", () => {
   assert.match(server, /db\.collection\("users"\)/);
   assert.match(server, /db\.collection\("lessons"\)/);
 });
+
+
+test("teacher and student can download the current PDF", () => {
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+  const client = read("public/app.js");
+  const server = read("server.js");
+
+  assert.match(teacher, /id="downloadPdfBtn"/);
+  assert.match(student, /id="downloadPdfBtn"/);
+  assert.match(client, /downloadPdfBtn\.href/);
+  assert.match(client, /download=1/);
+  assert.match(server, /req\.query\.download === "1" \? "attachment" : "inline"/);
+  assert.match(server, /filename\*=UTF-8/);
+});
