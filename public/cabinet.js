@@ -15,6 +15,9 @@ const materialPanel = document.getElementById("materialPanel");
 const materialUploadForm = document.getElementById("materialUploadForm");
 const materialStatus = document.getElementById("materialStatus");
 const materialList = document.getElementById("materialList");
+const statActiveSessions = document.getElementById("statActiveSessions");
+const statMaterials = document.getElementById("statMaterials");
+const statSubmissions = document.getElementById("statSubmissions");
 const adminPanel = document.getElementById("adminPanel");
 const adminStatus = document.getElementById("adminStatus");
 const adminUserList = document.getElementById("adminUserList");
@@ -121,6 +124,7 @@ async function loadMaterials() {
   if (!currentUser || currentUser.role !== "teacher") return;
   const payload = await apiJson("/api/materials");
   teacherMaterials = payload.materials || [];
+  if (statMaterials) statMaterials.textContent = String(teacherMaterials.length);
   renderMaterials();
 }
 
@@ -240,6 +244,14 @@ async function showSubmissions(lesson, container) {
 function renderLessons(user, lessons) {
   lessonList.innerHTML = "";
   lessonSection.hidden = lessons.length === 0;
+  if (user.role === "teacher" && teacherView === "active") {
+    if (statActiveSessions) statActiveSessions.textContent = String(lessons.length);
+    if (statSubmissions) {
+      statSubmissions.textContent = String(
+        lessons.reduce((sum, lesson) => sum + Number(lesson.submissionCount || 0), 0)
+      );
+    }
+  }
 
   if (!lessons.length) {
     note.textContent = user.role === "teacher"
@@ -256,7 +268,7 @@ function renderLessons(user, lessons) {
 
   for (const lesson of lessons) {
     const item = document.createElement("div");
-    item.className = "lesson-card";
+    item.className = `lesson-card lesson-type-${lesson.type === "homework" ? "homework" : "lesson"}`;
 
     const copy = document.createElement("div");
     copy.className = "lesson-card-copy";
@@ -669,7 +681,9 @@ async function loadAccount() {
   const { user } = await accountRes.json();
   const { lessons = [] } = await lessonsRes.json();
   currentUser = user;
-  accountName.textContent = `${user.displayName || user.username} · ${user.role}`;
+  document.body.dataset.role = user.role;
+  const roleLabel = user.role === "teacher" ? "учитель" : user.role === "admin" ? "администратор" : "ученик";
+  accountName.textContent = `${user.displayName || user.username} · ${roleLabel}`;
 
   if (user.role === "teacher") {
     perfButton.hidden = true;
@@ -677,7 +691,7 @@ async function loadAccount() {
     materialPanel.hidden = false;
     teacherSessionTabs.hidden = false;
     cabinetLead.textContent = "Создавайте уроки и домашние работы, отправляйте ребёнку ссылку и возвращайтесь к любой сессии позже.";
-    note.textContent = lessons.length ? "Выберите занятие или создайте новое." : "Создайте первое занятие.";
+    note.textContent = lessons.length ? "" : "Создайте первое занятие.";
     await loadMaterials();
     renderLessons(user, lessons);
   } else if (user.role === "student") {
