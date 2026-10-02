@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>School App · Кабинет</title>
-  <link rel="stylesheet" href="/landing.css?v=20261002-sessions1" />
+  <link rel="stylesheet" href="/landing.css?v=20261002-materials1" />
 </head>
 <body class="landing-body">
   <div class="account-strip">
@@ -40,6 +40,23 @@
           <button type="submit">Создать и получить ссылку</button>
           <span id="teacherSessionStatus" class="admin-status"></span>
         </form>
+      </section>
+
+      <section id="materialPanel" class="material-panel" hidden>
+        <div class="material-heading">
+          <div>
+            <span class="admin-eyebrow">Библиотека учителя</span>
+            <h2>Мои материалы</h2>
+          </div>
+          <form id="materialUploadForm" class="material-upload-form">
+            <label class="material-upload-button">
+              <input id="materialPdf" name="pdf" type="file" accept="application/pdf" required />
+              <span>+ Загрузить PDF</span>
+            </label>
+          </form>
+        </div>
+        <div id="materialStatus" class="admin-status"></div>
+        <div id="materialList" class="material-list"></div>
       </section>
 
       <section id="lessonSection" class="lesson-section" hidden>
@@ -149,6 +166,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261002-sessions1"></script>
+  <script src="/cabinet.js?v=20261002-materials1"></script>
 </body>
 </html>
