@@ -301,14 +301,15 @@ test("teacher sessions archive separately and legacy default lesson is removed",
   assert.match(cabinet, /Ученик:/);
 });
 
-test("guest invite identity wins for its lesson-scoped HTTP and realtime requests", () => {
+test("guest invite identity uses one shared resolver for HTTP and realtime", () => {
   const server = read("server.js");
+  const context = read("lib/session-context.js");
 
-  assert.match(server, /userFromCookieHeader\(cookieHeader, preferredLessonId = null\)/);
-  assert.match(server, /guest && preferredLessonId && guest\.lessonId === preferredLessonId/);
+  assert.match(server, /resolveIdentityFromCookies/);
   assert.match(server, /normalizeLessonId\(req\.query\?\.lesson\)/);
   assert.match(server, /userFromCookieHeader\(req\.headers\.cookie, preferredLessonId\)/);
   assert.match(server, /userFromCookieHeader\(socket\.handshake\.headers\.cookie, lessonId\)/);
+  assert.match(context, /guest && preferredLessonId && guest\.lessonId === preferredLessonId/);
 });
 
 test("teacher material library can attach PDFs and collect homework submissions", () => {
@@ -447,10 +448,12 @@ test("lesson realtime and data are scoped by lessonId", () => {
   assert.match(cabinet, /encodeURIComponent\(lessonId\)/);
 });
 
-test("lesson access is derived from persisted lesson membership", () => {
+test("lesson access is derived from the shared persisted membership policy", () => {
   const server = read("server.js");
-  assert.match(server, /lesson\.teacherIds\?\.includes\(user\._id\)/);
-  assert.match(server, /lesson\.studentIds\?\.includes\(user\._id\)/);
+  const access = read("lib/lesson-access.js");
+  assert.match(server, /canAccessLesson\(user, lesson\)/);
+  assert.match(access, /lesson\.teacherIds\?\.includes\(user\._id\)/);
+  assert.match(access, /lesson\.studentIds\?\.includes\(user\._id\)/);
   assert.match(server, /LESSON_FORBIDDEN/);
 });
 
