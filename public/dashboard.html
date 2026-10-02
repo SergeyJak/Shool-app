@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>School App · Кабинет</title>
-  <link rel="stylesheet" href="/landing.css?v=20261002-materials1" />
+  <link rel="stylesheet" href="/landing.css?v=20261002-archive1" />
 </head>
 <body class="landing-body">
   <div class="account-strip">
@@ -58,6 +58,11 @@
         <div id="materialStatus" class="admin-status"></div>
         <div id="materialList" class="material-list"></div>
       </section>
+
+      <nav id="teacherSessionTabs" class="teacher-tabs" hidden aria-label="Занятия">
+        <button type="button" class="teacher-tab active" data-teacher-view="active">Активные</button>
+        <button type="button" class="teacher-tab" data-teacher-view="archive">Архив</button>
+      </nav>
 
       <section id="lessonSection" class="lesson-section" hidden>
         <h2 id="lessonSectionTitle">Мои занятия</h2>
@@ -166,6 +171,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261002-materials1"></script>
+  <script src="/cabinet.js?v=20261002-archive1"></script>
 </body>
 </html>
