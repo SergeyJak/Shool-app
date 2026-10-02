@@ -4,6 +4,11 @@ const perfButton = document.getElementById("perfLogButton");
 const note = document.getElementById("landingNote");
 const lessonSection = document.getElementById("lessonSection");
 const lessonList = document.getElementById("lessonList");
+const teacherPanel = document.getElementById("teacherPanel");
+const createTeacherSessionForm = document.getElementById("createTeacherSessionForm");
+const teacherSessionStatus = document.getElementById("teacherSessionStatus");
+const lessonSectionTitle = document.getElementById("lessonSectionTitle");
+const cabinetLead = document.getElementById("cabinetLead");
 const adminPanel = document.getElementById("adminPanel");
 const adminStatus = document.getElementById("adminStatus");
 const adminUserList = document.getElementById("adminUserList");
@@ -79,13 +84,31 @@ async function apiJson(url, options = {}) {
   return payload;
 }
 
+function setTeacherStatus(message, type = "") {
+  if (!teacherSessionStatus) return;
+  teacherSessionStatus.textContent = message;
+  teacherSessionStatus.dataset.type = type;
+}
+
+async function copyInvite(inviteUrl) {
+  const url = new URL(inviteUrl, location.origin).href;
+  await navigator.clipboard.writeText(url);
+  return url;
+}
+
 function renderLessons(user, lessons) {
   lessonList.innerHTML = "";
   lessonSection.hidden = lessons.length === 0;
 
   if (!lessons.length) {
-    note.textContent = "Для этого аккаунта пока нет активных уроков.";
+    note.textContent = user.role === "teacher"
+      ? "Пока нет занятий. Создайте первый урок или домашнюю работу."
+      : "Для этого аккаунта пока нет активных уроков.";
     return;
+  }
+
+  if (lessonSectionTitle) {
+    lessonSectionTitle.textContent = user.role === "teacher" ? "Мои занятия" : "Мои уроки";
   }
 
   for (const lesson of lessons) {
@@ -97,7 +120,11 @@ function renderLessons(user, lessons) {
     const title = document.createElement("strong");
     title.textContent = lesson.title || lesson.id;
     const meta = document.createElement("span");
-    meta.textContent = `ID: ${lesson.id}`;
+    if (user.role === "teacher") {
+      meta.textContent = lesson.type === "homework" ? "Домашняя работа" : "Урок";
+    } else {
+      meta.textContent = `ID: ${lesson.id}`;
+    }
     copy.append(title, meta);
     item.append(copy);
 
@@ -117,11 +144,33 @@ function renderLessons(user, lessons) {
       monitorLink.href = `/monitor?lesson=${encodeURIComponent(lesson.id)}`;
       monitorLink.textContent = "Контроль";
       monitorLink.className = "secondary-action";
-
       actions.append(teacherLink, studentLink, monitorLink);
+    } else if (user.role === "teacher") {
+      const openLink = document.createElement("a");
+      openLink.href = lessonUrl("teacher", lesson.id);
+      openLink.textContent = "Продолжить";
+
+      if (lesson.inviteUrl) {
+        const share = document.createElement("button");
+        share.type = "button";
+        share.className = "secondary-action";
+        share.textContent = "Скопировать ссылку";
+        share.addEventListener("click", async () => {
+          try {
+            await copyInvite(lesson.inviteUrl);
+            share.textContent = "Ссылка скопирована ✓";
+            setTimeout(() => { share.textContent = "Скопировать ссылку"; }, 2200);
+          } catch {
+            setTeacherStatus("Не удалось скопировать ссылку", "error");
+          }
+        });
+        actions.append(openLink, share);
+      } else {
+        actions.append(openLink);
+      }
     } else {
       const openLink = document.createElement("a");
-      openLink.href = lessonUrl(user.role, lesson.id);
+      openLink.href = lessonUrl("student", lesson.id);
       openLink.textContent = "Открыть урок";
       actions.append(openLink);
     }
@@ -370,6 +419,35 @@ createLessonForm?.addEventListener("submit", async (event) => {
   }
 });
 
+createTeacherSessionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(createTeacherSessionForm);
+  setTeacherStatus("Создаём…");
+  try {
+    const payload = await apiJson("/api/teacher/lessons", {
+      method: "POST",
+      body: JSON.stringify({
+        title: form.get("title"),
+        type: form.get("type"),
+      }),
+    });
+    createTeacherSessionForm.reset();
+    await refreshVisibleLessons();
+    if (payload.lesson?.inviteUrl) {
+      try {
+        await copyInvite(payload.lesson.inviteUrl);
+        setTeacherStatus("Готово. Ссылка на занятие скопирована ✓", "success");
+      } catch {
+        setTeacherStatus("Занятие создано. Скопируйте ссылку из списка ниже.", "success");
+      }
+    } else {
+      setTeacherStatus("Занятие создано", "success");
+    }
+  } catch (error) {
+    setTeacherStatus(`Ошибка: ${error.message}`, "error");
+  }
+});
+
 async function loadAccount() {
   const [accountRes, lessonsRes] = await Promise.all([
     fetch("/api/auth/me", { cache: "no-store" }),
@@ -389,7 +467,9 @@ async function loadAccount() {
 
   if (user.role === "teacher") {
     perfButton.hidden = true;
-    note.textContent = "Выберите урок.";
+    teacherPanel.hidden = false;
+    cabinetLead.textContent = "Создавайте уроки и домашние работы, отправляйте ребёнку ссылку и возвращайтесь к любой сессии позже.";
+    note.textContent = lessons.length ? "Выберите занятие или создайте новое." : "Создайте первое занятие.";
   } else if (user.role === "student") {
     perfButton.hidden = true;
     note.textContent = "Выберите урок.";
