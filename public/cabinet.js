@@ -9,6 +9,10 @@ const createTeacherSessionForm = document.getElementById("createTeacherSessionFo
 const teacherSessionStatus = document.getElementById("teacherSessionStatus");
 const lessonSectionTitle = document.getElementById("lessonSectionTitle");
 const cabinetLead = document.getElementById("cabinetLead");
+const materialPanel = document.getElementById("materialPanel");
+const materialUploadForm = document.getElementById("materialUploadForm");
+const materialStatus = document.getElementById("materialStatus");
+const materialList = document.getElementById("materialList");
 const adminPanel = document.getElementById("adminPanel");
 const adminStatus = document.getElementById("adminStatus");
 const adminUserList = document.getElementById("adminUserList");
@@ -25,6 +29,7 @@ const adminLessonsCount = document.getElementById("adminLessonsCount");
 let currentUser = null;
 let managedUsers = [];
 let managedLessons = [];
+let teacherMaterials = [];
 
 document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
 dialog.addEventListener("click", (event) => {
@@ -94,6 +99,139 @@ async function copyInvite(inviteUrl) {
   const url = new URL(inviteUrl, location.origin).href;
   await navigator.clipboard.writeText(url);
   return url;
+}
+
+function setMaterialStatus(message, type = "") {
+  if (!materialStatus) return;
+  materialStatus.textContent = message;
+  materialStatus.dataset.type = type;
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function loadMaterials() {
+  if (!currentUser || currentUser.role !== "teacher") return;
+  const payload = await apiJson("/api/materials");
+  teacherMaterials = payload.materials || [];
+  renderMaterials();
+}
+
+function renderMaterials() {
+  if (!materialList) return;
+  materialList.innerHTML = "";
+  if (!teacherMaterials.length) {
+    const empty = document.createElement("p");
+    empty.className = "material-empty";
+    empty.textContent = "Материалов пока нет. Загрузите первый PDF.";
+    materialList.append(empty);
+    return;
+  }
+
+  for (const material of teacherMaterials) {
+    const row = document.createElement("div");
+    row.className = "material-row";
+
+    const info = document.createElement("div");
+    info.className = "material-row-copy";
+    const title = document.createElement("strong");
+    title.textContent = material.name;
+    const meta = document.createElement("span");
+    meta.textContent = formatBytes(material.storedSize);
+    info.append(title, meta);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "secondary-action";
+    del.textContent = "Удалить";
+    del.addEventListener("click", async () => {
+      try {
+        await apiJson(`/api/materials/${encodeURIComponent(material.id)}`, { method: "DELETE" });
+        setMaterialStatus("Материал удалён", "success");
+        await loadMaterials();
+        await refreshVisibleLessons();
+      } catch (error) {
+        setMaterialStatus(
+          error.message === "MATERIAL_IN_USE"
+            ? "Этот PDF используется в активном занятии."
+            : `Ошибка: ${error.message}`,
+          "error"
+        );
+      }
+    });
+
+    row.append(info, del);
+    materialList.append(row);
+  }
+}
+
+function materialPicker(lesson) {
+  const wrap = document.createElement("div");
+  wrap.className = "lesson-material";
+
+  const select = document.createElement("select");
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = teacherMaterials.length ? "Выбрать PDF" : "Нет материалов";
+  select.append(empty);
+
+  for (const material of teacherMaterials) {
+    const option = document.createElement("option");
+    option.value = material.id;
+    option.textContent = material.name;
+    option.selected = material.id === lesson.materialId;
+    select.append(option);
+  }
+
+  const attach = document.createElement("button");
+  attach.type = "button";
+  attach.className = "secondary-action";
+  attach.textContent = lesson.materialId ? "Сменить PDF" : "Прикрепить PDF";
+  attach.disabled = !teacherMaterials.length;
+  attach.addEventListener("click", async () => {
+    if (!select.value) {
+      setTeacherStatus("Сначала выберите PDF", "error");
+      return;
+    }
+    try {
+      await apiJson(`/api/teacher/lessons/${encodeURIComponent(lesson.id)}/material`, {
+        method: "PATCH",
+        body: JSON.stringify({ materialId: select.value }),
+      });
+      setTeacherStatus("Материал прикреплён ✓", "success");
+      await refreshVisibleLessons();
+    } catch (error) {
+      setTeacherStatus(`Ошибка: ${error.message}`, "error");
+    }
+  });
+
+  wrap.append(select, attach);
+  return wrap;
+}
+
+async function showSubmissions(lesson, container) {
+  try {
+    const payload = await apiJson(`/api/teacher/lessons/${encodeURIComponent(lesson.id)}/submissions`);
+    container.innerHTML = "";
+    const rows = payload.submissions || [];
+    if (!rows.length) {
+      container.textContent = "Пока никто не сдал.";
+      return;
+    }
+    for (const item of rows) {
+      const row = document.createElement("div");
+      row.className = "submission-row";
+      const when = item.submittedAt ? new Date(item.submittedAt).toLocaleString() : "";
+      row.textContent = `${item.participantName || "Ученик"} · ${when}`;
+      container.append(row);
+    }
+  } catch (error) {
+    container.textContent = `Ошибка: ${error.message}`;
+  }
 }
 
 function renderLessons(user, lessons) {
@@ -167,6 +305,27 @@ function renderLessons(user, lessons) {
         actions.append(openLink, share);
       } else {
         actions.append(openLink);
+      }
+
+      const materialControls = materialPicker(lesson);
+      item.append(materialControls);
+
+      if (lesson.type === "homework") {
+        const submissions = document.createElement("div");
+        submissions.className = "submission-box";
+        const submissionsButton = document.createElement("button");
+        submissionsButton.type = "button";
+        submissionsButton.className = "secondary-action";
+        submissionsButton.textContent = `Сдано: ${lesson.submissionCount || 0}`;
+        const submissionsList = document.createElement("div");
+        submissionsList.className = "submission-list";
+        submissionsList.hidden = true;
+        submissionsButton.addEventListener("click", async () => {
+          submissionsList.hidden = !submissionsList.hidden;
+          if (!submissionsList.hidden) await showSubmissions(lesson, submissionsList);
+        });
+        submissions.append(submissionsButton, submissionsList);
+        item.append(submissions);
       }
     } else {
       const openLink = document.createElement("a");
@@ -468,8 +627,11 @@ async function loadAccount() {
   if (user.role === "teacher") {
     perfButton.hidden = true;
     teacherPanel.hidden = false;
+    materialPanel.hidden = false;
     cabinetLead.textContent = "Создавайте уроки и домашние работы, отправляйте ребёнку ссылку и возвращайтесь к любой сессии позже.";
     note.textContent = lessons.length ? "Выберите занятие или создайте новое." : "Создайте первое занятие.";
+    await loadMaterials();
+    renderLessons(user, lessons);
   } else if (user.role === "student") {
     perfButton.hidden = true;
     note.textContent = "Выберите урок.";
@@ -480,8 +642,28 @@ async function loadAccount() {
     await loadAdminData();
   }
 
-  renderLessons(user, lessons);
+  if (user.role !== "teacher") renderLessons(user, lessons);
 }
+
+materialUploadForm?.addEventListener("change", async (event) => {
+  if (event.target?.id !== "materialPdf") return;
+  const file = event.target.files?.[0];
+  if (!file) return;
+  setMaterialStatus("Загружаем PDF…");
+  try {
+    const body = new FormData();
+    body.append("pdf", file);
+    const response = await fetch("/api/materials", { method: "POST", body });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `HTTP_${response.status}`);
+    setMaterialStatus("PDF добавлен в библиотеку ✓", "success");
+    materialUploadForm.reset();
+    await loadMaterials();
+    await refreshVisibleLessons();
+  } catch (error) {
+    setMaterialStatus(`Ошибка: ${error.message}`, "error");
+  }
+});
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await fetch("/api/auth/logout", { method: "POST" });
