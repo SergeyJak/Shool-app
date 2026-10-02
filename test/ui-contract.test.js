@@ -301,6 +301,16 @@ test("teacher sessions archive separately and legacy default lesson is removed",
   assert.match(cabinet, /Ученик:/);
 });
 
+test("guest invite identity wins for its lesson-scoped HTTP and realtime requests", () => {
+  const server = read("server.js");
+
+  assert.match(server, /userFromCookieHeader\(cookieHeader, preferredLessonId = null\)/);
+  assert.match(server, /guest && preferredLessonId && guest\.lessonId === preferredLessonId/);
+  assert.match(server, /normalizeLessonId\(req\.query\?\.lesson\)/);
+  assert.match(server, /userFromCookieHeader\(req\.headers\.cookie, preferredLessonId\)/);
+  assert.match(server, /userFromCookieHeader\(socket\.handshake\.headers\.cookie, lessonId\)/);
+});
+
 test("teacher material library can attach PDFs and collect homework submissions", () => {
   const server = read("server.js");
   const dashboard = read("public/dashboard.html");
