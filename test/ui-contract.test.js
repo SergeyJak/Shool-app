@@ -406,3 +406,19 @@ test("control mode shows the teacher's live lesson page without taking write con
   assert.match(server, /socket\.on\("teacher:monitor:page"/);
   assert.match(server, /socket\.to\(room\)\.emit\("teacher:monitor:page"/);
 });
+
+
+test("preview data can be isolated by collection namespace without changing production defaults", () => {
+  const server = read("server.js");
+
+  assert.match(server, /const DATA_NAMESPACE = String\(process\.env\.DATA_NAMESPACE/);
+  assert.match(server, /const collectionName = \(base\) => DATA_NAMESPACE/);
+  assert.match(server, /const GRIDFS_BUCKET_NAME = collectionName\("pdfs"\)/);
+  assert.match(server, /db\.collection\(collectionName\("users"\)\)/);
+  assert.match(server, /db\.collection\(collectionName\("lessons"\)\)/);
+  assert.match(server, /db\.collection\(collectionName\("annotations"\)\)/);
+  assert.match(server, /db\.collection\(collectionName\("settings"\)\)/);
+  assert.match(server, /db\.collection\(collectionName\("performance_logs"\)\)/);
+  assert.match(server, /new GridFSBucket\(db, \{ bucketName: GRIDFS_BUCKET_NAME \}\)/);
+  assert.match(server, /Bootstrapped namespace/);
+});
