@@ -184,12 +184,12 @@ function lessonRoom(lessonId) {
 
 async function lessonForUser(user, lessonId) {
   if (!user || !lessonId) return null;
-  const lesson = await lessons.findOne({ _id: lessonId, active: true });
+  const lesson = await lessons.findOne({ _id: lessonId });
   if (!lesson) return null;
-  if (user.guest) return user.lessonId === lessonId ? lesson : null;
+  if (user.guest) return lesson.active !== false && user.lessonId === lessonId ? lesson : null;
   if (user.role === "admin") return lesson;
   if (user.role === "teacher" && (lesson.ownerId === user._id || lesson.teacherIds?.includes(user._id))) return lesson;
-  if (user.role === "student" && lesson.studentIds?.includes(user._id)) return lesson;
+  if (user.role === "student" && lesson.active !== false && lesson.studentIds?.includes(user._id)) return lesson;
   return null;
 }
 
@@ -308,7 +308,8 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
 
 app.get("/api/lessons", requireAuth, async (req, res, next) => {
   try {
-    const query = { active: true };
+    const archived = req.user.role === "teacher" && req.query.archive === "1";
+    const query = { active: archived ? false : true, _id: { $ne: "default" } };
     if (req.user.role === "teacher") {
       query.$or = [{ ownerId: req.user._id }, { teacherIds: req.user._id }];
     }
@@ -339,6 +340,9 @@ app.get("/api/lessons", requireAuth, async (req, res, next) => {
         materialId: lesson.materialId || null,
         materialName: lesson.materialName || null,
         submissionCount: submissionCounts.get(lesson._id) || 0,
+        lastParticipantName: lesson.lastParticipantName || null,
+        lastParticipantAt: lesson.lastParticipantAt || null,
+        archivedAt: lesson.archivedAt || null,
         createdAt: lesson.createdAt,
         updatedAt: lesson.updatedAt,
       })),
@@ -399,6 +403,58 @@ app.post("/api/teacher/lessons/:id/invite/rotate", requireApiRole("teacher"), as
     const inviteToken = newInviteToken();
     await lessons.updateOne({ _id: id }, { $set: { inviteToken, updatedAt: new Date() } });
     res.json({ inviteUrl: `/join/${inviteToken}` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/teacher/lessons/:id/archive", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const id = normalizeLessonId(req.params.id);
+    if (!id || id === "default") return res.status(400).json({ error: "INVALID_LESSON" });
+    const lesson = await lessons.findOne({ _id: id, active: true });
+    if (!lesson || (req.user.role !== "admin" && lesson.ownerId !== req.user._id && !lesson.teacherIds?.includes(req.user._id))) {
+      return res.status(404).json({ error: "LESSON_NOT_FOUND" });
+    }
+    const now = new Date();
+    await lessons.updateOne(
+      { _id: id },
+      {
+        $set: {
+          active: false,
+          status: "archived",
+          archivedAt: now,
+          updatedAt: now,
+        },
+        $unset: { inviteToken: "" },
+      }
+    );
+    teacherFollowByLesson.delete(id);
+    teacherPageByLesson.delete(id);
+    res.json({ ok: true, archivedAt: now });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/teacher/lessons/:id", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const id = normalizeLessonId(req.params.id);
+    if (!id || id === "default") return res.status(400).json({ error: "INVALID_LESSON" });
+    const lesson = await lessons.findOne({ _id: id, active: false });
+    if (!lesson || (req.user.role !== "admin" && lesson.ownerId !== req.user._id && !lesson.teacherIds?.includes(req.user._id))) {
+      return res.status(404).json({ error: "LESSON_NOT_FOUND" });
+    }
+
+    await Promise.all([
+      lessons.deleteOne({ _id: id }),
+      settings.deleteOne({ _id: `currentDocument:${id}` }),
+      annotations.deleteMany(annotationLessonFilter(id)),
+      homeworkSubmissions.deleteMany({ lessonId: id }),
+    ]);
+    teacherFollowByLesson.delete(id);
+    teacherPageByLesson.delete(id);
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }
@@ -626,6 +682,11 @@ app.post("/api/join/:token", async (req, res, next) => {
     if (!lesson) return res.status(404).json({ error: "INVITE_NOT_FOUND" });
 
     const guestToken = createGuestToken({ lessonId: lesson._id, name }, AUTH_SECRET);
+    const joinedAt = new Date();
+    await lessons.updateOne(
+      { _id: lesson._id },
+      { $set: { lastParticipantName: name, lastParticipantAt: joinedAt, updatedAt: joinedAt } }
+    );
     res.setHeader("Set-Cookie", guestCookie(guestToken, { secure: requestIsSecure(req) }));
     res.setHeader("Cache-Control", "no-store");
     res.json({ ok: true, redirect: `/student?lesson=${encodeURIComponent(lesson._id)}` });
@@ -1610,21 +1671,26 @@ async function start() {
     lessonIds: ["default"],
   });
 
-  await lessons.updateOne(
-    { _id: "default" },
-    {
-      $setOnInsert: {
-        title: "Основной урок",
-        teacherIds: ["darya"],
-        studentIds: ["alisa"],
-        bookIds: [],
-        active: true,
-        createdAt: new Date(),
-        schemaVersion: 1,
-      },
-    },
-    { upsert: true }
-  );
+  // The old global "default" lesson predates teacher-owned sessions.
+  // It is intentionally removed now that children join only by explicit session links.
+  const legacyDefaultDocument =
+    await settings.findOne({ _id: "currentDocument:default" }) ||
+    await settings.findOne({ _id: "currentDocument" });
+
+  await lessons.deleteOne({ _id: "default" });
+  await settings.deleteMany({ _id: { $in: ["currentDocument:default", "currentDocument"] } });
+  await annotations.deleteMany(annotationLessonFilter("default"));
+
+  if (legacyDefaultDocument?.fileId) {
+    const stillInLibrary = await materials.findOne({ fileId: legacyDefaultDocument.fileId });
+    if (!stillInLibrary) {
+      try {
+        await bucket.delete(new ObjectId(legacyDefaultDocument.fileId));
+      } catch {
+        // Legacy file cleanup is best effort.
+      }
+    }
+  }
 
   await annotations.createIndex({ lessonId: 1, documentId: 1, page: 1, createdAt: 1 });
   await performanceLogs.createIndex(
