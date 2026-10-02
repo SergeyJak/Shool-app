@@ -244,6 +244,19 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("teacher dashboard hero matches the mock without scalloped pseudo decorations", () => {
+  const html = read("public/dashboard.html");
+  const css = read("public/dashboard.css");
+
+  assert.match(html, /class="teacher-hero"/);
+  assert.match(html, /class="teacher-hero-art"/);
+  assert.match(css, /\.teacher-hero\{[^}]*overflow:hidden[^}]*border-radius:34px/);
+  assert.match(css, /\.teacher-hero-art\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css, /\.teacher-hero::after/);
+  assert.doesNotMatch(css, /\.teacher-hero::before/);
+  assert.doesNotMatch(css, /radial-gradient\([^\n]*#fff 98%/);
+});
+
 test("teacher sessions archive separately and legacy default lesson is removed", () => {
   const server = read("server.js");
   const dashboard = read("public/dashboard.html");
