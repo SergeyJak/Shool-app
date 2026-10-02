@@ -244,6 +244,27 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("tablet PDF view prioritizes document space in portrait and landscape", () => {
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+  const css = read("public/pdf-view.css");
+  const app = read("public/app.js");
+
+  assert.match(teacher, /class="pdf-view-page"/);
+  assert.match(student, /class="pdf-view-page"/);
+  assert.match(teacher, /\/pdf-view\.css\?v=/);
+  assert.match(student, /\/pdf-view\.css\?v=/);
+  assert.match(css, /orientation:landscape/);
+  assert.match(css, /orientation:portrait/);
+  assert.match(css, /#stage\{[^}]*max-height:calc\(100vh - 122px\)/);
+  assert.match(css, /\.toolbar\{[^}]*flex-wrap:nowrap/);
+  assert.match(css, /#firstBtn,\s*\.pdf-view-page #lastBtn\{\s*display:none/);
+  assert.doesNotMatch(app, /Math\.min\(window\.innerWidth - 20, 1100\)/);
+  assert.match(app, /stageWidth/);
+  assert.match(app, /isTabletLandscape/);
+  assert.match(app, /Math\.min\(widthScale, heightScale\)/);
+});
+
 test("teacher dashboard hero matches the mock without scalloped pseudo decorations", () => {
   const html = read("public/dashboard.html");
   const css = read("public/dashboard.css");
