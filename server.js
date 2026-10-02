@@ -61,8 +61,77 @@ let users;
 let lessons;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
+const loginAttempts = new Map();
+const LOGIN_WINDOW_MS = 10 * 60 * 1000;
+const LOGIN_MAX_FAILURES = 10;
 
 app.use(express.json({ limit: "1mb" }));
+
+function clientIp(req) {
+  return String(req.get("x-forwarded-for") || req.ip || "")
+    .split(",")[0]
+    .trim();
+}
+
+function loginAttemptKey(req, username) {
+  return `${clientIp(req)}:${username || "<empty>"}`;
+}
+
+function loginAttemptState(req, username) {
+  const key = loginAttemptKey(req, username);
+  const now = Date.now();
+  const current = loginAttempts.get(key);
+  if (!current || current.resetAt <= now) {
+    const fresh = { failures: 0, resetAt: now + LOGIN_WINDOW_MS };
+    loginAttempts.set(key, fresh);
+    return { key, state: fresh };
+  }
+  return { key, state: current };
+}
+
+function clearLoginFailures(req, username) {
+  loginAttempts.delete(loginAttemptKey(req, username));
+}
+
+function requireLoginRateLimit(req, res, next) {
+  const username = normalizeUsername(req.body?.username);
+  const { state } = loginAttemptState(req, username);
+  if (state.failures >= LOGIN_MAX_FAILURES) {
+    const retryAfter = Math.max(1, Math.ceil((state.resetAt - Date.now()) / 1000));
+    res.setHeader("Retry-After", String(retryAfter));
+    return res.status(429).json({ error: "TOO_MANY_LOGIN_ATTEMPTS", retryAfter });
+  }
+  req.loginRateUsername = username;
+  next();
+}
+
+function recordLoginFailure(req) {
+  const username = req.loginRateUsername || normalizeUsername(req.body?.username);
+  const { state } = loginAttemptState(req, username);
+  state.failures += 1;
+}
+
+function requestOrigin(req) {
+  const proto = String(req.get("x-forwarded-proto") || req.protocol || "http")
+    .split(",")[0]
+    .trim();
+  const host = String(req.get("x-forwarded-host") || req.get("host") || "")
+    .split(",")[0]
+    .trim();
+  return host ? `${proto}://${host}` : "";
+}
+
+function requireSameOriginForUnsafe(req, res, next) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+
+  const origin = String(req.get("origin") || "");
+  if (origin && origin === requestOrigin(req)) return next();
+
+  const fetchSite = String(req.get("sec-fetch-site") || "");
+  if (!origin && fetchSite === "same-origin") return next();
+
+  return res.status(403).json({ error: "CSRF_FORBIDDEN" });
+}
 
 function requestIsSecure(req) {
   return req.secure || String(req.get("x-forwarded-proto") || "").split(",")[0].trim() === "https";
@@ -133,6 +202,15 @@ function publicUser(user) {
   };
 }
 
+function disconnectUserSockets(userId) {
+  for (const socket of io.sockets.sockets.values()) {
+    if (socket.data.user?._id === userId) {
+      socket.emit("account:disabled");
+      socket.disconnect(true);
+    }
+  }
+}
+
 async function validateLessonMembers(teacherIds, studentIds) {
   const teachers = [...new Set((teacherIds || []).map(normalizeUsername).filter(Boolean))];
   const students = [...new Set((studentIds || []).map(normalizeUsername).filter(Boolean))];
@@ -191,15 +269,20 @@ function followForLesson(lessonId) {
 }
 
 app.use(attachUser);
+app.use("/api", requireSameOriginForUnsafe);
 
-app.post("/api/auth/login", async (req, res, next) => {
+app.post("/api/auth/login", requireLoginRateLimit, async (req, res, next) => {
   try {
     const username = normalizeUsername(req.body?.username);
     const password = String(req.body?.password || "");
     const user = await users.findOne({ _id: username, active: true });
     const valid = user && await verifyPassword(password, user.passwordSalt, user.passwordHash);
-    if (!valid) return res.status(401).json({ error: "INVALID_CREDENTIALS" });
+    if (!valid) {
+      recordLoginFailure(req);
+      return res.status(401).json({ error: "INVALID_CREDENTIALS" });
+    }
 
+    clearLoginFailures(req, username);
     const token = createSessionToken(user, AUTH_SECRET);
     res.setHeader("Set-Cookie", sessionCookie(token, { secure: requestIsSecure(req) }));
     res.setHeader("Cache-Control", "no-store");
@@ -321,6 +404,7 @@ app.patch("/api/admin/users/:id", requireApiRole("admin"), async (req, res, next
     }
 
     await users.updateOne({ _id: id }, { $set: changes });
+    if (changes.active === false) disconnectUserSockets(id);
     const updated = await users.findOne({ _id: id });
     res.json({ user: publicUser(updated) });
   } catch (error) {

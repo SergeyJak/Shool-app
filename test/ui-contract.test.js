@@ -430,3 +430,27 @@ test("MongoDB database name is configurable per environment", () => {
   assert.match(server, /const MONGODB_DB_NAME = String\(process\.env\.MONGODB_DB_NAME \|\| "school_app"\)\.trim\(\)/);
   assert.match(server, /db = client\.db\(MONGODB_DB_NAME\)/);
 });
+
+
+test("security hardening limits login attempts and rejects cross-origin writes", () => {
+  const server = read("server.js");
+
+  assert.match(server, /LOGIN_MAX_FAILURES = 10/);
+  assert.match(server, /LOGIN_WINDOW_MS = 10 \* 60 \* 1000/);
+  assert.match(server, /requireLoginRateLimit/);
+  assert.match(server, /TOO_MANY_LOGIN_ATTEMPTS/);
+  assert.match(server, /Retry-After/);
+  assert.match(server, /requireSameOriginForUnsafe/);
+  assert.match(server, /CSRF_FORBIDDEN/);
+  assert.match(server, /app\.use\("\/api", requireSameOriginForUnsafe\)/);
+  assert.match(server, /app\.post\("\/api\/auth\/login", requireLoginRateLimit/);
+});
+
+test("deactivating a user disconnects their active sockets", () => {
+  const server = read("server.js");
+
+  assert.match(server, /function disconnectUserSockets\(userId\)/);
+  assert.match(server, /socket\.emit\("account:disabled"\)/);
+  assert.match(server, /socket\.disconnect\(true\)/);
+  assert.match(server, /if \(changes\.active === false\) disconnectUserSockets\(id\)/);
+});
