@@ -29,6 +29,10 @@ const {
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_DB_NAME = String(process.env.MONGODB_DB_NAME || "school_app").trim();
+const DATA_NAMESPACE = String(process.env.DATA_NAMESPACE || "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
+const collectionName = (base) => DATA_NAMESPACE ? `${DATA_NAMESPACE}_${base}` : base;
+const GRIDFS_BUCKET_NAME = collectionName("pdfs");
 if (!MONGODB_URI) {
   console.error("MONGODB_URI is required");
   process.exit(1);
@@ -504,7 +508,7 @@ app.get("/api/document/file", requireApiRole("teacher", "student"), requireLesso
     }
 
     const fileId = new ObjectId(current.fileId);
-    const file = await db.collection("pdfs.files").findOne({ _id: fileId });
+    const file = await db.collection(`${GRIDFS_BUCKET_NAME}.files`).findOne({ _id: fileId });
     if (!file) return res.status(404).end();
 
     const size = Number(file.length);
@@ -1119,13 +1123,23 @@ async function start() {
   const client = new MongoClient(MONGODB_URI);
   await client.connect();
 
-  db = client.db("school_app");
-  bucket = new GridFSBucket(db, { bucketName: "pdfs" });
-  annotations = db.collection("annotations");
-  settings = db.collection("settings");
-  performanceLogs = db.collection("performance_logs");
-  users = db.collection("users");
-  lessons = db.collection("lessons");
+  db = client.db(MONGODB_DB_NAME);
+  bucket = new GridFSBucket(db, { bucketName: GRIDFS_BUCKET_NAME });
+  annotations = db.collection(collectionName("annotations"));
+  settings = db.collection(collectionName("settings"));
+  performanceLogs = db.collection(collectionName("performance_logs"));
+  users = db.collection(collectionName("users"));
+  lessons = db.collection(collectionName("lessons"));
+
+  if (DATA_NAMESPACE && await users.countDocuments({}) === 0) {
+    const sourceUsers = await db.collection("users").find({}).toArray();
+    const sourceLessons = await db.collection("lessons").find({}).toArray();
+    if (sourceUsers.length) await users.insertMany(sourceUsers);
+    if (sourceLessons.length) await lessons.insertMany(sourceLessons);
+    console.log(
+      `Bootstrapped namespace "${DATA_NAMESPACE}" with ${sourceUsers.length} users and ${sourceLessons.length} lessons`
+    );
+  }
 
   await users.createIndex({ role: 1, active: 1 });
   await lessons.createIndex({ teacherIds: 1 });
