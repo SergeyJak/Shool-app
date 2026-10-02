@@ -334,6 +334,8 @@ test("admin can manage users and lessons from the cabinet", () => {
   assert.match(dashboard, /id="adminPanel"/);
   assert.match(dashboard, /id="createUserForm"/);
   assert.match(dashboard, /id="createLessonForm"/);
+  assert.doesNotMatch(dashboard, /id="newLessonId"/);
+  assert.doesNotMatch(dashboard, />ID урока</);
   assert.match(dashboard, /id="adminUserList"/);
   assert.match(dashboard, /id="adminLessonList"/);
 
@@ -350,6 +352,7 @@ test("admin can manage users and lessons from the cabinet", () => {
   assert.match(server, /app\.patch\("\/api\/admin\/lessons\/:id"/);
   assert.match(server, /await hashPassword\(password\)/);
   assert.match(server, /validateLessonMembers/);
+  assert.match(server, /lesson_\\$\\{crypto\\.randomUUID\\(\\)\\}/);
 });
 
 test("login sends every role through the cabinet instead of hardcoding default lesson", () => {
