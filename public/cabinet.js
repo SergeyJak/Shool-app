@@ -9,6 +9,8 @@ const createTeacherSessionForm = document.getElementById("createTeacherSessionFo
 const teacherSessionStatus = document.getElementById("teacherSessionStatus");
 const lessonSectionTitle = document.getElementById("lessonSectionTitle");
 const cabinetLead = document.getElementById("cabinetLead");
+const teacherSessionTabs = document.getElementById("teacherSessionTabs");
+const teacherTabButtons = [...document.querySelectorAll("[data-teacher-view]")];
 const materialPanel = document.getElementById("materialPanel");
 const materialUploadForm = document.getElementById("materialUploadForm");
 const materialStatus = document.getElementById("materialStatus");
@@ -30,6 +32,7 @@ let currentUser = null;
 let managedUsers = [];
 let managedLessons = [];
 let teacherMaterials = [];
+let teacherView = "active";
 
 document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
 dialog.addEventListener("click", (event) => {
@@ -240,13 +243,15 @@ function renderLessons(user, lessons) {
 
   if (!lessons.length) {
     note.textContent = user.role === "teacher"
-      ? "Пока нет занятий. Создайте первый урок или домашнюю работу."
+      ? (teacherView === "archive" ? "Архив пока пуст." : "Пока нет занятий. Создайте первый урок или домашнюю работу.")
       : "Для этого аккаунта пока нет активных уроков.";
     return;
   }
 
   if (lessonSectionTitle) {
-    lessonSectionTitle.textContent = user.role === "teacher" ? "Мои занятия" : "Мои уроки";
+    lessonSectionTitle.textContent = user.role === "teacher"
+      ? (teacherView === "archive" ? "Архив" : "Мои занятия")
+      : "Мои уроки";
   }
 
   for (const lesson of lessons) {
@@ -259,7 +264,15 @@ function renderLessons(user, lessons) {
     title.textContent = lesson.title || lesson.id;
     const meta = document.createElement("span");
     if (user.role === "teacher") {
-      meta.textContent = lesson.type === "homework" ? "Домашняя работа" : "Урок";
+      const parts = [lesson.type === "homework" ? "Домашняя работа" : "Урок"];
+      if (lesson.lastParticipantName) {
+        const joined = lesson.lastParticipantAt ? new Date(lesson.lastParticipantAt).toLocaleString() : "";
+        parts.push(`Ученик: ${lesson.lastParticipantName}${joined ? ` · ${joined}` : ""}`);
+      }
+      if (teacherView === "archive" && lesson.archivedAt) {
+        parts.push(`Завершено: ${new Date(lesson.archivedAt).toLocaleString()}`);
+      }
+      meta.textContent = parts.join(" · ");
     } else {
       meta.textContent = `ID: ${lesson.id}`;
     }
@@ -286,29 +299,62 @@ function renderLessons(user, lessons) {
     } else if (user.role === "teacher") {
       const openLink = document.createElement("a");
       openLink.href = lessonUrl("teacher", lesson.id);
-      openLink.textContent = "Продолжить";
+      openLink.textContent = teacherView === "archive" ? "Открыть" : "Продолжить";
 
-      if (lesson.inviteUrl) {
-        const share = document.createElement("button");
-        share.type = "button";
-        share.className = "secondary-action";
-        share.textContent = "Скопировать ссылку";
-        share.addEventListener("click", async () => {
+      if (teacherView === "archive") {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "danger-action";
+        remove.textContent = "Удалить навсегда";
+        remove.addEventListener("click", async () => {
+          if (!confirm(`Удалить «${lesson.title}» навсегда? Это удалит рисунки и данные сессии.`)) return;
           try {
-            await copyInvite(lesson.inviteUrl);
-            share.textContent = "Ссылка скопирована ✓";
-            setTimeout(() => { share.textContent = "Скопировать ссылку"; }, 2200);
-          } catch {
-            setTeacherStatus("Не удалось скопировать ссылку", "error");
+            await apiJson(`/api/teacher/lessons/${encodeURIComponent(lesson.id)}`, { method: "DELETE" });
+            setTeacherStatus("Сессия удалена", "success");
+            await refreshVisibleLessons();
+          } catch (error) {
+            setTeacherStatus(`Ошибка: ${error.message}`, "error");
           }
         });
-        actions.append(openLink, share);
+        actions.append(openLink, remove);
       } else {
-        actions.append(openLink);
-      }
+        if (lesson.inviteUrl) {
+          const share = document.createElement("button");
+          share.type = "button";
+          share.className = "secondary-action";
+          share.textContent = "Скопировать ссылку";
+          share.addEventListener("click", async () => {
+            try {
+              await copyInvite(lesson.inviteUrl);
+              share.textContent = "Ссылка скопирована ✓";
+              setTimeout(() => { share.textContent = "Скопировать ссылку"; }, 2200);
+            } catch {
+              setTeacherStatus("Не удалось скопировать ссылку", "error");
+            }
+          });
+          actions.append(openLink, share);
+        } else {
+          actions.append(openLink);
+        }
 
-      const materialControls = materialPicker(lesson);
-      item.append(materialControls);
+        const finish = document.createElement("button");
+        finish.type = "button";
+        finish.className = "secondary-action";
+        finish.textContent = "Завершить";
+        finish.addEventListener("click", async () => {
+          try {
+            await apiJson(`/api/teacher/lessons/${encodeURIComponent(lesson.id)}/archive`, { method: "POST" });
+            setTeacherStatus("Сессия перенесена в архив", "success");
+            await refreshVisibleLessons();
+          } catch (error) {
+            setTeacherStatus(`Ошибка: ${error.message}`, "error");
+          }
+        });
+        actions.append(finish);
+
+        const materialControls = materialPicker(lesson);
+        item.append(materialControls);
+      }
 
       if (lesson.type === "homework") {
         const submissions = document.createElement("div");
@@ -531,7 +577,8 @@ async function loadAdminData() {
 }
 
 async function refreshVisibleLessons() {
-  const payload = await apiJson("/api/lessons");
+  const suffix = currentUser?.role === "teacher" && teacherView === "archive" ? "?archive=1" : "";
+  const payload = await apiJson(`/api/lessons${suffix}`);
   renderLessons(currentUser, payload.lessons || []);
 }
 
@@ -628,6 +675,7 @@ async function loadAccount() {
     perfButton.hidden = true;
     teacherPanel.hidden = false;
     materialPanel.hidden = false;
+    teacherSessionTabs.hidden = false;
     cabinetLead.textContent = "Создавайте уроки и домашние работы, отправляйте ребёнку ссылку и возвращайтесь к любой сессии позже.";
     note.textContent = lessons.length ? "Выберите занятие или создайте новое." : "Создайте первое занятие.";
     await loadMaterials();
@@ -643,6 +691,16 @@ async function loadAccount() {
   }
 
   if (user.role !== "teacher") renderLessons(user, lessons);
+}
+
+for (const button of teacherTabButtons) {
+  button.addEventListener("click", async () => {
+    teacherView = button.dataset.teacherView === "archive" ? "archive" : "active";
+    for (const tab of teacherTabButtons) {
+      tab.classList.toggle("active", tab === button);
+    }
+    await refreshVisibleLessons();
+  });
 }
 
 materialUploadForm?.addEventListener("change", async (event) => {
