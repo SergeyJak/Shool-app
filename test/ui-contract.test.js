@@ -244,6 +244,39 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("teacher invite sessions let children join without accounts", () => {
+  const server = read("server.js");
+  const auth = read("lib/auth.js");
+  const cabinet = read("public/cabinet.js");
+  const dashboard = read("public/dashboard.html");
+  const join = read("public/join.html");
+  const joinJs = read("public/join.js");
+  const student = read("public/student.html");
+  const home = read("public/index.html");
+
+  assert.match(server, /app\.post\("\/api\/auth\/register"/);
+  assert.match(server, /app\.post\("\/api\/teacher\/lessons"/);
+  assert.match(server, /app\.get\("\/api\/join\/:token"/);
+  assert.match(server, /app\.post\("\/api\/join\/:token"/);
+  assert.match(server, /inviteToken: newInviteToken\(\)/);
+  assert.match(server, /ownerId: req\.user\._id/);
+  assert.match(server, /user\.guest/);
+  assert.match(server, /user\.lessonId === lessonId/);
+
+  assert.match(auth, /GUEST_COOKIE/);
+  assert.match(auth, /createGuestToken/);
+  assert.match(auth, /parseGuestToken/);
+  assert.match(auth, /GUEST_TTL_SECONDS/);
+
+  assert.match(dashboard, /id="createTeacherSessionForm"/);
+  assert.match(cabinet, /\/api\/teacher\/lessons/);
+  assert.match(cabinet, /Скопировать ссылку/);
+  assert.match(join, /Как тебя зовут/);
+  assert.match(joinJs, /\/api\/join\//);
+  assert.doesNotMatch(student, /href="\/cabinet"/);
+  assert.match(home, /href="\/register">Создать кабинет учителя/);
+});
+
 test("root is login and cabinet preserves account-aware lesson navigation", () => {
   const login = read("public/index.html");
   const cabinet = read("public/dashboard.html");
