@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 650" role="img" aria-labelledby="t d">
+<title id="t">Дети учатся вместе с учителем</title><desc id="d">Яркая иллюстрация онлайн-урока</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dff6ff"/><stop offset=".55" stop-color="#fff2dc"/><stop offset="1" stop-color="#efe8ff"/></linearGradient>
+  <linearGradient id="desk" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2bd77"/><stop offset="1" stop-color="#d99048"/></linearGradient>
+  <filter id="s"><feDropShadow dx="0" dy="12" stdDeviation="14" flood-opacity=".16"/></filter>
+</defs>
+<rect width="900" height="650" rx="54" fill="url(#bg)"/>
+<circle cx="730" cy="115" r="54" fill="#fff6a8"/><path d="M730 36v-26M730 220v-26M651 115h-26M835 115h-26M675 60l-18-18M803 188l-18-18M785 60l18-18M657 188l18-18" stroke="#f2b600" stroke-width="12" stroke-linecap="round"/>
+<rect x="590" y="80" width="190" height="235" rx="20" fill="#31525b" stroke="#9f6c45" stroke-width="14" filter="url(#s)"/>
+<path d="M622 133h126M622 173h112M622 213h98" stroke="#d9f7ed" stroke-width="12" stroke-linecap="round"/>
+<path d="M655 262c20-26 40-26 60 0" fill="none" stroke="#ffb6c7" stroke-width="11" stroke-linecap="round"/>
+<g filter="url(#s)">
+  <ellipse cx="385" cy="300" rx="94" ry="120" fill="#8b5d42"/>
+  <circle cx="385" cy="235" r="72" fill="#f6c49c"/>
+  <path d="M318 232c10-70 145-102 160-4-45-38-111-32-160 4" fill="#7a4a33"/>
+  <path d="M323 315c25-35 101-42 132 5l35 120H286z" fill="#a58cff"/>
+  <circle cx="361" cy="237" r="7" fill="#2b3340"/><circle cx="411" cy="237" r="7" fill="#2b3340"/>
+  <path d="M366 267c14 12 28 12 42 0" fill="none" stroke="#b95664" stroke-width="7" stroke-linecap="round"/>
+</g>
+<g filter="url(#s)">
+  <circle cx="225" cy="405" r="64" fill="#f4bd93"/><path d="M168 390c14-58 120-79 131-7-37-27-80-28-131 7" fill="#6e412d"/>
+  <path d="M160 460c42-44 116-42 145 7l30 112H130z" fill="#347de8"/>
+  <circle cx="205" cy="409" r="6" fill="#2b3340"/><circle cx="244" cy="409" r="6" fill="#2b3340"/><path d="M208 436c10 9 21 9 31 0" fill="none" stroke="#b95664" stroke-width="6" stroke-linecap="round"/>
+</g>
+<g filter="url(#s)">
+  <circle cx="465" cy="420" r="62" fill="#f5c39f"/><path d="M410 399c7-64 105-80 117-12-43-18-78-13-117 12" fill="#6c422e"/>
+  <path d="M400 474c33-40 104-37 128 10l24 95H378z" fill="#ff6fa1"/>
+  <circle cx="447" cy="422" r="6" fill="#2b3340"/><circle cx="484" cy="422" r="6" fill="#2b3340"/><path d="M450 447c10 8 20 8 30 0" fill="none" stroke="#b95664" stroke-width="6" stroke-linecap="round"/>
+</g>
+<g filter="url(#s)">
+  <circle cx="635" cy="410" r="62" fill="#f1b889"/><path d="M580 392c15-60 106-74 117-5-36-22-75-20-117 5" fill="#db6b32"/>
+  <path d="M570 470c35-42 108-36 131 12l20 97H553z" fill="#43b76f"/>
+  <circle cx="615" cy="412" r="6" fill="#2b3340"/><circle cx="653" cy="412" r="6" fill="#2b3340"/><path d="M618 439c10 8 20 8 30 0" fill="none" stroke="#b95664" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="613" cy="410" r="20" fill="none" stroke="#26364a" stroke-width="5"/><circle cx="655" cy="410" r="20" fill="none" stroke="#26364a" stroke-width="5"/><path d="M633 410h3" stroke="#26364a" stroke-width="5"/>
+</g>
+<path d="M95 550h710l-55 70H150z" fill="url(#desk)" filter="url(#s)"/>
+<rect x="330" y="455" width="250" height="135" rx="17" fill="#dfe7f2" stroke="#9dacbf" stroke-width="7" filter="url(#s)"/>
+<rect x="350" y="473" width="210" height="90" rx="9" fill="#fff"/>
+<circle cx="455" cy="518" r="27" fill="#7968f4"/><path d="M445 518l9 10 18-23" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(80 95)"><rect width="170" height="66" rx="24" fill="#fff" opacity=".95"/><path d="M28 34l17-13 17 13-17 13z" fill="#745ff5"/><text x="76" y="28" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#27345c">Учиться</text><text x="76" y="50" font-family="Arial,sans-serif" font-weight="700" font-size="18" fill="#27345c">интересно!</text></g>
+<g fill="#fff" opacity=".9"><circle cx="86" cy="220" r="13"/><circle cx="112" cy="220" r="20"/><circle cx="139" cy="220" r="13"/></g>
+</svg>
