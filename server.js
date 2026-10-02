@@ -348,10 +348,9 @@ app.get("/api/admin/lessons", requireApiRole("admin"), async (_req, res, next) =
 
 app.post("/api/admin/lessons", requireApiRole("admin"), async (req, res, next) => {
   try {
-    const id = normalizeLessonId(req.body?.id);
+    const id = `lesson_${crypto.randomUUID()}`;
     const title = String(req.body?.title || "").trim();
-    if (!id || !title) return res.status(400).json({ error: "INVALID_LESSON" });
-    if (await lessons.findOne({ _id: id })) return res.status(409).json({ error: "LESSON_EXISTS" });
+    if (!title) return res.status(400).json({ error: "INVALID_LESSON" });
 
     const members = await validateLessonMembers(req.body?.teacherIds, req.body?.studentIds);
     if (!members) return res.status(400).json({ error: "INVALID_MEMBERS" });
