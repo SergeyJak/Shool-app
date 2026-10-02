@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 340">
+<defs><linearGradient id="g" x1="0" x2="1" y2="1"><stop stop-color="#e9f9df"/><stop offset="1" stop-color="#dff6ff"/></linearGradient></defs>
+<rect width="560" height="340" rx="36" fill="url(#g)"/>
+<rect x="286" y="68" width="204" height="185" rx="24" fill="#fff"/>
+<path d="M321 217v-48h28v48zM366 217v-86h28v86zM411 217v-122h28v122z" fill="#64b981"/><path d="M317 104h68" stroke="#dce4ef" stroke-width="10" stroke-linecap="round"/>
+<circle cx="449" cy="104" r="29" fill="#ffd64d"/><path d="M449 82l7 14 16 2-12 11 4 16-15-8-15 8 4-16-12-11 16-2z" fill="#fff"/>
+<circle cx="181" cy="134" r="61" fill="#f4bf98"/><path d="M126 119c18-64 111-75 123-6-38-21-78-20-123 6" fill="#70452f"/>
+<path d="M118 197c35-44 108-43 137 6l25 80H89z" fill="#347de8"/>
+<circle cx="160" cy="137" r="6" fill="#2c3440"/><circle cx="199" cy="137" r="6" fill="#2c3440"/><path d="M164 163c10 9 20 9 30 0" fill="none" stroke="#b95664" stroke-width="6" stroke-linecap="round"/>
+<path d="M123 190l-42-49M239 190l41-50" stroke="#347de8" stroke-width="24" stroke-linecap="round"/>
+<g transform="translate(57 48)"><rect width="146" height="50" rx="22" fill="#fff"/><text x="25" y="31" font-family="Arial" font-size="17" font-weight="700" fill="#2b6450">Новый уровень!</text></g>
+</svg>

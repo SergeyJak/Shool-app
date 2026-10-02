@@ -3,23 +3,52 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <title>School App · Вход</title>
-  <link rel="stylesheet" href="/login.css?v=20260930-auth1" />
+  <meta name="description" content="School App — интерактивная платформа для уроков, учебных материалов и совместной работы ученика с учителем." />
+  <title>School App · Интерактивное обучение для детей</title>
+  <link rel="stylesheet" href="/home.css?v=20261002-home2" />
 </head>
-<body>
-  <main class="login-shell">
-    <section class="login-card" aria-labelledby="loginTitle">
-      <div class="login-mark">SA</div>
-      <div class="login-copy">
-        <span class="eyebrow">School App</span>
-        <h1 id="loginTitle">Вход в кабинет</h1>
-        <p>Учителя, ученики и администратор входят под своей учётной записью.</p>
+<body class="home-body">
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="School App">
+      <span class="brand-owl" aria-hidden="true">🦉</span>
+      <span class="brand-name">School <b>App</b></span>
+    </a>
+    <nav class="site-nav" aria-label="Навигация">
+      <a class="active" href="#top">Главная</a>
+      <a href="#features">Как это работает</a>
+      <a href="#features">Уроки</a>
+      <a href="#parents">Для родителей</a>
+      <a href="#footer">Контакты</a>
+    </nav>
+    <a class="header-login" href="#login">👤&nbsp;&nbsp;Войти</a>
+  </header>
+
+  <main id="top">
+    <section class="hero-stage">
+      <img class="hero-art" src="/assets/hero-learning.png" alt="Учитель и дети занимаются вместе за ноутбуком" />
+      <div class="hero-copy">
+        <span class="hero-kicker">УЧИСЬ · ОТКРЫВАЙ · РАЗВИВАЙСЯ</span>
+        <h1>Интерактивное<br>обучение <span>для детей</span></h1>
+        <p>Удобная платформа для уроков, учебных материалов и совместной работы с учителем — в яркой и дружелюбной среде.</p>
+        <div class="hero-actions">
+          <a class="primary-cta" href="#login">Начать <span>→</span></a>
+          <a class="secondary-cta" href="#login">Войти</a>
+        </div>
+        <div class="trust-row">
+          <div><span>✓</span><b>Безопасная<br>среда</b></div>
+          <div><span>❤</span><b>Поддержка<br>педагогов</b></div>
+          <div><span>★</span><b>Развитие<br>и мотивация</b></div>
+        </div>
       </div>
 
-      <form id="loginForm" autocomplete="on">
+      <form id="loginForm" class="login-panel" autocomplete="on">
+        <div class="login-panel-head">
+          <span class="login-icon">🎓</span>
+          <h2 id="login">Вход в кабинет</h2>
+        </div>
         <label>
           <span>Логин</span>
-          <input id="username" name="username" autocomplete="username" required autofocus />
+          <input id="username" name="username" autocomplete="username" required />
         </label>
         <label>
           <span>Пароль</span>
@@ -27,9 +56,88 @@
         </label>
         <div id="loginError" class="login-error" role="alert" hidden></div>
         <button id="loginBtn" type="submit">Войти</button>
+        <small>Для учителя, ученика и администратора</small>
       </form>
     </section>
+
+    <section id="features" class="features-section">
+      <div class="section-heading">
+        <span>ВОЗМОЖНОСТИ ПЛАТФОРМЫ</span>
+        <h2>Всё необходимое для эффективного обучения</h2>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card purple">
+          <img src="/assets/live-learning.png" alt="Живой онлайн-урок с учителем" />
+          <div class="feature-copy">
+            <span class="feature-icon video">▣</span>
+            <div>
+              <h3>Живые уроки</h3>
+              <p>Проводите занятия и взаимодействуйте<br>в реальном времени</p>
+            </div>
+            <span class="feature-arrow">›</span>
+          </div>
+        </article>
+        <article class="feature-card yellow">
+          <img src="/assets/materials-learning.png" alt="Интерактивные учебные материалы" />
+          <div class="feature-copy">
+            <span class="feature-icon docs">▤</span>
+            <div>
+              <h3>Интерактивные материалы</h3>
+              <p>Учебники, PDF и задания<br>в одном месте</p>
+            </div>
+            <span class="feature-arrow">›</span>
+          </div>
+        </article>
+        <article class="feature-card green">
+          <img src="/assets/progress-learning.png" alt="Прогресс и мотивация ребёнка" />
+          <div class="feature-copy">
+            <span class="feature-icon chart">▥</span>
+            <div>
+              <h3>Прогресс и мотивация</h3>
+              <p>Следите за успехами<br>и поддерживайте интерес ребёнка</p>
+            </div>
+            <span class="feature-arrow">›</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="parents" class="parents-section">
+      <div class="parents-card">
+        <div class="parents-copy">
+          <span class="parents-kicker">ДЛЯ РОДИТЕЛЕЙ И УЧИТЕЛЕЙ</span>
+          <h2>Удобно детям,<br><span class="purple-text">полезно родителям,</span><br><span class="orange-text">просто учителям</span></h2>
+          <p>Безопасное обучение, понятная структура и лёгкий доступ ко всем возможностям платформы. Вместе мы создаём спокойную и понятную среду для каждого ребёнка.</p>
+          <a class="primary-cta compact" href="#login">Узнать больше <span>→</span></a>
+        </div>
+        <div class="parents-visual">
+          <img class="parents-art" src="/assets/family-learning.png" alt="Семья вместе занимается с ребёнком" />
+          <div class="benefit-list">
+            <div>✓ Безопасная среда</div>
+            <div>✓ Качественные уроки</div>
+            <div>✓ Поддержка педагогов</div>
+            <div>✓ Удобно на любом устройстве</div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <footer id="footer" class="site-footer">
+    <div class="footer-cloud"></div>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <span class="brand-owl">🦉</span>
+        <div><strong>School <b>App</b></strong><span>Знания сегодня —<br>большие возможности завтра! ❤️</span></div>
+      </div>
+      <div class="footer-column"><strong>Платформа</strong><a href="#top">Главная</a><a href="#features">Как это работает</a><a href="#features">Уроки</a><a href="#parents">Для родителей</a></div>
+      <div class="footer-column"><strong>Помощь</strong><a href="#login">Войти</a><a href="#parents">Безопасность</a><a href="#features">Возможности</a></div>
+      <div class="footer-social"><strong>Мы рядом</strong><div class="social-dots"><span>▶</span><span>✈</span><span>●</span></div><small>Счастливые дети меняют мир ❤️</small></div>
+    </div>
+    <div class="footer-hills"><span class="school">🏫</span><span class="sun">☀️</span></div>
+  </footer>
+
   <script src="/login.js?v=20260930-auth1"></script>
 </body>
 </html>

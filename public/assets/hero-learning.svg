@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" role="img" aria-labelledby="t d">
+<title id="t">Интерактивное обучение для детей</title><desc id="d">Учитель и дети занимаются вместе в ярком учебном классе</desc>
+<defs>
+  <linearGradient id="room" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dff6ff"/><stop offset=".42" stop-color="#eef9ff"/><stop offset=".7" stop-color="#fff0d8"/><stop offset="1" stop-color="#f3e5ff"/></linearGradient>
+  <linearGradient id="desk" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#efba72"/><stop offset="1" stop-color="#d48a44"/></linearGradient>
+  <filter id="shadow"><feDropShadow dx="0" dy="13" stdDeviation="15" flood-opacity=".16"/></filter>
+</defs>
+<rect width="1200" height="650" fill="url(#room)"/>
+<path d="M0 90c120 50 210-40 320 5 90 38 146 8 220-28V0H0z" fill="#d4f2ff" opacity=".65"/>
+<g opacity=".55" fill="#fff"><circle cx="90" cy="90" r="18"/><circle cx="123" cy="90" r="28"/><circle cx="160" cy="90" r="17"/></g>
+<g transform="translate(900 42)"><circle cx="65" cy="65" r="45" fill="#fff0a6"/><path d="M65 1v-22M65 151v-22M1 65h-22M151 65h-22M18 18l-17-17M129 129l-17-17M112 18l17-17M1 129l17-17" stroke="#f0b319" stroke-width="9" stroke-linecap="round"/></g>
+<g transform="translate(945 65)" filter="url(#shadow)">
+  <rect width="165" height="210" rx="18" fill="#35555e" stroke="#9a6942" stroke-width="12"/>
+  <text x="26" y="55" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#d8f5eb">Большие</text>
+  <text x="30" y="88" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#d8f5eb">знания</text>
+  <text x="19" y="121" font-family="Arial,sans-serif" font-size="19" fill="#fbe7dc">начинаются</text>
+  <text x="35" y="151" font-family="Arial,sans-serif" font-size="19" fill="#fbe7dc">с маленьких</text>
+  <text x="49" y="181" font-family="Arial,sans-serif" font-size="19" fill="#fbe7dc">шагов ♡</text>
+</g>
+<g transform="translate(1010 310)" filter="url(#shadow)">
+  <rect width="125" height="93" rx="34" fill="#f8fbff" stroke="#d4e0f5" stroke-width="6"/>
+  <rect x="21" y="20" width="82" height="48" rx="22" fill="#1f3157"/>
+  <circle cx="48" cy="44" r="5" fill="#54dcff"/><circle cx="76" cy="44" r="5" fill="#54dcff"/><path d="M50 57c8 7 16 7 24 0" fill="none" stroke="#54dcff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M10 55l-28 15M115 55l28 15" stroke="#d8e5f8" stroke-width="10" stroke-linecap="round"/>
+</g>
+<g transform="translate(1020 278)"><rect x="-15" y="-52" width="132" height="47" rx="21" fill="#fff"/><text x="8" y="-23" font-family="Arial" font-size="16" font-weight="700" fill="#41517e">Учиться интересно!</text></g>
+<g transform="translate(650 86)" filter="url(#shadow)">
+  <ellipse cx="105" cy="178" rx="92" ry="116" fill="#7b4d35"/>
+  <circle cx="105" cy="112" r="70" fill="#f4c297"/>
+  <path d="M43 105c18-78 139-89 151-3-49-30-96-28-151 3" fill="#784a33"/>
+  <path d="M30 194c38-55 135-57 170 2l31 139H-3z" fill="#a88cf8"/>
+  <circle cx="81" cy="114" r="7" fill="#283341"/><circle cx="128" cy="114" r="7" fill="#283341"/>
+  <path d="M85 145c14 12 28 12 42 0" fill="none" stroke="#bb5965" stroke-width="7" stroke-linecap="round"/>
+  <path d="M60 200c-18 54-30 83-54 112M153 202c26 43 49 66 79 90" stroke="#f4c297" stroke-width="23" stroke-linecap="round"/>
+</g>
+<g transform="translate(530 310)" filter="url(#shadow)">
+  <circle cx="87" cy="74" r="61" fill="#f2bc92"/>
+  <path d="M32 62c13-59 111-75 121-10-39-25-80-22-121 10" fill="#70432d"/>
+  <path d="M22 128c36-45 106-43 132 8l26 110H0z" fill="#377de8"/>
+  <circle cx="68" cy="77" r="6" fill="#273140"/><circle cx="106" cy="77" r="6" fill="#273140"/><path d="M71 101c10 8 20 8 30 0" fill="none" stroke="#b95664" stroke-width="6" stroke-linecap="round"/>
+</g>
+<g transform="translate(740 335)" filter="url(#shadow)">
+  <circle cx="70" cy="62" r="58" fill="#f5c39e"/><path d="M18 45c11-59 102-72 111-10-36-20-72-17-111 10" fill="#6d422e"/>
+  <path d="M12 118c33-42 98-39 121 8l23 105H-5z" fill="#ff72a1"/>
+  <circle cx="52" cy="65" r="6" fill="#273140"/><circle cx="88" cy="65" r="6" fill="#273140"/><path d="M55 90c9 7 18 7 27 0" fill="none" stroke="#b95664" stroke-width="6" stroke-linecap="round"/>
+</g>
+<g transform="translate(900 330)" filter="url(#shadow)">
+  <circle cx="70" cy="64" r="58" fill="#efb788"/><path d="M16 49c14-58 102-68 111-8-35-22-69-19-111 8" fill="#db6c31"/>
+  <path d="M7 121c32-43 102-38 124 10l20 102H-6z" fill="#46b871"/>
+  <circle cx="52" cy="68" r="6" fill="#273140"/><circle cx="89" cy="68" r="6" fill="#273140"/><path d="M55 93c9 7 18 7 27 0" fill="none" stroke="#b95664" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="50" cy="67" r="18" fill="none" stroke="#28364d" stroke-width="5"/><circle cx="91" cy="67" r="18" fill="none" stroke="#28364d" stroke-width="5"/><path d="M68 67h5" stroke="#28364d" stroke-width="5"/>
+</g>
+<path d="M455 535h720l-50 95H505z" fill="url(#desk)" filter="url(#shadow)"/>
+<g filter="url(#shadow)">
+  <rect x="705" y="450" width="230" height="133" rx="18" fill="#dce4ef" stroke="#98a8bb" stroke-width="7"/>
+  <rect x="724" y="468" width="192" height="88" rx="9" fill="#fff"/>
+  <circle cx="820" cy="511" r="25" fill="#7664f3"/><path d="M811 511l8 9 18-22" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+</g>
+<g transform="translate(485 525)" filter="url(#shadow)"><rect width="150" height="25" rx="7" fill="#ff7e68"/><rect x="10" y="-25" width="130" height="25" rx="7" fill="#4fb47a"/><rect x="25" y="-50" width="110" height="25" rx="7" fill="#ffc74e"/></g>
+<g transform="translate(1080 500)"><rect width="26" height="80" rx="9" fill="#fff"/><path d="M13 8v58" stroke="#ef5a72" stroke-width="5"/><path d="M3 28h20M3 48h20" stroke="#4ea5e5" stroke-width="4"/></g>
+<g transform="translate(860 120)"><rect width="95" height="52" rx="18" fill="#fff7f4"/><text x="17" y="22" font-family="Arial" font-size="14" font-weight="700" fill="#e06d94">Ты можешь</text><text x="25" y="41" font-family="Arial" font-size="14" font-weight="700" fill="#e06d94">больше! ♥</text></g>
+<g opacity=".45"><path d="M1150 185c-30-21-46-21-68 1 15 25 32 36 51 32 18-4 24-15 17-33z" fill="#8ed48f"/><path d="M1110 160c-5-34-17-47-42-47-10 28-7 48 10 59 16 11 27 7 32-12z" fill="#7fc990"/></g>
+</svg>

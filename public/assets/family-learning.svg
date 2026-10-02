@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 480">
+<defs><linearGradient id="g" x1="0" x2="1" y2="1"><stop stop-color="#fff2f8"/><stop offset=".5" stop-color="#f4f0ff"/><stop offset="1" stop-color="#e5f8e8"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-opacity=".14"/></filter></defs>
+<rect width="760" height="480" rx="48" fill="url(#g)"/>
+<g filter="url(#s)">
+<circle cx="255" cy="217" r="78" fill="#efba91"/><path d="M186 204c18-85 134-94 151-10-52-31-99-27-151 10" fill="#604131"/><path d="M165 307c44-61 145-63 184 4l35 128H128z" fill="#4676d9"/><path d="M309 214c0 36-22 68-54 68" fill="none" stroke="#5f4030" stroke-width="14"/>
+<circle cx="512" cy="215" r="74" fill="#f4c19a"/><path d="M445 196c25-78 137-78 145 10-49-32-98-31-145-10" fill="#7a4f38"/><path d="M428 302c42-56 132-55 170 3l34 134H395z" fill="#e9bf9c"/>
+<circle cx="386" cy="276" r="65" fill="#f5c39e"/><path d="M329 258c17-68 112-75 122-8-39-21-78-18-122 8" fill="#7d4a35"/><path d="M326 340c33-44 106-44 135 4l22 95H302z" fill="#ff719f"/>
+</g>
+<rect x="310" y="346" width="165" height="100" rx="17" fill="#dfe7f2" stroke="#9dacbf" stroke-width="7"/><circle cx="392" cy="394" r="22" fill="#755ff3"/><path d="M383 394l8 8 15-20" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+<g font-family="Arial" font-weight="700" font-size="16">
+<g transform="translate(78 72)"><rect width="170" height="55" rx="22" fill="#fff"/><text x="23" y="34" fill="#db5d8a">❤ Заботимся о будущем</text></g>
+<g transform="translate(290 56)"><rect width="160" height="55" rx="22" fill="#fff"/><text x="27" y="34" fill="#4c9d60">Простые инструменты</text></g>
+<g transform="translate(505 79)"><rect width="150" height="55" rx="22" fill="#fff"/><text x="30" y="34" fill="#4c78ca">Довольные дети</text></g>
+</g>
+</svg>
