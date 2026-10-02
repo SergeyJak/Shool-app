@@ -17,14 +17,19 @@ const { createFollowState } = require("./lib/follow-state");
 const { parseSingleByteRange } = require("./lib/http-range");
 const {
   SESSION_COOKIE,
+  GUEST_COOKIE,
   normalizeUsername,
   hashPassword,
   verifyPassword,
   createSessionToken,
   parseSessionToken,
+  createGuestToken,
+  parseGuestToken,
   parseCookies,
   sessionCookie,
+  guestCookie,
   clearSessionCookie,
+  clearGuestCookie,
 } = require("./lib/auth");
 
 const PORT = Number(process.env.PORT || 3000);
@@ -69,10 +74,24 @@ function requestIsSecure(req) {
 }
 
 async function userFromCookieHeader(cookieHeader) {
-  const token = parseCookies(cookieHeader || "")[SESSION_COOKIE];
-  const payload = parseSessionToken(token, AUTH_SECRET);
-  if (!payload || !users) return null;
-  return users.findOne({ _id: payload.uid, active: true });
+  const cookies = parseCookies(cookieHeader || "");
+  const payload = parseSessionToken(cookies[SESSION_COOKIE], AUTH_SECRET);
+  if (payload && users) {
+    const user = await users.findOne({ _id: payload.uid, active: true });
+    if (user) return user;
+  }
+
+  const guest = parseGuestToken(cookies[GUEST_COOKIE], AUTH_SECRET);
+  if (!guest) return null;
+  return {
+    _id: `guest:${guest.guestId}`,
+    username: guest.name || "guest",
+    displayName: guest.name || "Ученик",
+    role: "student",
+    active: true,
+    guest: true,
+    lessonId: guest.lessonId,
+  };
 }
 
 async function attachUser(req, _res, next) {
@@ -118,6 +137,15 @@ function normalizeLessonId(value) {
   return /^[a-zA-Z0-9_-]{1,80}$/.test(lessonId) ? lessonId : null;
 }
 
+function normalizeInviteToken(value) {
+  const token = String(value || "").trim();
+  return /^[a-zA-Z0-9_-]{24,120}$/.test(token) ? token : null;
+}
+
+function newInviteToken() {
+  return crypto.randomBytes(24).toString("base64url");
+}
+
 function normalizeManagedUsername(value) {
   const username = normalizeUsername(value);
   return /^[a-z0-9._-]{3,50}$/.test(username) ? username : null;
@@ -156,8 +184,9 @@ async function lessonForUser(user, lessonId) {
   if (!user || !lessonId) return null;
   const lesson = await lessons.findOne({ _id: lessonId, active: true });
   if (!lesson) return null;
+  if (user.guest) return user.lessonId === lessonId ? lesson : null;
   if (user.role === "admin") return lesson;
-  if (user.role === "teacher" && lesson.teacherIds?.includes(user._id)) return lesson;
+  if (user.role === "teacher" && (lesson.ownerId === user._id || lesson.teacherIds?.includes(user._id))) return lesson;
   if (user.role === "student" && lesson.studentIds?.includes(user._id)) return lesson;
   return null;
 }
@@ -214,7 +243,10 @@ app.post("/api/auth/login", async (req, res, next) => {
 });
 
 app.post("/api/auth/logout", (req, res) => {
-  res.setHeader("Set-Cookie", clearSessionCookie({ secure: requestIsSecure(req) }));
+  res.setHeader("Set-Cookie", [
+    clearSessionCookie({ secure: requestIsSecure(req) }),
+    clearGuestCookie({ secure: requestIsSecure(req) }),
+  ]);
   res.setHeader("Cache-Control", "no-store");
   res.json({ ok: true });
 });
@@ -234,19 +266,118 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
 app.get("/api/lessons", requireAuth, async (req, res, next) => {
   try {
     const query = { active: true };
-    if (req.user.role === "teacher") query.teacherIds = req.user._id;
-    if (req.user.role === "student") query.studentIds = req.user._id;
+    if (req.user.role === "teacher") {
+      query.$or = [{ ownerId: req.user._id }, { teacherIds: req.user._id }];
+    }
+    if (req.user.role === "student") {
+      if (req.user.guest) query._id = req.user.lessonId;
+      else query.studentIds = req.user._id;
+    }
 
-    const rows = await lessons.find(query).sort({ title: 1 }).toArray();
+    const rows = await lessons.find(query).sort({ updatedAt: -1, createdAt: -1 }).toArray();
     res.setHeader("Cache-Control", "no-store");
     res.json({
       lessons: rows.map((lesson) => ({
         id: lesson._id,
         title: lesson.title,
-        teacherIds: lesson.teacherIds || [],
-        studentIds: lesson.studentIds || [],
+        type: lesson.type || "lesson",
+        status: lesson.status || (lesson.active === false ? "completed" : "active"),
+        ownerId: lesson.ownerId || lesson.teacherIds?.[0] || null,
+        inviteUrl: lesson.inviteToken ? `/join/${lesson.inviteToken}` : null,
+        createdAt: lesson.createdAt,
+        updatedAt: lesson.updatedAt,
       })),
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/teacher/lessons", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    if (req.user.guest) return res.status(403).json({ error: "FORBIDDEN" });
+    const title = String(req.body?.title || "").trim();
+    const type = req.body?.type === "homework" ? "homework" : "lesson";
+    if (!title || title.length > 120) return res.status(400).json({ error: "INVALID_LESSON" });
+
+    const now = new Date();
+    const row = {
+      _id: `lesson_${crypto.randomUUID()}`,
+      title,
+      type,
+      status: "active",
+      ownerId: req.user._id,
+      teacherIds: [req.user._id],
+      studentIds: [],
+      inviteToken: newInviteToken(),
+      active: true,
+      bookIds: [],
+      createdAt: now,
+      updatedAt: now,
+      schemaVersion: 2,
+    };
+    await lessons.insertOne(row);
+    res.status(201).json({
+      lesson: {
+        id: row._id,
+        title: row.title,
+        type: row.type,
+        status: row.status,
+        inviteUrl: `/join/${row.inviteToken}`,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/teacher/lessons/:id/invite/rotate", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const id = normalizeLessonId(req.params.id);
+    if (!id) return res.status(400).json({ error: "INVALID_LESSON" });
+    const lesson = await lessons.findOne({ _id: id, active: true });
+    if (!lesson || (req.user.role !== "admin" && lesson.ownerId !== req.user._id && !lesson.teacherIds?.includes(req.user._id))) {
+      return res.status(404).json({ error: "LESSON_NOT_FOUND" });
+    }
+    const inviteToken = newInviteToken();
+    await lessons.updateOne({ _id: id }, { $set: { inviteToken, updatedAt: new Date() } });
+    res.json({ inviteUrl: `/join/${inviteToken}` });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/join/:token", async (req, res, next) => {
+  try {
+    const token = normalizeInviteToken(req.params.token);
+    if (!token) return res.status(404).json({ error: "INVITE_NOT_FOUND" });
+    const lesson = await lessons.findOne({ inviteToken: token, active: true });
+    if (!lesson) return res.status(404).json({ error: "INVITE_NOT_FOUND" });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      lesson: {
+        id: lesson._id,
+        title: lesson.title,
+        type: lesson.type || "lesson",
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/join/:token", async (req, res, next) => {
+  try {
+    const token = normalizeInviteToken(req.params.token);
+    const name = String(req.body?.name || "").trim().slice(0, 80);
+    if (!token || !name) return res.status(400).json({ error: "INVALID_JOIN" });
+    const lesson = await lessons.findOne({ inviteToken: token, active: true });
+    if (!lesson) return res.status(404).json({ error: "INVITE_NOT_FOUND" });
+
+    const guestToken = createGuestToken({ lessonId: lesson._id, name }, AUTH_SECRET);
+    res.setHeader("Set-Cookie", guestCookie(guestToken, { secure: requestIsSecure(req) }));
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ok: true, redirect: `/student?lesson=${encodeURIComponent(lesson._id)}` });
   } catch (error) {
     next(error);
   }
@@ -436,8 +567,19 @@ app.get("/performance.html", requirePageAuth("admin"), (_req, res) =>
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/", (req, res) => {
-  if (req.user) return res.redirect(homeForRole(req.user.role));
+  if (req.user && !req.user.guest) return res.redirect(homeForRole(req.user.role));
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+app.get("/join/:token", async (req, res, next) => {
+  try {
+    const token = normalizeInviteToken(req.params.token);
+    if (!token || !await lessons.findOne({ inviteToken: token, active: true })) {
+      return res.status(404).send("Ссылка на занятие недействительна или занятие завершено.");
+    }
+    res.sendFile(path.join(__dirname, "public", "join.html"));
+  } catch (error) {
+    next(error);
+  }
 });
 app.get("/cabinet", requirePageAuth("teacher", "student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "dashboard.html"))
@@ -1143,6 +1285,8 @@ async function start() {
   await users.createIndex({ role: 1, active: 1 });
   await lessons.createIndex({ teacherIds: 1 });
   await lessons.createIndex({ studentIds: 1 });
+  await lessons.createIndex({ ownerId: 1, updatedAt: -1 });
+  await lessons.createIndex({ inviteToken: 1 }, { unique: true, sparse: true });
 
   async function ensureUser({ username, displayName, role, passwordSalt, passwordHash, lessonIds = [] }) {
     const id = normalizeUsername(username);
