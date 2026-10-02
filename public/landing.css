@@ -874,3 +874,49 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+
+.teacher-tabs {
+  display: flex;
+  gap: 7px;
+  margin-top: 24px;
+  padding: 5px;
+  border: 1px solid #dfe4ea;
+  border-radius: 12px;
+  background: #f7f9fb;
+}
+.teacher-tab {
+  flex: 1;
+  border: 0;
+  border-radius: 9px;
+  padding: 9px 12px;
+  background: transparent;
+  color: #68727d;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.teacher-tab.active {
+  background: #17202a;
+  color: #fff;
+}
+.lesson-actions button.danger-action {
+  border: 1px solid #efc2c2;
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: #fff6f6;
+  color: #a92b2b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (max-width: 620px) {
+  .teacher-tabs {
+    margin-top: 18px;
+  }
+  .lesson-actions button.danger-action {
+    flex: 1 1 150px;
+  }
+}
