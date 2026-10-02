@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>School App · Кабинет</title>
-  <link rel="stylesheet" href="/landing.css?v=20261001-admin4" />
+  <link rel="stylesheet" href="/landing.css?v=20261002-sessions1" />
 </head>
 <body class="landing-body">
   <div class="account-strip">
@@ -18,12 +18,32 @@
 
       <div class="landing-mark">PDF</div>
       <h1 id="welcomeTitle">Совместный урок</h1>
-      <p class="landing-lead">
-        Выберите конкретный урок. Режим открытия зависит от роли аккаунта.
+      <p class="landing-lead" id="cabinetLead">
+        Создайте занятие, отправьте ребёнку ссылку и работайте вместе в реальном времени.
       </p>
 
+      <section id="teacherPanel" class="teacher-panel" hidden>
+        <form id="createTeacherSessionForm" class="teacher-session-form">
+          <div>
+            <span class="admin-eyebrow">Новое занятие</span>
+            <h2>Создать сессию</h2>
+          </div>
+          <label>Название
+            <input id="teacherSessionTitle" name="title" required maxlength="120" autocomplete="off" placeholder="Например, Математика · дроби">
+          </label>
+          <label>Тип
+            <select id="teacherSessionType" name="type">
+              <option value="lesson">Урок</option>
+              <option value="homework">Домашняя работа</option>
+            </select>
+          </label>
+          <button type="submit">Создать и получить ссылку</button>
+          <span id="teacherSessionStatus" class="admin-status"></span>
+        </form>
+      </section>
+
       <section id="lessonSection" class="lesson-section" hidden>
-        <h2>Мои уроки</h2>
+        <h2 id="lessonSectionTitle">Мои занятия</h2>
         <div id="lessonList" class="lesson-list"></div>
       </section>
 
@@ -122,13 +142,13 @@
       <div class="help-list">
         <div><b>1.</b><span>Учитель загружает PDF. Ученик автоматически видит тот же документ.</span></div>
         <div><b>2.</b><span>Пометки и текст синхронизируются в реальном времени.</span></div>
-        <div><b>3.</b><span>У каждого пользователя свой кабинет и роль. Уроки и учебники будут привязываться к пользователям отдельно.</span></div>
+        <div><b>3.</b><span>Ребёнку аккаунт не нужен: отправьте ему ссылку на занятие, он введёт имя и подключится.</span></div>
       </div>
 
       <button class="dialog-ok" value="close">Понятно</button>
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261001-admin4"></script>
+  <script src="/cabinet.js?v=20261002-sessions1"></script>
 </body>
 </html>
