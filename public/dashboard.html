@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>School App · Кабинет</title>
-  <link rel="stylesheet" href="/landing.css?v=20261001-lessons1" />
+  <link rel="stylesheet" href="/landing.css?v=20261001-admin4" />
 </head>
 <body class="landing-body">
   <div class="account-strip">
@@ -19,26 +19,91 @@
       <div class="landing-mark">PDF</div>
       <h1 id="welcomeTitle">Совместный урок</h1>
       <p class="landing-lead">
-        Один учебник, две стороны и общие пометки в реальном времени.
+        Выберите конкретный урок. Режим открытия зависит от роли аккаунта.
       </p>
-
-      <div class="role-grid" id="roleGrid">
-        <a class="role-card teacher-card role-teacher" href="/teacher">
-          <span class="role-kicker">Я веду урок</span>
-          <strong>Учитель</strong>
-          <span>Загрузить PDF, проверять и делать пометки</span>
-        </a>
-
-        <a class="role-card student-card role-student" href="/student">
-          <span class="role-kicker">Я занимаюсь</span>
-          <strong>Ученик</strong>
-          <span>Открыть учебник, писать и выполнять задания</span>
-        </a>
-      </div>
 
       <section id="lessonSection" class="lesson-section" hidden>
         <h2>Мои уроки</h2>
         <div id="lessonList" class="lesson-list"></div>
+      </section>
+
+      <section id="adminPanel" class="admin-panel" hidden>
+        <div class="admin-heading">
+          <div>
+            <span class="admin-eyebrow">Управление</span>
+            <h2>Админка</h2>
+          </div>
+          <span id="adminStatus" class="admin-status"></span>
+        </div>
+
+        <nav class="admin-nav" aria-label="Разделы админки">
+          <button type="button" class="admin-nav-btn active" data-admin-view="overview">Обзор</button>
+          <button type="button" class="admin-nav-btn" data-admin-view="users">Пользователи</button>
+          <button type="button" class="admin-nav-btn" data-admin-view="lessons">Уроки</button>
+        </nav>
+
+        <section class="admin-view" data-admin-section="overview">
+          <div class="admin-summary-grid">
+            <article class="admin-summary-card">
+              <span>Пользователи</span>
+              <strong id="adminUsersCount">0</strong>
+            </article>
+            <article class="admin-summary-card">
+              <span>Уроки</span>
+              <strong id="adminLessonsCount">0</strong>
+            </article>
+          </div>
+          <p class="admin-overview-note">Выберите раздел сверху, чтобы управлять пользователями или уроками.</p>
+        </section>
+
+        <section class="admin-view" data-admin-section="users" hidden>
+          <div class="admin-grid single-column">
+            <form id="createUserForm" class="admin-card">
+              <h3>Новый пользователь</h3>
+              <label>Логин<input id="newUsername" name="username" required minlength="3" maxlength="50" autocomplete="off"></label>
+              <label>Имя<input id="newDisplayName" name="displayName" required maxlength="80" autocomplete="off"></label>
+              <label>Роль
+                <select id="newUserRole" name="role">
+                  <option value="teacher">Учитель</option>
+                  <option value="student">Ученик</option>
+                </select>
+              </label>
+              <label>Пароль<input id="newUserPassword" name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+              <button type="submit">Создать пользователя</button>
+            </form>
+          </div>
+          <div class="admin-lists">
+            <section>
+              <h3>Пользователи</h3>
+              <div id="adminUserList" class="admin-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="admin-view" data-admin-section="lessons" hidden>
+          <div class="admin-grid single-column">
+            <form id="createLessonForm" class="admin-card">
+              <h3>Новый урок</h3>
+              <label>ID урока<input id="newLessonId" name="id" required pattern="[A-Za-z0-9_-]{1,80}" autocomplete="off"></label>
+              <label>Название<input id="newLessonTitle" name="title" required maxlength="120" autocomplete="off"></label>
+              <fieldset class="member-fieldset">
+                <legend>Учителя этого урока</legend>
+                <div id="newLessonTeachers" class="member-picker"></div>
+              </fieldset>
+              <fieldset class="member-fieldset">
+                <legend>Ученики этого урока</legend>
+                <div id="newLessonStudents" class="member-picker"></div>
+              </fieldset>
+              <button type="submit">Создать урок</button>
+            </form>
+          </div>
+          <div class="admin-lists">
+            <section>
+              <h3>Все уроки</h3>
+              <div id="adminLessonList" class="admin-list"></div>
+            </section>
+          </div>
+        </section>
       </section>
 
       <p class="landing-note" id="landingNote">Выберите свою роль, чтобы продолжить.</p>
@@ -65,6 +130,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261001-lessons1"></script>
+  <script src="/cabinet.js?v=20261001-admin4"></script>
 </body>
 </html>

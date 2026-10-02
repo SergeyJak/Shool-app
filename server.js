@@ -56,6 +56,7 @@ let performanceLogs;
 let users;
 let lessons;
 const teacherFollowByLesson = new Map();
+const teacherPageByLesson = new Map();
 
 app.use(express.json({ limit: "1mb" }));
 
@@ -104,15 +105,43 @@ function requireApiRole(...roles) {
   };
 }
 
-function homeForRole(role) {
-  if (role === "teacher") return "/teacher?lesson=default";
-  if (role === "student") return "/student?lesson=default";
+function homeForRole(_role) {
   return "/cabinet";
 }
 
 function normalizeLessonId(value) {
   const lessonId = String(value || "").trim();
   return /^[a-zA-Z0-9_-]{1,80}$/.test(lessonId) ? lessonId : null;
+}
+
+function normalizeManagedUsername(value) {
+  const username = normalizeUsername(value);
+  return /^[a-z0-9._-]{3,50}$/.test(username) ? username : null;
+}
+
+function publicUser(user) {
+  return {
+    id: user._id,
+    username: user.username,
+    displayName: user.displayName,
+    role: user.role,
+    active: user.active !== false,
+  };
+}
+
+async function validateLessonMembers(teacherIds, studentIds) {
+  const teachers = [...new Set((teacherIds || []).map(normalizeUsername).filter(Boolean))];
+  const students = [...new Set((studentIds || []).map(normalizeUsername).filter(Boolean))];
+
+  const rows = await users.find({
+    _id: { $in: [...teachers, ...students] },
+    active: true,
+  }).toArray();
+  const byId = new Map(rows.map((user) => [user._id, user]));
+
+  if (teachers.some((id) => byId.get(id)?.role !== "teacher")) return null;
+  if (students.some((id) => byId.get(id)?.role !== "student")) return null;
+  return { teachers, students };
 }
 
 function lessonRoom(lessonId) {
@@ -219,6 +248,171 @@ app.get("/api/lessons", requireAuth, async (req, res, next) => {
   }
 });
 
+
+app.get("/api/admin/users", requireApiRole("admin"), async (_req, res, next) => {
+  try {
+    const rows = await users.find({ role: { $in: ["teacher", "student"] } }).sort({ role: 1, displayName: 1 }).toArray();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ users: rows.map(publicUser) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/users", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const username = normalizeManagedUsername(req.body?.username);
+    const displayName = String(req.body?.displayName || "").trim();
+    const role = req.body?.role === "teacher" || req.body?.role === "student" ? req.body.role : null;
+    const password = String(req.body?.password || "");
+
+    if (!username || !displayName || !role || password.length < 8) {
+      return res.status(400).json({ error: "INVALID_USER" });
+    }
+    if (await users.findOne({ _id: username })) {
+      return res.status(409).json({ error: "USER_EXISTS" });
+    }
+
+    const { salt, hash } = await hashPassword(password);
+    const row = {
+      _id: username,
+      username,
+      displayName,
+      role,
+      active: true,
+      lessonIds: [],
+      passwordSalt: salt,
+      passwordHash: hash,
+      schemaVersion: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await users.insertOne(row);
+    res.status(201).json({ user: publicUser(row) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/admin/users/:id", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = normalizeManagedUsername(req.params.id);
+    if (!id) return res.status(400).json({ error: "INVALID_USER" });
+
+    const current = await users.findOne({ _id: id, role: { $in: ["teacher", "student"] } });
+    if (!current) return res.status(404).json({ error: "USER_NOT_FOUND" });
+
+    const changes = { updatedAt: new Date() };
+    if (typeof req.body?.displayName === "string") {
+      const displayName = req.body.displayName.trim();
+      if (!displayName) return res.status(400).json({ error: "INVALID_DISPLAY_NAME" });
+      changes.displayName = displayName;
+    }
+    if (typeof req.body?.active === "boolean") changes.active = req.body.active;
+    if (typeof req.body?.password === "string" && req.body.password) {
+      if (req.body.password.length < 8) return res.status(400).json({ error: "INVALID_PASSWORD" });
+      const { salt, hash } = await hashPassword(req.body.password);
+      changes.passwordSalt = salt;
+      changes.passwordHash = hash;
+    }
+
+    await users.updateOne({ _id: id }, { $set: changes });
+    const updated = await users.findOne({ _id: id });
+    res.json({ user: publicUser(updated) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/admin/lessons", requireApiRole("admin"), async (_req, res, next) => {
+  try {
+    const rows = await lessons.find({}).sort({ active: -1, title: 1 }).toArray();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      lessons: rows.map((lesson) => ({
+        id: lesson._id,
+        title: lesson.title,
+        teacherIds: lesson.teacherIds || [],
+        studentIds: lesson.studentIds || [],
+        active: lesson.active !== false,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/lessons", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = normalizeLessonId(req.body?.id);
+    const title = String(req.body?.title || "").trim();
+    if (!id || !title) return res.status(400).json({ error: "INVALID_LESSON" });
+    if (await lessons.findOne({ _id: id })) return res.status(409).json({ error: "LESSON_EXISTS" });
+
+    const members = await validateLessonMembers(req.body?.teacherIds, req.body?.studentIds);
+    if (!members) return res.status(400).json({ error: "INVALID_MEMBERS" });
+
+    const row = {
+      _id: id,
+      title,
+      teacherIds: members.teachers,
+      studentIds: members.students,
+      bookIds: [],
+      active: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      schemaVersion: 1,
+    };
+    await lessons.insertOne(row);
+    res.status(201).json({
+      lesson: { id, title, teacherIds: row.teacherIds, studentIds: row.studentIds, active: true },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/admin/lessons/:id", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = normalizeLessonId(req.params.id);
+    if (!id) return res.status(400).json({ error: "INVALID_LESSON" });
+    const current = await lessons.findOne({ _id: id });
+    if (!current) return res.status(404).json({ error: "LESSON_NOT_FOUND" });
+
+    const changes = { updatedAt: new Date() };
+    if (typeof req.body?.title === "string") {
+      const title = req.body.title.trim();
+      if (!title) return res.status(400).json({ error: "INVALID_TITLE" });
+      changes.title = title;
+    }
+    if (typeof req.body?.active === "boolean") changes.active = req.body.active;
+
+    if (Array.isArray(req.body?.teacherIds) || Array.isArray(req.body?.studentIds)) {
+      const members = await validateLessonMembers(
+        Array.isArray(req.body?.teacherIds) ? req.body.teacherIds : current.teacherIds,
+        Array.isArray(req.body?.studentIds) ? req.body.studentIds : current.studentIds
+      );
+      if (!members) return res.status(400).json({ error: "INVALID_MEMBERS" });
+      changes.teacherIds = members.teachers;
+      changes.studentIds = members.students;
+    }
+
+    await lessons.updateOne({ _id: id }, { $set: changes });
+    const updated = await lessons.findOne({ _id: id });
+    res.json({
+      lesson: {
+        id: updated._id,
+        title: updated.title,
+        teacherIds: updated.teacherIds || [],
+        studentIds: updated.studentIds || [],
+        active: updated.active !== false,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Protect direct .html access too, not only friendly routes.
 app.get("/dashboard.html", requirePageAuth("teacher", "student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "dashboard.html"))
@@ -228,6 +422,9 @@ app.get("/teacher.html", requirePageAuth("teacher"), (_req, res) =>
 );
 app.get("/student.html", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
+);
+app.get("/monitor.html", requirePageAuth("admin"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "monitor.html"))
 );
 app.get("/performance.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "performance.html"))
@@ -247,6 +444,9 @@ app.get("/teacher", requirePageAuth("teacher"), (_req, res) =>
 );
 app.get("/student", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
+);
+app.get("/monitor", requirePageAuth("admin"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "monitor.html"))
 );
 app.get("/performance", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "performance.html"))
@@ -635,7 +835,12 @@ io.use(async (socket, next) => {
 });
 
 io.on("connection", (socket) => {
-  const requestedRole = socket.handshake.auth?.role === "teacher" ? "teacher" : "student";
+  const requestedRole =
+    socket.handshake.auth?.role === "teacher"
+      ? "teacher"
+      : socket.handshake.auth?.role === "observer"
+        ? "observer"
+        : "student";
   const accountRole = socket.data.user.role;
   const role = accountRole === "admin" ? requestedRole : accountRole;
   socket.data.role = role;
@@ -645,6 +850,9 @@ io.on("connection", (socket) => {
   socket.join(room);
 
   socket.emit("teacher:follow:state", teacherFollow.snapshot());
+  if (teacherPageByLesson.has(lessonId)) {
+    socket.emit("teacher:monitor:page", { page: teacherPageByLesson.get(lessonId) });
+  }
 
   socket.on("perf:ping", (_payload, ack) => {
     ack?.({ ok: true });
@@ -666,9 +874,19 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, ...state });
   });
 
+  socket.on("teacher:monitor:page", ({ page } = {}) => {
+    const nextPage = Number(page);
+    if (role !== "teacher" || !Number.isInteger(nextPage) || nextPage < 1) return;
+    teacherPageByLesson.set(lessonId, nextPage);
+    socket.to(room).emit("teacher:monitor:page", { page: nextPage });
+  });
+
   socket.on("teacher:page", ({ page } = {}) => {
     if (role !== "teacher" || !teacherFollow.move(page)) return;
-    io.to(room).emit("teacher:page", { page: teacherFollow.snapshot().page });
+    const currentPage = teacherFollow.snapshot().page;
+    teacherPageByLesson.set(lessonId, currentPage);
+    io.to(room).emit("teacher:page", { page: currentPage });
+    socket.to(room).emit("teacher:monitor:page", { page: currentPage });
   });
 
   socket.on("teacher:follow:stop", (_payload, ack) => {
@@ -686,7 +904,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stroke:preview", (stroke) => {
-    if (!isValidStroke(stroke)) return;
+    if (role === "observer" || !isValidStroke(stroke)) return;
     socket.to(room).emit("stroke:preview", {
       ...stroke,
       role,
@@ -696,6 +914,7 @@ io.on("connection", (socket) => {
 
   socket.on("stroke:commit", async (stroke, ack) => {
     try {
+      if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
       if (!isValidStroke(stroke)) {
         return ack?.({ ok: false, error: "INVALID_STROKE" });
       }
@@ -794,6 +1013,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stroke:delete", async ({ id }) => {
+    if (role === "observer") return;
     const row = await annotations.findOne({ $and: [{ _id: id }, annotationLessonFilter(lessonId)] });
     if (!row) return;
 
@@ -806,7 +1026,7 @@ io.on("connection", (socket) => {
 
   socket.on("erase:path", async (erase) => {
     try {
-      if (!isValidErasePath(erase)) return;
+      if (role === "observer" || !isValidErasePath(erase)) return;
 
       const documentId = await currentDocumentIdForLesson(lessonId);
       if (!documentId || erase.documentId !== documentId) return;
@@ -861,6 +1081,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("stroke:undo", async ({ page, documentId: requestedDocumentId }, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const documentId = await currentDocumentIdForLesson(lessonId);
     if (!documentId || requestedDocumentId !== documentId) {
       return ack?.({ ok: false, error: "DOCUMENT_MISMATCH" });

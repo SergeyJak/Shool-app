@@ -37,15 +37,18 @@ test("teacher alone gets teacher-only controls", () => {
   assert.doesNotMatch(student, /id="perfLogButton"/);
 });
 
-test("cabinet links to both roles, help, and owner performance dashboard", () => {
+test("cabinet exposes help, performance, and lesson-driven navigation", () => {
   const html = read("public/dashboard.html");
-  assert.match(html, /href="\/teacher"/);
-  assert.match(html, /href="\/student"/);
+  const cabinet = read("public/cabinet.js");
   assert.match(html, /id="infoBtn"/);
   assert.match(html, /id="perfLogButton"/);
   assert.match(html, /href="\/performance"/);
   assert.match(html, /Как пользоваться/);
   assert.match(html, /School App/);
+  assert.doesNotMatch(html, /href="\/teacher"/);
+  assert.doesNotMatch(html, /href="\/student"/);
+  assert.match(cabinet, /lessonUrl\(user\.role, lesson\.id\)/);
+  assert.match(cabinet, /\/monitor\?lesson=/);
 });
 
 test("client keeps PDF cache versioning, loading progress and page persistence", () => {
@@ -223,9 +226,10 @@ test("pen and eraser use compact accessible icons", () => {
   assert.match(css, /\.tool-icon\s*\{[\s\S]*stroke:\s*currentColor/);
 });
 
-test("root is login and cabinet preserves role-aware navigation", () => {
+test("root is login and cabinet preserves account-aware lesson navigation", () => {
   const login = read("public/index.html");
   const cabinet = read("public/dashboard.html");
+  const cabinetJs = read("public/cabinet.js");
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
   const server = read("server.js");
@@ -234,8 +238,11 @@ test("root is login and cabinet preserves role-aware navigation", () => {
   assert.match(login, /id="username"/);
   assert.match(login, /id="password"/);
   assert.match(cabinet, /id="logoutBtn"/);
-  assert.match(cabinet, /role-teacher/);
-  assert.match(cabinet, /role-student/);
+  assert.doesNotMatch(cabinet, /role-teacher/);
+  assert.doesNotMatch(cabinet, /role-student/);
+  assert.match(cabinetJs, /Открыть урок/);
+  assert.match(cabinetJs, /Как учитель/);
+  assert.match(cabinetJs, /Как ученик/);
   assert.match(teacher, /href="\/cabinet"/);
   assert.match(student, /href="\/cabinet"/);
   assert.match(server, /app\.post\("\/api\/auth\/login"/);
@@ -316,4 +323,86 @@ test("annotations are scoped to the current document inside each lesson", () => 
   assert.match(server, /annotationDocumentFilter\(req\.lessonId, documentId\)/);
   assert.match(server, /annotationDocumentFilter\(lessonId, documentId\)/);
   assert.match(server, /existing\.documentId === documentId/);
+});
+
+
+test("admin can manage users and lessons from the cabinet", () => {
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const server = read("server.js");
+
+  assert.match(dashboard, /id="adminPanel"/);
+  assert.match(dashboard, /id="createUserForm"/);
+  assert.match(dashboard, /id="createLessonForm"/);
+  assert.match(dashboard, /id="adminUserList"/);
+  assert.match(dashboard, /id="adminLessonList"/);
+
+  assert.match(cabinet, /\/api\/admin\/users/);
+  assert.match(cabinet, /\/api\/admin\/lessons/);
+  assert.match(cabinet, /method: "PATCH"/);
+  assert.match(cabinet, /Деактивировать/);
+
+  assert.match(server, /app\.get\("\/api\/admin\/users"/);
+  assert.match(server, /app\.post\("\/api\/admin\/users"/);
+  assert.match(server, /app\.patch\("\/api\/admin\/users\/:id"/);
+  assert.match(server, /app\.get\("\/api\/admin\/lessons"/);
+  assert.match(server, /app\.post\("\/api\/admin\/lessons"/);
+  assert.match(server, /app\.patch\("\/api\/admin\/lessons\/:id"/);
+  assert.match(server, /await hashPassword\(password\)/);
+  assert.match(server, /validateLessonMembers/);
+});
+
+test("login sends every role through the cabinet instead of hardcoding default lesson", () => {
+  const server = read("server.js");
+  assert.match(server, /function homeForRole\(_role\) \{\s*return "\/cabinet";\s*\}/);
+  assert.doesNotMatch(server, /return "\/teacher\?lesson=default"/);
+  assert.doesNotMatch(server, /return "\/student\?lesson=default"/);
+});
+
+test("admin management UI is responsive", () => {
+  const css = read("public/landing.css");
+  assert.match(css, /\.admin-panel/);
+  assert.match(css, /\.admin-grid/);
+  assert.match(css, /\.admin-member-grid/);
+  assert.match(css, /@media \(max-width: 720px\)/);
+});
+
+
+test("cabinet opens concrete lessons and admin gets a read-only control action", () => {
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const monitor = read("public/monitor.html");
+  const server = read("server.js");
+
+  assert.doesNotMatch(dashboard, /role-grid/);
+  assert.match(cabinet, /Открыть урок/);
+  assert.match(cabinet, /Как учитель/);
+  assert.match(cabinet, /Как ученик/);
+  assert.match(cabinet, /Контроль/);
+  assert.match(cabinet, /\/monitor\?lesson=/);
+
+  assert.match(monitor, /data-role="observer"/);
+  assert.match(monitor, /Только просмотр/);
+  assert.doesNotMatch(monitor, /pdfUpload/);
+  assert.doesNotMatch(monitor, /textBtn/);
+
+  assert.match(server, /app\.get\("\/monitor"/);
+  assert.match(server, /role === "observer"/);
+  assert.match(server, /READ_ONLY/);
+});
+
+
+test("control mode shows the teacher's live lesson page without taking write control", () => {
+  const monitor = read("public/monitor.html");
+  const client = read("public/app.js");
+  const server = read("server.js");
+
+  assert.match(monitor, /id="observerTeacherPage"/);
+  assert.match(monitor, /Урок сейчас: стр/);
+  assert.match(client, /teacher:monitor:page/);
+  assert.match(client, /observerTeacherPage\.textContent/);
+  assert.match(client, /role === "teacher"[\s\S]*teacher:monitor:page/);
+  assert.match(server, /teacherPageByLesson/);
+  assert.match(server, /socket\.on\("teacher:monitor:page"/);
+  assert.match(server, /socket\.to\(room\)\.emit\("teacher:monitor:page"/);
 });

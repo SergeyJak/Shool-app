@@ -500,3 +500,32 @@ canvas { display: block; }
   }
   .header-actions { gap: 6px; }
 }
+
+.observer-mode #drawCanvas { pointer-events: none !important; cursor: default !important; }
+.observer-toolbar { justify-content: flex-end; }
+.observer-badge {
+  margin-left: auto;
+  padding: 8px 12px;
+  border: 1px solid #cfd6dd;
+  border-radius: 10px;
+  background: #fff;
+  color: #68727d;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.observer-page-indicator {
+  margin-right: auto;
+  border: 1px solid #9db5d1;
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: #eef4fb;
+  color: #17202a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.observer-page-indicator:hover {
+  background: #e4eef9;
+}
