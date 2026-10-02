@@ -244,6 +244,29 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("teacher sessions archive separately and legacy default lesson is removed", () => {
+  const server = read("server.js");
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+
+  assert.match(server, /req\.query\.archive === "1"/);
+  assert.match(server, /app\.post\("\/api\/teacher\/lessons\/:id\/archive"/);
+  assert.match(server, /status: "archived"/);
+  assert.match(server, /\$unset: \{ inviteToken: "" \}/);
+  assert.match(server, /app\.delete\("\/api\/teacher\/lessons\/:id"/);
+  assert.match(server, /lastParticipantName: name/);
+  assert.match(server, /lastParticipantAt: joinedAt/);
+  assert.match(server, /await lessons\.deleteOne\(\{ _id: "default" \}\)/);
+  assert.doesNotMatch(server, /await lessons\.updateOne\(\s*\{ _id: "default" \}/);
+
+  assert.match(dashboard, /data-teacher-view="active"/);
+  assert.match(dashboard, /data-teacher-view="archive"/);
+  assert.match(cabinet, /teacherView === "archive"/);
+  assert.match(cabinet, /Завершить/);
+  assert.match(cabinet, /Удалить навсегда/);
+  assert.match(cabinet, /Ученик:/);
+});
+
 test("teacher material library can attach PDFs and collect homework submissions", () => {
   const server = read("server.js");
   const dashboard = read("public/dashboard.html");
