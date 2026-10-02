@@ -355,7 +355,6 @@ createLessonForm?.addEventListener("submit", async (event) => {
     await apiJson("/api/admin/lessons", {
       method: "POST",
       body: JSON.stringify({
-        id: form.get("id"),
         title: form.get("title"),
         teacherIds: selectedValues(newLessonTeachers),
         studentIds: selectedValues(newLessonStudents),
