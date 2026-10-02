@@ -529,3 +529,17 @@ canvas { display: block; }
 .observer-page-indicator:hover {
   background: #e4eef9;
 }
+
+.homework-submit {
+  font: inherit;
+  cursor: pointer;
+}
+.homework-submit.submitted {
+  border-color: #9fd6ad;
+  background: #edf9f0;
+  color: #247a45;
+}
+.homework-submit:disabled {
+  cursor: default;
+  opacity: .78;
+}
