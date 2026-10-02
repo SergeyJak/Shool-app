@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 340">
+<defs><linearGradient id="g" x1="0" x2="1" y2="1"><stop stop-color="#eee8ff"/><stop offset="1" stop-color="#dff6ff"/></linearGradient></defs>
+<rect width="560" height="340" rx="36" fill="url(#g)"/>
+<rect x="66" y="45" width="350" height="215" rx="24" fill="#fff" stroke="#806df1" stroke-width="8"/>
+<rect x="84" y="64" width="225" height="177" rx="15" fill="#cfefff"/>
+<circle cx="198" cy="135" r="50" fill="#f4bf98"/><path d="M150 123c20-62 103-62 112 2-35-22-71-23-112-2" fill="#744a37"/><path d="M138 205c34-50 105-51 130 0" fill="#a58cff"/>
+<rect x="327" y="64" width="72" height="52" rx="10" fill="#ffe8a8"/><rect x="327" y="126" width="72" height="52" rx="10" fill="#dff5df"/><rect x="327" y="188" width="72" height="52" rx="10" fill="#ffe0ed"/>
+<rect x="94" y="77" width="58" height="27" rx="12" fill="#ff4f6e"/><text x="109" y="97" font-family="Arial" font-size="14" font-weight="700" fill="#fff">LIVE</text>
+<circle cx="460" cy="238" r="55" fill="#f5c49e"/><path d="M407 226c16-57 97-70 111-10-33-19-69-15-111 10" fill="#744a37"/><path d="M402 296c35-38 102-34 126 13" fill="#ffcc55"/>
+<path d="M449 241l12 11 24-30" fill="none" stroke="#5b4be7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
