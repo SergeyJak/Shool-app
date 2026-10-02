@@ -655,3 +655,86 @@ h1 {
   background: #fff;
   color: #17202a;
 }
+
+
+.teacher-panel {
+  margin-top: 24px;
+  text-align: left;
+}
+.teacher-session-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(150px, .6fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 18px;
+  border: 1px solid #dde3ea;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffffff, #f6f8ff);
+}
+.teacher-session-form > div:first-child {
+  grid-column: 1 / -1;
+}
+.teacher-session-form h2 {
+  margin: 3px 0 0;
+  font-size: 21px;
+}
+.teacher-session-form label {
+  display: grid;
+  gap: 6px;
+  color: #68727d;
+  font-size: 12px;
+  font-weight: 650;
+}
+.teacher-session-form input,
+.teacher-session-form select {
+  width: 100%;
+  border: 1px solid #cfd6dd;
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: #fff;
+  color: #17202a;
+  font: inherit;
+}
+.teacher-session-form button {
+  min-height: 43px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 15px;
+  background: #17202a;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.teacher-session-form .admin-status {
+  grid-column: 1 / -1;
+}
+.lesson-actions button.secondary-action {
+  border: 1px solid #cfd6dd;
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: #fff;
+  color: #17202a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .teacher-session-form {
+    grid-template-columns: 1fr;
+  }
+  .teacher-session-form > div:first-child,
+  .teacher-session-form .admin-status {
+    grid-column: auto;
+  }
+  .lesson-actions {
+    flex-wrap: wrap;
+  }
+  .lesson-actions a,
+  .lesson-actions button.secondary-action {
+    flex: 1 1 150px;
+    text-align: center;
+  }
+}
