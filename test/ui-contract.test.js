@@ -47,7 +47,7 @@ test("cabinet exposes help, performance, and lesson-driven navigation", () => {
   assert.match(html, /School App/);
   assert.doesNotMatch(html, /href="\/teacher"/);
   assert.doesNotMatch(html, /href="\/student"/);
-  assert.match(cabinet, /lessonUrl\(user\.role, lesson\.id\)/);
+  assert.match(cabinet, /lessonUrl\("teacher", lesson\.id\)/);
   assert.match(cabinet, /\/monitor\?lesson=/);
 });
 
@@ -295,7 +295,7 @@ test("root is login and cabinet preserves account-aware lesson navigation", () =
   assert.match(cabinetJs, /Как учитель/);
   assert.match(cabinetJs, /Как ученик/);
   assert.match(teacher, /href="\/cabinet"/);
-  assert.match(student, /href="\/cabinet"/);
+  assert.doesNotMatch(student, /href="\/cabinet"/);
   assert.match(server, /app\.post\("\/api\/auth\/login"/);
   assert.match(server, /app\.get\("\/api\/auth\/me"/);
   assert.match(server, /requirePageAuth/);
