@@ -4,6 +4,20 @@ const perfButton = document.getElementById("perfLogButton");
 const note = document.getElementById("landingNote");
 const lessonSection = document.getElementById("lessonSection");
 const lessonList = document.getElementById("lessonList");
+const teacherPanel = document.getElementById("teacherPanel");
+const createTeacherSessionForm = document.getElementById("createTeacherSessionForm");
+const teacherSessionStatus = document.getElementById("teacherSessionStatus");
+const lessonSectionTitle = document.getElementById("lessonSectionTitle");
+const cabinetLead = document.getElementById("cabinetLead");
+const teacherSessionTabs = document.getElementById("teacherSessionTabs");
+const teacherTabButtons = [...document.querySelectorAll("[data-teacher-view]")];
+const materialPanel = document.getElementById("materialPanel");
+const materialUploadForm = document.getElementById("materialUploadForm");
+const materialStatus = document.getElementById("materialStatus");
+const materialList = document.getElementById("materialList");
+const statActiveSessions = document.getElementById("statActiveSessions");
+const statMaterials = document.getElementById("statMaterials");
+const statSubmissions = document.getElementById("statSubmissions");
 const adminPanel = document.getElementById("adminPanel");
 const adminStatus = document.getElementById("adminStatus");
 const adminUserList = document.getElementById("adminUserList");
@@ -20,6 +34,8 @@ const adminLessonsCount = document.getElementById("adminLessonsCount");
 let currentUser = null;
 let managedUsers = [];
 let managedLessons = [];
+let teacherMaterials = [];
+let teacherView = "active";
 
 document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
 dialog.addEventListener("click", (event) => {
@@ -79,25 +95,199 @@ async function apiJson(url, options = {}) {
   return payload;
 }
 
+function setTeacherStatus(message, type = "") {
+  if (!teacherSessionStatus) return;
+  teacherSessionStatus.textContent = message;
+  teacherSessionStatus.dataset.type = type;
+}
+
+async function copyInvite(inviteUrl) {
+  const url = new URL(inviteUrl, location.origin).href;
+  await navigator.clipboard.writeText(url);
+  return url;
+}
+
+function setMaterialStatus(message, type = "") {
+  if (!materialStatus) return;
+  materialStatus.textContent = message;
+  materialStatus.dataset.type = type;
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function loadMaterials() {
+  if (!currentUser || currentUser.role !== "teacher") return;
+  const payload = await apiJson("/api/materials");
+  teacherMaterials = payload.materials || [];
+  if (statMaterials) statMaterials.textContent = String(teacherMaterials.length);
+  renderMaterials();
+}
+
+function renderMaterials() {
+  if (!materialList) return;
+  materialList.innerHTML = "";
+  if (!teacherMaterials.length) {
+    const empty = document.createElement("p");
+    empty.className = "material-empty";
+    empty.textContent = "Материалов пока нет. Загрузите первый PDF.";
+    materialList.append(empty);
+    return;
+  }
+
+  for (const material of teacherMaterials) {
+    const row = document.createElement("div");
+    row.className = "material-row";
+
+    const info = document.createElement("div");
+    info.className = "material-row-copy";
+    const title = document.createElement("strong");
+    title.textContent = material.name;
+    const meta = document.createElement("span");
+    meta.textContent = formatBytes(material.storedSize);
+    info.append(title, meta);
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "secondary-action";
+    del.textContent = "Удалить";
+    del.addEventListener("click", async () => {
+      try {
+        await apiJson(`/api/materials/${encodeURIComponent(material.id)}`, { method: "DELETE" });
+        setMaterialStatus("Материал удалён", "success");
+        await loadMaterials();
+        await refreshVisibleLessons();
+      } catch (error) {
+        setMaterialStatus(
+          error.message === "MATERIAL_IN_USE"
+            ? "Этот PDF используется в активном занятии."
+            : `Ошибка: ${error.message}`,
+          "error"
+        );
+      }
+    });
+
+    row.append(info, del);
+    materialList.append(row);
+  }
+}
+
+function materialPicker(lesson) {
+  const wrap = document.createElement("div");
+  wrap.className = "lesson-material";
+
+  const select = document.createElement("select");
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = teacherMaterials.length ? "Выбрать PDF" : "Нет материалов";
+  select.append(empty);
+
+  for (const material of teacherMaterials) {
+    const option = document.createElement("option");
+    option.value = material.id;
+    option.textContent = material.name;
+    option.selected = material.id === lesson.materialId;
+    select.append(option);
+  }
+
+  const attach = document.createElement("button");
+  attach.type = "button";
+  attach.className = "secondary-action";
+  attach.textContent = lesson.materialId ? "Сменить PDF" : "Прикрепить PDF";
+  attach.disabled = !teacherMaterials.length;
+  attach.addEventListener("click", async () => {
+    if (!select.value) {
+      setTeacherStatus("Сначала выберите PDF", "error");
+      return;
+    }
+    try {
+      await apiJson(`/api/teacher/lessons/${encodeURIComponent(lesson.id)}/material`, {
+        method: "PATCH",
+        body: JSON.stringify({ materialId: select.value }),
+      });
+      setTeacherStatus("Материал прикреплён ✓", "success");
+      await refreshVisibleLessons();
+    } catch (error) {
+      setTeacherStatus(`Ошибка: ${error.message}`, "error");
+    }
+  });
+
+  wrap.append(select, attach);
+  return wrap;
+}
+
+async function showSubmissions(lesson, container) {
+  try {
+    const payload = await apiJson(`/api/teacher/lessons/${encodeURIComponent(lesson.id)}/submissions`);
+    container.innerHTML = "";
+    const rows = payload.submissions || [];
+    if (!rows.length) {
+      container.textContent = "Пока никто не сдал.";
+      return;
+    }
+    for (const item of rows) {
+      const row = document.createElement("div");
+      row.className = "submission-row";
+      const when = item.submittedAt ? new Date(item.submittedAt).toLocaleString() : "";
+      row.textContent = `${item.participantName || "Ученик"} · ${when}`;
+      container.append(row);
+    }
+  } catch (error) {
+    container.textContent = `Ошибка: ${error.message}`;
+  }
+}
+
 function renderLessons(user, lessons) {
   lessonList.innerHTML = "";
   lessonSection.hidden = lessons.length === 0;
+  if (user.role === "teacher" && teacherView === "active") {
+    if (statActiveSessions) statActiveSessions.textContent = String(lessons.length);
+    if (statSubmissions) {
+      statSubmissions.textContent = String(
+        lessons.reduce((sum, lesson) => sum + Number(lesson.submissionCount || 0), 0)
+      );
+    }
+  }
 
   if (!lessons.length) {
-    note.textContent = "Для этого аккаунта пока нет активных уроков.";
+    note.textContent = user.role === "teacher"
+      ? (teacherView === "archive" ? "Архив пока пуст." : "Пока нет занятий. Создайте первый урок или домашнюю работу.")
+      : "Для этого аккаунта пока нет активных уроков.";
     return;
+  }
+
+  if (lessonSectionTitle) {
+    lessonSectionTitle.textContent = user.role === "teacher"
+      ? (teacherView === "archive" ? "Архив" : "Мои занятия")
+      : "Мои уроки";
   }
 
   for (const lesson of lessons) {
     const item = document.createElement("div");
-    item.className = "lesson-card";
+    item.className = `lesson-card lesson-type-${lesson.type === "homework" ? "homework" : "lesson"}`;
 
     const copy = document.createElement("div");
     copy.className = "lesson-card-copy";
     const title = document.createElement("strong");
     title.textContent = lesson.title || lesson.id;
     const meta = document.createElement("span");
-    meta.textContent = `ID: ${lesson.id}`;
+    if (user.role === "teacher") {
+      const parts = [lesson.type === "homework" ? "Домашняя работа" : "Урок"];
+      if (lesson.lastParticipantName) {
+        const joined = lesson.lastParticipantAt ? new Date(lesson.lastParticipantAt).toLocaleString() : "";
+        parts.push(`Ученик: ${lesson.lastParticipantName}${joined ? ` · ${joined}` : ""}`);
+      }
+      if (teacherView === "archive" && lesson.archivedAt) {
+        parts.push(`Завершено: ${new Date(lesson.archivedAt).toLocaleString()}`);
+      }
+      meta.textContent = parts.join(" · ");
+    } else {
+      meta.textContent = `ID: ${lesson.id}`;
+    }
     copy.append(title, meta);
     item.append(copy);
 
@@ -117,11 +307,87 @@ function renderLessons(user, lessons) {
       monitorLink.href = `/monitor?lesson=${encodeURIComponent(lesson.id)}`;
       monitorLink.textContent = "Контроль";
       monitorLink.className = "secondary-action";
-
       actions.append(teacherLink, studentLink, monitorLink);
+    } else if (user.role === "teacher") {
+      const openLink = document.createElement("a");
+      openLink.href = lessonUrl("teacher", lesson.id);
+      openLink.textContent = teacherView === "archive" ? "Открыть" : "Продолжить";
+
+      if (teacherView === "archive") {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "danger-action";
+        remove.textContent = "Удалить навсегда";
+        remove.addEventListener("click", async () => {
+          if (!confirm(`Удалить «${lesson.title}» навсегда? Это удалит рисунки и данные сессии.`)) return;
+          try {
+            await apiJson(`/api/teacher/lessons/${encodeURIComponent(lesson.id)}`, { method: "DELETE" });
+            setTeacherStatus("Сессия удалена", "success");
+            await refreshVisibleLessons();
+          } catch (error) {
+            setTeacherStatus(`Ошибка: ${error.message}`, "error");
+          }
+        });
+        actions.append(openLink, remove);
+      } else {
+        if (lesson.inviteUrl) {
+          const share = document.createElement("button");
+          share.type = "button";
+          share.className = "secondary-action";
+          share.textContent = "Скопировать ссылку";
+          share.addEventListener("click", async () => {
+            try {
+              await copyInvite(lesson.inviteUrl);
+              share.textContent = "Ссылка скопирована ✓";
+              setTimeout(() => { share.textContent = "Скопировать ссылку"; }, 2200);
+            } catch {
+              setTeacherStatus("Не удалось скопировать ссылку", "error");
+            }
+          });
+          actions.append(openLink, share);
+        } else {
+          actions.append(openLink);
+        }
+
+        const finish = document.createElement("button");
+        finish.type = "button";
+        finish.className = "secondary-action";
+        finish.textContent = "Завершить";
+        finish.addEventListener("click", async () => {
+          try {
+            await apiJson(`/api/teacher/lessons/${encodeURIComponent(lesson.id)}/archive`, { method: "POST" });
+            setTeacherStatus("Сессия перенесена в архив", "success");
+            await refreshVisibleLessons();
+          } catch (error) {
+            setTeacherStatus(`Ошибка: ${error.message}`, "error");
+          }
+        });
+        actions.append(finish);
+
+        const materialControls = materialPicker(lesson);
+        item.append(materialControls);
+      }
+
+      if (lesson.type === "homework") {
+        const submissions = document.createElement("div");
+        submissions.className = "submission-box";
+        const submissionsButton = document.createElement("button");
+        submissionsButton.type = "button";
+        submissionsButton.className = "secondary-action";
+        submissionsButton.textContent = `Сдано: ${lesson.submissionCount || 0}`;
+        const submissionsList = document.createElement("div");
+        submissionsList.className = "submission-list";
+        submissionsList.hidden = true;
+        submissionsButton.addEventListener("click", async () => {
+          submissionsList.hidden = !submissionsList.hidden;
+          if (!submissionsList.hidden) await showSubmissions(lesson, submissionsList);
+        });
+        submissions.append(submissionsButton, submissionsList);
+        item.append(submissions);
+      }
     } else {
       const openLink = document.createElement("a");
-      openLink.href = lessonUrl(user.role, lesson.id);
+      openLink.href = lessonUrl("student", lesson.id);
       openLink.textContent = "Открыть урок";
       actions.append(openLink);
     }
@@ -323,7 +589,8 @@ async function loadAdminData() {
 }
 
 async function refreshVisibleLessons() {
-  const payload = await apiJson("/api/lessons");
+  const suffix = currentUser?.role === "teacher" && teacherView === "archive" ? "?archive=1" : "";
+  const payload = await apiJson(`/api/lessons${suffix}`);
   renderLessons(currentUser, payload.lessons || []);
 }
 
@@ -370,6 +637,35 @@ createLessonForm?.addEventListener("submit", async (event) => {
   }
 });
 
+createTeacherSessionForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(createTeacherSessionForm);
+  setTeacherStatus("Создаём…");
+  try {
+    const payload = await apiJson("/api/teacher/lessons", {
+      method: "POST",
+      body: JSON.stringify({
+        title: form.get("title"),
+        type: form.get("type"),
+      }),
+    });
+    createTeacherSessionForm.reset();
+    await refreshVisibleLessons();
+    if (payload.lesson?.inviteUrl) {
+      try {
+        await copyInvite(payload.lesson.inviteUrl);
+        setTeacherStatus("Готово. Ссылка на занятие скопирована ✓", "success");
+      } catch {
+        setTeacherStatus("Занятие создано. Скопируйте ссылку из списка ниже.", "success");
+      }
+    } else {
+      setTeacherStatus("Занятие создано", "success");
+    }
+  } catch (error) {
+    setTeacherStatus(`Ошибка: ${error.message}`, "error");
+  }
+});
+
 async function loadAccount() {
   const [accountRes, lessonsRes] = await Promise.all([
     fetch("/api/auth/me", { cache: "no-store" }),
@@ -385,11 +681,19 @@ async function loadAccount() {
   const { user } = await accountRes.json();
   const { lessons = [] } = await lessonsRes.json();
   currentUser = user;
-  accountName.textContent = `${user.displayName || user.username} · ${user.role}`;
+  document.body.dataset.role = user.role;
+  const roleLabel = user.role === "teacher" ? "учитель" : user.role === "admin" ? "администратор" : "ученик";
+  accountName.textContent = `${user.displayName || user.username} · ${roleLabel}`;
 
   if (user.role === "teacher") {
     perfButton.hidden = true;
-    note.textContent = "Выберите урок.";
+    teacherPanel.hidden = false;
+    materialPanel.hidden = false;
+    teacherSessionTabs.hidden = false;
+    cabinetLead.textContent = "Создавайте уроки и домашние работы, отправляйте ребёнку ссылку и возвращайтесь к любой сессии позже.";
+    note.textContent = lessons.length ? "" : "Создайте первое занятие.";
+    await loadMaterials();
+    renderLessons(user, lessons);
   } else if (user.role === "student") {
     perfButton.hidden = true;
     note.textContent = "Выберите урок.";
@@ -400,8 +704,38 @@ async function loadAccount() {
     await loadAdminData();
   }
 
-  renderLessons(user, lessons);
+  if (user.role !== "teacher") renderLessons(user, lessons);
 }
+
+for (const button of teacherTabButtons) {
+  button.addEventListener("click", async () => {
+    teacherView = button.dataset.teacherView === "archive" ? "archive" : "active";
+    for (const tab of teacherTabButtons) {
+      tab.classList.toggle("active", tab === button);
+    }
+    await refreshVisibleLessons();
+  });
+}
+
+materialUploadForm?.addEventListener("change", async (event) => {
+  if (event.target?.id !== "materialPdf") return;
+  const file = event.target.files?.[0];
+  if (!file) return;
+  setMaterialStatus("Загружаем PDF…");
+  try {
+    const body = new FormData();
+    body.append("pdf", file);
+    const response = await fetch("/api/materials", { method: "POST", body });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || `HTTP_${response.status}`);
+    setMaterialStatus("PDF добавлен в библиотеку ✓", "success");
+    materialUploadForm.reset();
+    await loadMaterials();
+    await refreshVisibleLessons();
+  } catch (error) {
+    setMaterialStatus(`Ошибка: ${error.message}`, "error");
+  }
+});
 
 document.getElementById("logoutBtn").addEventListener("click", async () => {
   await fetch("/api/auth/logout", { method: "POST" });

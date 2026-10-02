@@ -22,6 +22,7 @@ const color = role === "teacher" ? "#e53935" : "#1565c0";
 const socket = io({ auth: { role, lessonId } });
 
 const statusEl = document.getElementById("status");
+const lessonTitleEl = document.getElementById("lessonTitle");
 const perfStatsEl = document.getElementById("perfStats");
 const pdfCanvas = document.getElementById("pdfCanvas");
 const drawCanvas = document.getElementById("drawCanvas");
@@ -224,7 +225,21 @@ socket.on("document:changed", async () => {
   pageNumber = 1;
   updateZoomControls();
   updatePerfStats();
-  await loadDocument();
+  await async function loadLessonTitle() {
+  if (!lessonTitleEl || !lessonId || lessonId === "default") return;
+  try {
+    const response = await fetch("/api/lessons", { cache: "no-store" });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const lesson = (payload.lessons || []).find((item) => item.id === lessonId);
+    if (lesson?.title) lessonTitleEl.textContent = lesson.title;
+  } catch {
+    // The lesson title is optional UI metadata; lesson loading must not depend on it.
+  }
+}
+
+loadLessonTitle();
+loadDocument();
 });
 
 socket.on("stroke:preview", (stroke) => {
@@ -1165,9 +1180,17 @@ async function renderPage() {
   const renderStarted = performance.now();
   const page = await pdfDoc.getPage(pageNumber);
 
-  const availableWidth = Math.min(window.innerWidth - 20, 1100);
   const baseViewport = page.getViewport({ scale: 1 });
-  const fitScale = availableWidth / baseViewport.width;
+  const stageWidth = Math.max(320, (stage?.clientWidth || window.innerWidth) - 8);
+  const isTabletLandscape =
+    window.matchMedia("(orientation: landscape)").matches &&
+    window.innerWidth <= 1400 &&
+    window.innerHeight <= 1100;
+  const chromeHeight = 126;
+  const stageHeight = Math.max(320, window.innerHeight - chromeHeight);
+  const widthScale = stageWidth / baseViewport.width;
+  const heightScale = stageHeight / baseViewport.height;
+  const fitScale = isTabletLandscape ? Math.min(widthScale, heightScale) : widthScale;
   const scale = fitScale * zoom;
   const viewport = page.getViewport({ scale });
 

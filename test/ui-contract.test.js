@@ -47,7 +47,7 @@ test("cabinet exposes help, performance, and lesson-driven navigation", () => {
   assert.match(html, /School App/);
   assert.doesNotMatch(html, /href="\/teacher"/);
   assert.doesNotMatch(html, /href="\/student"/);
-  assert.match(cabinet, /lessonUrl\(user\.role, lesson\.id\)/);
+  assert.match(cabinet, /lessonUrl\("teacher", lesson\.id\)/);
   assert.match(cabinet, /\/monitor\?lesson=/);
 });
 
@@ -244,6 +244,138 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("tablet PDF view prioritizes document space in portrait and landscape", () => {
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+  const css = read("public/pdf-view.css");
+  const app = read("public/app.js");
+
+  assert.match(teacher, /class="pdf-view-page"/);
+  assert.match(student, /class="pdf-view-page"/);
+  assert.match(teacher, /\/pdf-view\.css\?v=/);
+  assert.match(student, /\/pdf-view\.css\?v=/);
+  assert.match(css, /orientation:landscape/);
+  assert.match(css, /orientation:portrait/);
+  assert.match(css, /#stage\{[^}]*max-height:calc\(100vh - 122px\)/);
+  assert.match(css, /\.toolbar\{[^}]*flex-wrap:nowrap/);
+  assert.match(css, /#firstBtn,\s*\.pdf-view-page #lastBtn\{\s*display:none/);
+  assert.doesNotMatch(app, /Math\.min\(window\.innerWidth - 20, 1100\)/);
+  assert.match(app, /stageWidth/);
+  assert.match(app, /isTabletLandscape/);
+  assert.match(app, /Math\.min\(widthScale, heightScale\)/);
+});
+
+test("teacher dashboard hero matches the mock without scalloped pseudo decorations", () => {
+  const html = read("public/dashboard.html");
+  const css = read("public/dashboard.css");
+
+  assert.match(html, /class="teacher-hero"/);
+  assert.match(html, /class="teacher-hero-art"/);
+  assert.match(css, /\.teacher-hero\{[^}]*overflow:hidden[^}]*border-radius:34px/);
+  assert.match(css, /\.teacher-hero-art\{[^}]*object-fit:contain/);
+  assert.doesNotMatch(css, /\.teacher-hero::after/);
+  assert.doesNotMatch(css, /\.teacher-hero::before/);
+  assert.doesNotMatch(css, /radial-gradient\([^\n]*#fff 98%/);
+});
+
+test("teacher sessions archive separately and legacy default lesson is removed", () => {
+  const server = read("server.js");
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+
+  assert.match(server, /req\.query\.archive === "1"/);
+  assert.match(server, /app\.post\("\/api\/teacher\/lessons\/:id\/archive"/);
+  assert.match(server, /status: "archived"/);
+  assert.match(server, /\$unset: \{ inviteToken: "" \}/);
+  assert.match(server, /app\.delete\("\/api\/teacher\/lessons\/:id"/);
+  assert.match(server, /lastParticipantName: name/);
+  assert.match(server, /lastParticipantAt: joinedAt/);
+  assert.match(server, /await lessons\.deleteOne\(\{ _id: "default" \}\)/);
+  assert.doesNotMatch(server, /await lessons\.updateOne\(\s*\{ _id: "default" \}/);
+
+  assert.match(dashboard, /data-teacher-view="active"/);
+  assert.match(dashboard, /data-teacher-view="archive"/);
+  assert.match(cabinet, /teacherView === "archive"/);
+  assert.match(cabinet, /Завершить/);
+  assert.match(cabinet, /Удалить навсегда/);
+  assert.match(cabinet, /Ученик:/);
+});
+
+test("guest invite identity uses one shared resolver for HTTP and realtime", () => {
+  const server = read("server.js");
+  const context = read("lib/session-context.js");
+
+  assert.match(server, /resolveIdentityFromCookies/);
+  assert.match(server, /normalizeLessonId\(req\.query\?\.lesson\)/);
+  assert.match(server, /userFromCookieHeader\(req\.headers\.cookie, preferredLessonId\)/);
+  assert.match(server, /userFromCookieHeader\(socket\.handshake\.headers\.cookie, lessonId\)/);
+  assert.match(context, /guest && preferredLessonId && guest\.lessonId === preferredLessonId/);
+});
+
+test("teacher material library can attach PDFs and collect homework submissions", () => {
+  const server = read("server.js");
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const student = read("public/student.html");
+  const studentSession = read("public/student-session.js");
+
+  assert.match(server, /materials = db\.collection\(collectionName\("materials"\)\)/);
+  assert.match(server, /homeworkSubmissions = db\.collection\(collectionName\("homework_submissions"\)\)/);
+  assert.match(server, /app\.get\("\/api\/materials"/);
+  assert.match(server, /app\.post\("\/api\/materials"/);
+  assert.match(server, /app\.patch\("\/api\/teacher\/lessons\/:id\/material"/);
+  assert.match(server, /ownerId: req\.user\._id/);
+  assert.match(server, /MATERIAL_IN_USE/);
+  assert.match(server, /materialId: material\._id/);
+  assert.match(server, /app\.post\("\/api\/homework\/submit"/);
+  assert.match(server, /req\.lesson\.type !== "homework"/);
+  assert.match(server, /app\.get\("\/api\/teacher\/lessons\/:id\/submissions"/);
+
+  assert.match(dashboard, /id="materialPanel"/);
+  assert.match(dashboard, /id="materialUploadForm"/);
+  assert.match(cabinet, /\/api\/materials/);
+  assert.match(cabinet, /Прикрепить PDF/);
+  assert.match(cabinet, /Сдано:/);
+  assert.match(student, /id="submitHomeworkBtn"/);
+  assert.match(studentSession, /lesson\.type !== "homework"/);
+  assert.match(studentSession, /\/api\/homework\/submit\?lesson=/);
+});
+
+test("teacher invite sessions let children join without accounts", () => {
+  const server = read("server.js");
+  const auth = read("lib/auth.js");
+  const cabinet = read("public/cabinet.js");
+  const dashboard = read("public/dashboard.html");
+  const join = read("public/join.html");
+  const joinJs = read("public/join.js");
+  const student = read("public/student.html");
+  const home = read("public/index.html");
+
+  assert.match(server, /app\.post\("\/api\/auth\/register"/);
+  assert.match(server, /app\.post\("\/api\/teacher\/lessons"/);
+  assert.match(server, /app\.get\("\/api\/join\/:token"/);
+  assert.match(server, /app\.post\("\/api\/join\/:token"/);
+  assert.match(server, /inviteToken: newInviteToken\(\)/);
+  assert.match(server, /ownerId: req\.user\._id/);
+  assert.match(server, /canAccessLesson/);
+  const access = read("lib/lesson-access.js");
+  assert.match(access, /user\.guest/);
+  assert.match(access, /user\.lessonId === lesson\._id/);
+
+  assert.match(auth, /GUEST_COOKIE/);
+  assert.match(auth, /createGuestToken/);
+  assert.match(auth, /parseGuestToken/);
+  assert.match(auth, /GUEST_TTL_SECONDS/);
+
+  assert.match(dashboard, /id="createTeacherSessionForm"/);
+  assert.match(cabinet, /\/api\/teacher\/lessons/);
+  assert.match(cabinet, /Скопировать ссылку/);
+  assert.match(join, /Как тебя зовут/);
+  assert.match(joinJs, /\/api\/join\//);
+  assert.doesNotMatch(student, /href="\/cabinet"/);
+  assert.match(home, /href="\/register">Создать кабинет учителя/);
+});
+
 test("root is login and cabinet preserves account-aware lesson navigation", () => {
   const login = read("public/index.html");
   const cabinet = read("public/dashboard.html");
@@ -262,7 +394,7 @@ test("root is login and cabinet preserves account-aware lesson navigation", () =
   assert.match(cabinetJs, /Как учитель/);
   assert.match(cabinetJs, /Как ученик/);
   assert.match(teacher, /href="\/cabinet"/);
-  assert.match(student, /href="\/cabinet"/);
+  assert.doesNotMatch(student, /href="\/cabinet"/);
   assert.match(server, /app\.post\("\/api\/auth\/login"/);
   assert.match(server, /app\.get\("\/api\/auth\/me"/);
   assert.match(server, /requirePageAuth/);
@@ -318,10 +450,12 @@ test("lesson realtime and data are scoped by lessonId", () => {
   assert.match(cabinet, /encodeURIComponent\(lessonId\)/);
 });
 
-test("lesson access is derived from persisted lesson membership", () => {
+test("lesson access is derived from the shared persisted membership policy", () => {
   const server = read("server.js");
-  assert.match(server, /lesson\.teacherIds\?\.includes\(user\._id\)/);
-  assert.match(server, /lesson\.studentIds\?\.includes\(user\._id\)/);
+  const access = read("lib/lesson-access.js");
+  assert.match(server, /canAccessLesson\(user, lesson\)/);
+  assert.match(access, /lesson\.teacherIds\?\.includes\(user\._id\)/);
+  assert.match(access, /lesson\.studentIds\?\.includes\(user\._id\)/);
   assert.match(server, /LESSON_FORBIDDEN/);
 });
 
