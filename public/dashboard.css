@@ -35,15 +35,14 @@ body.dashboard-page{
 .dashboard-page .account-strip button{border-radius:11px;background:linear-gradient(135deg,var(--purple),var(--purple2));padding:9px 13px}
 .dashboard-shell{width:min(1240px,calc(100% - 28px));margin:0 auto;padding:24px 0 50px}
 .teacher-hero{position:relative;min-height:330px;display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;overflow:hidden;border-radius:34px;background:linear-gradient(120deg,#e9f8ff 0,#f6f2ff 46%,#fff2da 100%);box-shadow:var(--shadow)}
-.teacher-hero::after{content:"";position:absolute;left:0;right:0;bottom:-28px;height:65px;background:radial-gradient(44px 31px at 4% 0,#fff 98%,transparent),radial-gradient(58px 35px at 18% 0,#fff 98%,transparent),radial-gradient(48px 34px at 34% 0,#fff 98%,transparent),radial-gradient(68px 38px at 55% 0,#fff 98%,transparent),radial-gradient(53px 31px at 76% 0,#fff 98%,transparent),radial-gradient(60px 34px at 94% 0,#fff 98%,transparent)}
-.teacher-hero-copy{position:relative;z-index:2;padding:38px 10px 48px 42px}
+.teacher-hero-copy{position:relative;z-index:2;padding:38px 10px 38px 42px}
 .teacher-kicker{display:inline-block;padding:8px 12px;border-radius:999px;background:#fff;color:#6c61de;font-size:11px;font-weight:900;letter-spacing:.12em}
 .teacher-hero h1{margin:14px 0 14px;font-size:clamp(46px,5.6vw,72px);line-height:.92;letter-spacing:-.055em}
 .teacher-hero h1 span{display:block;color:#6557ef}
 .teacher-hero p{max-width:510px;margin:0;color:#66738f;line-height:1.55;font-size:16px}
 .hero-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
 .hero-pills span{padding:8px 10px;border-radius:999px;background:rgba(255,255,255,.86);font-size:11px;font-weight:750;color:#55617d}
-.teacher-hero-art{align-self:end;justify-self:end;width:min(100%,700px);height:auto;max-height:330px;object-fit:contain;object-position:right bottom;filter:drop-shadow(0 20px 24px rgba(57,62,115,.12))}
+.teacher-hero-art{align-self:end;justify-self:end;width:min(100%,700px);height:auto;max-height:330px;object-fit:contain;object-position:right bottom;filter:drop-shadow(0 20px 24px rgba(57,62,115,.12));margin-bottom:0}
 .session-create-card{position:relative;margin-top:20px;padding:22px 26px;border:1px solid rgba(91,91,158,.08);border-radius:26px;background:rgba(255,255,255,.95);box-shadow:var(--shadow);overflow:hidden}
 .session-decor{position:absolute;right:10px;bottom:-24px;width:260px;height:auto;opacity:.86;pointer-events:none}
 .teacher-session-form{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(160px,.55fr) auto;align-items:end;gap:12px}
