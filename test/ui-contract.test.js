@@ -357,8 +357,10 @@ test("teacher invite sessions let children join without accounts", () => {
   assert.match(server, /app\.post\("\/api\/join\/:token"/);
   assert.match(server, /inviteToken: newInviteToken\(\)/);
   assert.match(server, /ownerId: req\.user\._id/);
-  assert.match(server, /user\.guest/);
-  assert.match(server, /user\.lessonId === lessonId/);
+  assert.match(server, /canAccessLesson/);
+  const access = read("lib/lesson-access.js");
+  assert.match(access, /user\.guest/);
+  assert.match(access, /user\.lessonId === lesson\._id/);
 
   assert.match(auth, /GUEST_COOKIE/);
   assert.match(auth, /createGuestToken/);
