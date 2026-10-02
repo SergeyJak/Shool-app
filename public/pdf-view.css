@@ -240,7 +240,18 @@
     display:none;
   }
   .pdf-view-page .compact-sync{
-    top:60px;
+    position:static;
+    width:100%;
+    min-height:0;
+    margin:0 auto 6px;
+    padding:0 2px;
+    justify-content:flex-end;
+    pointer-events:auto;
+  }
+  .pdf-view-page .compact-sync .follow-button,
+  .pdf-view-page .compact-sync .follow-status{
+    width:auto;
+    max-width:100%;
   }
   .pdf-view-page .toolbar{
     width:calc(100vw - 10px);
@@ -299,4 +310,22 @@
   .pdf-view-page .pdf-brand span:last-child{display:none}
   .pdf-view-page .pdf-lesson-title strong{font-size:12px}
   .pdf-view-page .pdf-action{font-size:10px;padding:6px 7px}
+  .pdf-view-page .compact-sync{
+    position:static;
+    width:100%;
+    min-height:0;
+    margin:0 auto 6px;
+    padding:0 2px;
+    display:flex;
+    justify-content:flex-end;
+    pointer-events:auto;
+  }
+  .pdf-view-page .compact-sync .follow-button,
+  .pdf-view-page .compact-sync .follow-status{
+    width:auto;
+    max-width:100%;
+  }
+  .pdf-view-page .toolbar{
+    top:64px;
+  }
 }
