@@ -1206,7 +1206,7 @@ async function renderPage() {
   if (role === "teacher") {
     socket.emit("teacher:monitor:page", { page: pageNumber });
   }
-
+}
 
 async function loadAnnotations() {
   previewStrokes.clear();
