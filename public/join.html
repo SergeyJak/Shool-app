@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>School App · Вход в занятие</title>
+  <link rel="stylesheet" href="/join.css?v=20261002-1" />
+</head>
+<body>
+  <main class="join-shell">
+    <section class="join-card" aria-labelledby="joinTitle">
+      <div class="join-mark">🦉</div>
+      <span class="eyebrow">School App</span>
+      <h1 id="joinTitle">Подключение к занятию</h1>
+      <p id="lessonName">Проверяем ссылку…</p>
+
+      <form id="joinForm" hidden>
+        <label>
+          <span>Как тебя зовут?</span>
+          <input id="studentName" name="name" maxlength="80" autocomplete="name" required autofocus />
+        </label>
+        <div id="joinError" class="error" hidden></div>
+        <button id="joinBtn" type="submit">Войти в занятие</button>
+      </form>
+    </section>
+  </main>
+  <script src="/join.js?v=20261002-1"></script>
+</body>
+</html>
