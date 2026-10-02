@@ -16,21 +16,18 @@ const {
 const { createFollowState } = require("./lib/follow-state");
 const { parseSingleByteRange } = require("./lib/http-range");
 const {
-  SESSION_COOKIE,
-  GUEST_COOKIE,
   normalizeUsername,
   hashPassword,
   verifyPassword,
   createSessionToken,
-  parseSessionToken,
   createGuestToken,
-  parseGuestToken,
-  parseCookies,
   sessionCookie,
   guestCookie,
   clearSessionCookie,
   clearGuestCookie,
 } = require("./lib/auth");
+const { resolveIdentityFromCookies } = require("./lib/session-context");
+const { canAccessLesson } = require("./lib/lesson-access");
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -76,37 +73,12 @@ function requestIsSecure(req) {
 }
 
 async function userFromCookieHeader(cookieHeader, preferredLessonId = null) {
-  const cookies = parseCookies(cookieHeader || "");
-  const guest = parseGuestToken(cookies[GUEST_COOKIE], AUTH_SECRET);
-
-  if (guest && preferredLessonId && guest.lessonId === preferredLessonId) {
-    return {
-      _id: `guest:${guest.guestId}`,
-      username: guest.name || "guest",
-      displayName: guest.name || "Ученик",
-      role: "student",
-      active: true,
-      guest: true,
-      lessonId: guest.lessonId,
-    };
-  }
-
-  const payload = parseSessionToken(cookies[SESSION_COOKIE], AUTH_SECRET);
-  if (payload && users) {
-    const user = await users.findOne({ _id: payload.uid, active: true });
-    if (user) return user;
-  }
-
-  if (!guest) return null;
-  return {
-    _id: `guest:${guest.guestId}`,
-    username: guest.name || "guest",
-    displayName: guest.name || "Ученик",
-    role: "student",
-    active: true,
-    guest: true,
-    lessonId: guest.lessonId,
-  };
+  return resolveIdentityFromCookies({
+    cookieHeader,
+    preferredLessonId,
+    secret: AUTH_SECRET,
+    findActiveUserById: (id) => users.findOne({ _id: id, active: true }),
+  });
 }
 
 async function attachUser(req, _res, next) {
@@ -199,12 +171,7 @@ function lessonRoom(lessonId) {
 async function lessonForUser(user, lessonId) {
   if (!user || !lessonId) return null;
   const lesson = await lessons.findOne({ _id: lessonId });
-  if (!lesson) return null;
-  if (user.guest) return lesson.active !== false && user.lessonId === lessonId ? lesson : null;
-  if (user.role === "admin") return lesson;
-  if (user.role === "teacher" && (lesson.ownerId === user._id || lesson.teacherIds?.includes(user._id))) return lesson;
-  if (user.role === "student" && lesson.active !== false && lesson.studentIds?.includes(user._id)) return lesson;
-  return null;
+  return canAccessLesson(user, lesson) ? lesson : null;
 }
 
 async function requireLessonAccess(req, res, next) {
