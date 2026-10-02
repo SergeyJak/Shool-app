@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="description" content="School App — интерактивная платформа для уроков, учебных материалов и совместной работы ученика с учителем." />
   <title>School App · Интерактивное обучение для детей</title>
-  <link rel="stylesheet" href="/home.css?v=20261002-home2" />
+  <link rel="stylesheet" href="/home.css?v=20261002-home3" />
 </head>
 <body class="home-body">
   <header class="site-header">
@@ -15,36 +15,36 @@
     </a>
     <nav class="site-nav" aria-label="Навигация">
       <a class="active" href="#top">Главная</a>
-      <a href="#features">Как это работает</a>
-      <a href="#features">Уроки</a>
+      <a href="#features">Возможности</a>
+      <a href="#how">Как проходит урок</a>
       <a href="#parents">Для родителей</a>
-      <a href="#footer">Контакты</a>
     </nav>
     <a class="header-login" href="#login">👤&nbsp;&nbsp;Войти</a>
   </header>
 
   <main id="top">
     <section class="hero-stage">
-      <img class="hero-art" src="/assets/hero-learning.png" alt="Учитель и дети занимаются вместе за ноутбуком" />
+      <img class="hero-art" src="/assets/hero-learning.png" alt="Учитель и дети занимаются вместе за ноутбуком" width="1586" height="992" decoding="async" fetchpriority="high" />
       <div class="hero-copy">
         <span class="hero-kicker">УЧИСЬ · ОТКРЫВАЙ · РАЗВИВАЙСЯ</span>
         <h1>Интерактивное<br>обучение <span>для детей</span></h1>
         <p>Удобная платформа для уроков, учебных материалов и совместной работы с учителем — в яркой и дружелюбной среде.</p>
         <div class="hero-actions">
-          <a class="primary-cta" href="#login">Начать <span>→</span></a>
-          <a class="secondary-cta" href="#login">Войти</a>
+          <a class="primary-cta" href="#features">Посмотреть возможности <span>↓</span></a>
+          <a class="secondary-cta" href="#login">Войти в кабинет</a>
         </div>
         <div class="trust-row">
-          <div><span>✓</span><b>Безопасная<br>среда</b></div>
-          <div><span>❤</span><b>Поддержка<br>педагогов</b></div>
-          <div><span>★</span><b>Развитие<br>и мотивация</b></div>
+          <div><span>✓</span><b>Доступ по<br>ролям</b></div>
+          <div><span>❤</span><b>Урок в<br>реальном времени</b></div>
+          <div><span>★</span><b>Материалы<br>в одном месте</b></div>
         </div>
       </div>
 
-      <form id="loginForm" class="login-panel" autocomplete="on">
+      <form id="loginForm" class="login-panel" autocomplete="on" aria-labelledby="loginTitle">
+        <span id="login" class="login-anchor" aria-hidden="true"></span>
         <div class="login-panel-head">
           <span class="login-icon">🎓</span>
-          <h2 id="login">Вход в кабинет</h2>
+          <h2 id="loginTitle">Вход в кабинет</h2>
         </div>
         <label>
           <span>Логин</span>
@@ -68,38 +68,46 @@
 
       <div class="feature-grid">
         <article class="feature-card purple">
-          <img src="/assets/live-learning.png" alt="Живой онлайн-урок с учителем" />
+          <img src="/assets/live-learning.png" alt="Живой онлайн-урок с учителем" width="1448" height="1086" loading="lazy" decoding="async" />
           <div class="feature-copy">
             <span class="feature-icon video">▣</span>
             <div>
               <h3>Живые уроки</h3>
               <p>Проводите занятия и взаимодействуйте<br>в реальном времени</p>
             </div>
-            <span class="feature-arrow">›</span>
+            
           </div>
         </article>
         <article class="feature-card yellow">
-          <img src="/assets/materials-learning.png" alt="Интерактивные учебные материалы" />
+          <img src="/assets/materials-learning.png" alt="Интерактивные учебные материалы" width="1448" height="1086" loading="lazy" decoding="async" />
           <div class="feature-copy">
             <span class="feature-icon docs">▤</span>
             <div>
               <h3>Интерактивные материалы</h3>
               <p>Учебники, PDF и задания<br>в одном месте</p>
             </div>
-            <span class="feature-arrow">›</span>
+            
           </div>
         </article>
         <article class="feature-card green">
-          <img src="/assets/progress-learning.png" alt="Прогресс и мотивация ребёнка" />
+          <img src="/assets/progress-learning.png" alt="Ребёнок радуется результату занятия" width="1448" height="1086" loading="lazy" decoding="async" />
           <div class="feature-copy">
             <span class="feature-icon chart">▥</span>
             <div>
-              <h3>Прогресс и мотивация</h3>
-              <p>Следите за успехами<br>и поддерживайте интерес ребёнка</p>
+              <h3>Вовлечённость в урок</h3>
+              <p>Яркая подача и совместная работа помогают удерживать внимание ребёнка.</p>
             </div>
-            <span class="feature-arrow">›</span>
+            
           </div>
         </article>
+      </div>
+    </section>
+
+    <section id="how" class="how-section">
+      <div class="how-card">
+        <div class="how-step"><span>1</span><div><strong>Учитель открывает урок</strong><p>Материалы, PDF и инструменты уже внутри занятия.</p></div></div>
+        <div class="how-step"><span>2</span><div><strong>Ученик подключается</strong><p>Оба работают с одним уроком и видят актуальную страницу.</p></div></div>
+        <div class="how-step"><span>3</span><div><strong>Работа идёт вместе</strong><p>Рисунки, текст и действия синхронизируются в реальном времени.</p></div></div>
       </div>
     </section>
 
@@ -107,17 +115,17 @@
       <div class="parents-card">
         <div class="parents-copy">
           <span class="parents-kicker">ДЛЯ РОДИТЕЛЕЙ И УЧИТЕЛЕЙ</span>
-          <h2>Удобно детям,<br><span class="purple-text">полезно родителям,</span><br><span class="orange-text">просто учителям</span></h2>
-          <p>Безопасное обучение, понятная структура и лёгкий доступ ко всем возможностям платформы. Вместе мы создаём спокойную и понятную среду для каждого ребёнка.</p>
-          <a class="primary-cta compact" href="#login">Узнать больше <span>→</span></a>
+          <h2>Понятно детям,<br><span class="purple-text">удобно учителям,</span><br><span class="orange-text">спокойно родителям</span></h2>
+          <p>Ребёнок видит только свой урок, учитель управляет материалами и ходом занятия, а доступ к кабинетам и урокам разделён по ролям.</p>
+          <a class="primary-cta compact" href="#features">Посмотреть возможности <span>→</span></a>
         </div>
         <div class="parents-visual">
-          <img class="parents-art" src="/assets/family-learning.png" alt="Семья вместе занимается с ребёнком" />
+          <img class="parents-art" src="/assets/family-learning.png" alt="Семья вместе занимается с ребёнком" width="1586" height="992" loading="lazy" decoding="async" />
           <div class="benefit-list">
-            <div>✓ Безопасная среда</div>
-            <div>✓ Качественные уроки</div>
-            <div>✓ Поддержка педагогов</div>
-            <div>✓ Удобно на любом устройстве</div>
+            <div>✓ Доступ по ролям</div>
+            <div>✓ Материалы внутри урока</div>
+            <div>✓ Синхронная работа</div>
+            <div>✓ Компьютер и телефон</div>
           </div>
         </div>
       </div>
@@ -131,9 +139,9 @@
         <span class="brand-owl">🦉</span>
         <div><strong>School <b>App</b></strong><span>Знания сегодня —<br>большие возможности завтра! ❤️</span></div>
       </div>
-      <div class="footer-column"><strong>Платформа</strong><a href="#top">Главная</a><a href="#features">Как это работает</a><a href="#features">Уроки</a><a href="#parents">Для родителей</a></div>
-      <div class="footer-column"><strong>Помощь</strong><a href="#login">Войти</a><a href="#parents">Безопасность</a><a href="#features">Возможности</a></div>
-      <div class="footer-social"><strong>Мы рядом</strong><div class="social-dots"><span>▶</span><span>✈</span><span>●</span></div><small>Счастливые дети меняют мир ❤️</small></div>
+      <div class="footer-column"><strong>Платформа</strong><a href="#top">Главная</a><a href="#features">Возможности</a><a href="#how">Как проходит урок</a><a href="#parents">Для родителей</a></div>
+      <div class="footer-column"><strong>Доступ</strong><a href="#login">Войти в кабинет</a><span>Учитель · Ученик · Администратор</span></div>
+      <div class="footer-social"><strong>School App</strong><small>Учебные материалы и совместная работа в одном понятном пространстве.</small></div>
     </div>
     <div class="footer-hills"><span class="school">🏫</span><span class="sun">☀️</span></div>
   </footer>
