@@ -226,6 +226,24 @@ test("pen and eraser use compact accessible icons", () => {
   assert.match(css, /\.tool-icon\s*\{[\s\S]*stroke:\s*currentColor/);
 });
 
+test("homepage presents distinct actions and only real product capabilities", () => {
+  const home = read("public/index.html");
+  const css = read("public/home.css");
+
+  assert.match(home, /href="#features">Посмотреть возможности/);
+  assert.match(home, /href="#login">Войти в кабинет/);
+  assert.doesNotMatch(home, /Начать <span>→<\/span><\/a>\s*<a class="secondary-cta" href="#login">Войти/);
+  assert.doesNotMatch(home, /Прогресс и мотивация/);
+  assert.doesNotMatch(home, /Учебники, PDF и задания/);
+  assert.doesNotMatch(home, /user-scalable=no/);
+  assert.match(home, /id="how"/);
+  assert.match(home, /loading="lazy"/);
+  assert.match(home, /width="1448" height="1086"/);
+  assert.doesNotMatch(home, /social-dots/);
+  assert.match(css, /\.how-card/);
+  assert.match(css, /\.hero-stage::after/);
+});
+
 test("root is login and cabinet preserves account-aware lesson navigation", () => {
   const login = read("public/index.html");
   const cabinet = read("public/dashboard.html");
