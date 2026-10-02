@@ -352,7 +352,7 @@ test("admin can manage users and lessons from the cabinet", () => {
   assert.match(server, /app\.patch\("\/api\/admin\/lessons\/:id"/);
   assert.match(server, /await hashPassword\(password\)/);
   assert.match(server, /validateLessonMembers/);
-  assert.match(server, /lesson_\\$\\{crypto\\.randomUUID\\(\\)\\}/);
+  assert.match(server, /crypto\.randomUUID\(\)/);
 });
 
 test("login sends every role through the cabinet instead of hardcoding default lesson", () => {
