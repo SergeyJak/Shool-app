@@ -75,15 +75,28 @@ function requestIsSecure(req) {
   return req.secure || String(req.get("x-forwarded-proto") || "").split(",")[0].trim() === "https";
 }
 
-async function userFromCookieHeader(cookieHeader) {
+async function userFromCookieHeader(cookieHeader, preferredLessonId = null) {
   const cookies = parseCookies(cookieHeader || "");
+  const guest = parseGuestToken(cookies[GUEST_COOKIE], AUTH_SECRET);
+
+  if (guest && preferredLessonId && guest.lessonId === preferredLessonId) {
+    return {
+      _id: `guest:${guest.guestId}`,
+      username: guest.name || "guest",
+      displayName: guest.name || "Ученик",
+      role: "student",
+      active: true,
+      guest: true,
+      lessonId: guest.lessonId,
+    };
+  }
+
   const payload = parseSessionToken(cookies[SESSION_COOKIE], AUTH_SECRET);
   if (payload && users) {
     const user = await users.findOne({ _id: payload.uid, active: true });
     if (user) return user;
   }
 
-  const guest = parseGuestToken(cookies[GUEST_COOKIE], AUTH_SECRET);
   if (!guest) return null;
   return {
     _id: `guest:${guest.guestId}`,
@@ -98,7 +111,8 @@ async function userFromCookieHeader(cookieHeader) {
 
 async function attachUser(req, _res, next) {
   try {
-    req.user = await userFromCookieHeader(req.headers.cookie);
+    const preferredLessonId = normalizeLessonId(req.query?.lesson);
+    req.user = await userFromCookieHeader(req.headers.cookie, preferredLessonId);
     next();
   } catch (error) {
     next(error);
@@ -1293,10 +1307,11 @@ function erasePathHitsBox(erase, box) {
 
 io.use(async (socket, next) => {
   try {
-    const user = await userFromCookieHeader(socket.handshake.headers.cookie);
+    const lessonId = normalizeLessonId(socket.handshake.auth?.lessonId);
+    const user = await userFromCookieHeader(socket.handshake.headers.cookie, lessonId);
     if (!user) return next(new Error("AUTH_REQUIRED"));
 
-    const lessonId = normalizeLessonId(socket.handshake.auth?.lessonId);
+
     if (!lessonId) return next(new Error("LESSON_REQUIRED"));
     const lesson = await lessonForUser(user, lessonId);
     if (!lesson) return next(new Error("LESSON_FORBIDDEN"));
