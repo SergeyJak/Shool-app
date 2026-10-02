@@ -221,6 +221,47 @@ function followForLesson(lessonId) {
 
 app.use(attachUser);
 
+app.post("/api/auth/register", async (req, res, next) => {
+  try {
+    const username = normalizeManagedUsername(req.body?.username);
+    const displayName = String(req.body?.displayName || "").trim();
+    const password = String(req.body?.password || "");
+    if (!username || !displayName || displayName.length > 80 || password.length < 8) {
+      return res.status(400).json({ error: "INVALID_REGISTRATION" });
+    }
+    if (await users.findOne({ _id: username })) {
+      return res.status(409).json({ error: "USER_EXISTS" });
+    }
+
+    const { salt, hash } = await hashPassword(password);
+    const now = new Date();
+    const user = {
+      _id: username,
+      username,
+      displayName,
+      role: "teacher",
+      active: true,
+      lessonIds: [],
+      passwordSalt: salt,
+      passwordHash: hash,
+      schemaVersion: 2,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await users.insertOne(user);
+
+    const token = createSessionToken(user, AUTH_SECRET);
+    res.setHeader("Set-Cookie", sessionCookie(token, { secure: requestIsSecure(req) }));
+    res.status(201).json({
+      ok: true,
+      redirect: "/cabinet",
+      user: publicUser(user),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/auth/login", async (req, res, next) => {
   try {
     const username = normalizeUsername(req.body?.username);
@@ -580,6 +621,10 @@ app.get("/join/:token", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+app.get("/register", (req, res) => {
+  if (req.user && !req.user.guest) return res.redirect("/cabinet");
+  res.sendFile(path.join(__dirname, "public", "register.html"));
 });
 app.get("/cabinet", requirePageAuth("teacher", "student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "dashboard.html"))
