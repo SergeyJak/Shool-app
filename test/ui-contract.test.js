@@ -73,7 +73,7 @@ test("server protects the PDF role gate, versioned cache and health route", () =
   assert.match(js, /status\(206\)/);
   assert.match(js, /status\(416\)/);
   assert.match(js, /app\.get\("\/health"/);
-  assert.match(js, /db = client\.db\("school_app"\)/);
+  assert.match(js, /db = client\.db\(MONGODB_DB_NAME\)/);
   assert.match(js, /teacher:follow:start/);
   assert.match(js, /teacher:follow:stop/);
   assert.match(js, /teacher:page/);
