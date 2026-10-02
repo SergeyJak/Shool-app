@@ -244,6 +244,35 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("teacher material library can attach PDFs and collect homework submissions", () => {
+  const server = read("server.js");
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const student = read("public/student.html");
+  const studentSession = read("public/student-session.js");
+
+  assert.match(server, /materials = db\.collection\(collectionName\("materials"\)\)/);
+  assert.match(server, /homeworkSubmissions = db\.collection\(collectionName\("homework_submissions"\)\)/);
+  assert.match(server, /app\.get\("\/api\/materials"/);
+  assert.match(server, /app\.post\("\/api\/materials"/);
+  assert.match(server, /app\.patch\("\/api\/teacher\/lessons\/:id\/material"/);
+  assert.match(server, /ownerId: req\.user\._id/);
+  assert.match(server, /MATERIAL_IN_USE/);
+  assert.match(server, /materialId: material\._id/);
+  assert.match(server, /app\.post\("\/api\/homework\/submit"/);
+  assert.match(server, /req\.lesson\.type !== "homework"/);
+  assert.match(server, /app\.get\("\/api\/teacher\/lessons\/:id\/submissions"/);
+
+  assert.match(dashboard, /id="materialPanel"/);
+  assert.match(dashboard, /id="materialUploadForm"/);
+  assert.match(cabinet, /\/api\/materials/);
+  assert.match(cabinet, /Прикрепить PDF/);
+  assert.match(cabinet, /Сдано:/);
+  assert.match(student, /id="submitHomeworkBtn"/);
+  assert.match(studentSession, /lesson\.type !== "homework"/);
+  assert.match(studentSession, /\/api\/homework\/submit\?lesson=/);
+});
+
 test("teacher invite sessions let children join without accounts", () => {
   const server = read("server.js");
   const auth = read("lib/auth.js");
