@@ -422,3 +422,11 @@ test("preview data can be isolated by collection namespace without changing prod
   assert.match(server, /new GridFSBucket\(db, \{ bucketName: GRIDFS_BUCKET_NAME \}\)/);
   assert.match(server, /Bootstrapped namespace/);
 });
+
+
+test("MongoDB database name is configurable per environment", () => {
+  const server = read("server.js");
+
+  assert.match(server, /const MONGODB_DB_NAME = String\(process\.env\.MONGODB_DB_NAME \|\| "school_app"\)\.trim\(\)/);
+  assert.match(server, /db = client\.db\(MONGODB_DB_NAME\)/);
+});
