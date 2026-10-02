@@ -29,6 +29,7 @@ const {
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_DB_NAME = String(process.env.MONGODB_DB_NAME || "school_app").trim();
 const DATA_NAMESPACE = String(process.env.DATA_NAMESPACE || "").trim().replace(/[^a-zA-Z0-9_-]/g, "");
 const collectionName = (base) => DATA_NAMESPACE ? `${DATA_NAMESPACE}_${base}` : base;
 const GRIDFS_BUCKET_NAME = collectionName("pdfs");
@@ -1122,7 +1123,7 @@ async function start() {
   const client = new MongoClient(MONGODB_URI);
   await client.connect();
 
-  db = client.db("school_app");
+  db = client.db(MONGODB_DB_NAME);
   bucket = new GridFSBucket(db, { bucketName: GRIDFS_BUCKET_NAME });
   annotations = db.collection(collectionName("annotations"));
   settings = db.collection(collectionName("settings"));
