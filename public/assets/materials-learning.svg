@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 340">
+<defs><linearGradient id="g" x1="0" x2="1" y2="1"><stop stop-color="#fff6c9"/><stop offset="1" stop-color="#fff0df"/></linearGradient></defs>
+<rect width="560" height="340" rx="36" fill="url(#g)"/>
+<rect x="160" y="70" width="265" height="180" rx="24" fill="#fff" stroke="#5564d8" stroke-width="8"/>
+<rect x="182" y="91" width="92" height="70" rx="13" fill="#b7e7d4"/><circle cx="220" cy="119" r="14" fill="#fff178"/><path d="M191 151l29-32 24 25 23-18" fill="none" stroke="#42a48a" stroke-width="8"/>
+<rect x="294" y="91" width="104" height="16" rx="8" fill="#e7e9f7"/><rect x="294" y="120" width="83" height="16" rx="8" fill="#e7e9f7"/>
+<circle cx="325" cy="199" r="34" fill="#ff8c44"/><path d="M317 182l28 17-28 17z" fill="#fff"/>
+<path d="M110 235h97v30h-97z" fill="#4f7dde"/><path d="M125 196h97v39h-97z" fill="#49b57a"/><path d="M143 160h97v36h-97z" fill="#ff7c6c"/>
+<g transform="translate(437 68)"><path d="M42 0l12 26 29 3-22 19 7 28-26-15-25 15 7-28-22-19 29-3z" fill="#ffd547"/><circle cx="34" cy="31" r="4" fill="#4b4b4b"/><circle cx="50" cy="31" r="4" fill="#4b4b4b"/><path d="M35 43c5 5 10 5 15 0" fill="none" stroke="#4b4b4b" stroke-width="3"/></g>
+</svg>
