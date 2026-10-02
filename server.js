@@ -16,21 +16,18 @@ const {
 const { createFollowState } = require("./lib/follow-state");
 const { parseSingleByteRange } = require("./lib/http-range");
 const {
-  SESSION_COOKIE,
-  GUEST_COOKIE,
   normalizeUsername,
   hashPassword,
   verifyPassword,
   createSessionToken,
-  parseSessionToken,
   createGuestToken,
-  parseGuestToken,
-  parseCookies,
   sessionCookie,
   guestCookie,
   clearSessionCookie,
   clearGuestCookie,
 } = require("./lib/auth");
+const { resolveIdentityFromCookies } = require("./lib/session-context");
+const { canAccessLesson } = require("./lib/lesson-access");
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -64,6 +61,8 @@ let settings;
 let performanceLogs;
 let users;
 let lessons;
+let materials;
+let homeworkSubmissions;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 
@@ -73,30 +72,19 @@ function requestIsSecure(req) {
   return req.secure || String(req.get("x-forwarded-proto") || "").split(",")[0].trim() === "https";
 }
 
-async function userFromCookieHeader(cookieHeader) {
-  const cookies = parseCookies(cookieHeader || "");
-  const payload = parseSessionToken(cookies[SESSION_COOKIE], AUTH_SECRET);
-  if (payload && users) {
-    const user = await users.findOne({ _id: payload.uid, active: true });
-    if (user) return user;
-  }
-
-  const guest = parseGuestToken(cookies[GUEST_COOKIE], AUTH_SECRET);
-  if (!guest) return null;
-  return {
-    _id: `guest:${guest.guestId}`,
-    username: guest.name || "guest",
-    displayName: guest.name || "Ученик",
-    role: "student",
-    active: true,
-    guest: true,
-    lessonId: guest.lessonId,
-  };
+async function userFromCookieHeader(cookieHeader, preferredLessonId = null) {
+  return resolveIdentityFromCookies({
+    cookieHeader,
+    preferredLessonId,
+    secret: AUTH_SECRET,
+    findActiveUserById: (id) => users.findOne({ _id: id, active: true }),
+  });
 }
 
 async function attachUser(req, _res, next) {
   try {
-    req.user = await userFromCookieHeader(req.headers.cookie);
+    const preferredLessonId = normalizeLessonId(req.query?.lesson);
+    req.user = await userFromCookieHeader(req.headers.cookie, preferredLessonId);
     next();
   } catch (error) {
     next(error);
@@ -182,13 +170,8 @@ function lessonRoom(lessonId) {
 
 async function lessonForUser(user, lessonId) {
   if (!user || !lessonId) return null;
-  const lesson = await lessons.findOne({ _id: lessonId, active: true });
-  if (!lesson) return null;
-  if (user.guest) return user.lessonId === lessonId ? lesson : null;
-  if (user.role === "admin") return lesson;
-  if (user.role === "teacher" && (lesson.ownerId === user._id || lesson.teacherIds?.includes(user._id))) return lesson;
-  if (user.role === "student" && lesson.studentIds?.includes(user._id)) return lesson;
-  return null;
+  const lesson = await lessons.findOne({ _id: lessonId });
+  return canAccessLesson(user, lesson) ? lesson : null;
 }
 
 async function requireLessonAccess(req, res, next) {
@@ -306,7 +289,8 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
 
 app.get("/api/lessons", requireAuth, async (req, res, next) => {
   try {
-    const query = { active: true };
+    const archived = req.user.role === "teacher" && req.query.archive === "1";
+    const query = { active: archived ? false : true, _id: { $ne: "default" } };
     if (req.user.role === "teacher") {
       query.$or = [{ ownerId: req.user._id }, { teacherIds: req.user._id }];
     }
@@ -316,6 +300,15 @@ app.get("/api/lessons", requireAuth, async (req, res, next) => {
     }
 
     const rows = await lessons.find(query).sort({ updatedAt: -1, createdAt: -1 }).toArray();
+    const lessonIds = rows.map((lesson) => lesson._id);
+    const submissionCounts = new Map();
+    if (req.user.role === "teacher" && lessonIds.length) {
+      const grouped = await homeworkSubmissions.aggregate([
+        { $match: { lessonId: { $in: lessonIds }, status: "submitted" } },
+        { $group: { _id: "$lessonId", count: { $sum: 1 } } },
+      ]).toArray();
+      for (const item of grouped) submissionCounts.set(item._id, item.count);
+    }
     res.setHeader("Cache-Control", "no-store");
     res.json({
       lessons: rows.map((lesson) => ({
@@ -325,6 +318,12 @@ app.get("/api/lessons", requireAuth, async (req, res, next) => {
         status: lesson.status || (lesson.active === false ? "completed" : "active"),
         ownerId: lesson.ownerId || lesson.teacherIds?.[0] || null,
         inviteUrl: lesson.inviteToken ? `/join/${lesson.inviteToken}` : null,
+        materialId: lesson.materialId || null,
+        materialName: lesson.materialName || null,
+        submissionCount: submissionCounts.get(lesson._id) || 0,
+        lastParticipantName: lesson.lastParticipantName || null,
+        lastParticipantAt: lesson.lastParticipantAt || null,
+        archivedAt: lesson.archivedAt || null,
         createdAt: lesson.createdAt,
         updatedAt: lesson.updatedAt,
       })),
@@ -353,6 +352,8 @@ app.post("/api/teacher/lessons", requireApiRole("teacher"), async (req, res, nex
       inviteToken: newInviteToken(),
       active: true,
       bookIds: [],
+      materialId: null,
+      materialName: null,
       createdAt: now,
       updatedAt: now,
       schemaVersion: 2,
@@ -388,6 +389,252 @@ app.post("/api/teacher/lessons/:id/invite/rotate", requireApiRole("teacher"), as
   }
 });
 
+app.post("/api/teacher/lessons/:id/archive", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const id = normalizeLessonId(req.params.id);
+    if (!id || id === "default") return res.status(400).json({ error: "INVALID_LESSON" });
+    const lesson = await lessons.findOne({ _id: id, active: true });
+    if (!lesson || (req.user.role !== "admin" && lesson.ownerId !== req.user._id && !lesson.teacherIds?.includes(req.user._id))) {
+      return res.status(404).json({ error: "LESSON_NOT_FOUND" });
+    }
+    const now = new Date();
+    await lessons.updateOne(
+      { _id: id },
+      {
+        $set: {
+          active: false,
+          status: "archived",
+          archivedAt: now,
+          updatedAt: now,
+        },
+        $unset: { inviteToken: "" },
+      }
+    );
+    teacherFollowByLesson.delete(id);
+    teacherPageByLesson.delete(id);
+    res.json({ ok: true, archivedAt: now });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/teacher/lessons/:id", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const id = normalizeLessonId(req.params.id);
+    if (!id || id === "default") return res.status(400).json({ error: "INVALID_LESSON" });
+    const lesson = await lessons.findOne({ _id: id, active: false });
+    if (!lesson || (req.user.role !== "admin" && lesson.ownerId !== req.user._id && !lesson.teacherIds?.includes(req.user._id))) {
+      return res.status(404).json({ error: "LESSON_NOT_FOUND" });
+    }
+
+    await Promise.all([
+      lessons.deleteOne({ _id: id }),
+      settings.deleteOne({ _id: `currentDocument:${id}` }),
+      annotations.deleteMany(annotationLessonFilter(id)),
+      homeworkSubmissions.deleteMany({ lessonId: id }),
+    ]);
+    teacherFollowByLesson.delete(id);
+    teacherPageByLesson.delete(id);
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/materials", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    if (req.user.guest) return res.status(403).json({ error: "FORBIDDEN" });
+    const rows = await materials.find({ ownerId: req.user._id }).sort({ createdAt: -1 }).toArray();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      materials: rows.map((item) => ({
+        id: item._id,
+        name: item.name,
+        fileId: String(item.fileId),
+        originalSize: item.originalSize,
+        storedSize: item.storedSize,
+        createdAt: item.createdAt,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/materials", requireApiRole("teacher"), upload.single("pdf"), async (req, res, next) => {
+  try {
+    if (req.user.guest) return res.status(403).json({ error: "FORBIDDEN" });
+    if (!req.file) return res.status(400).json({ error: "PDF_REQUIRED" });
+
+    const optimized = await optimizePdfBuffer(req.file.buffer);
+    const materialId = `material_${crypto.randomUUID()}`;
+    const fileId = new ObjectId();
+    const now = new Date();
+    const stream = bucket.openUploadStreamWithId(fileId, req.file.originalname, {
+      contentType: "application/pdf",
+      metadata: {
+        ownerId: req.user._id,
+        materialId,
+        library: true,
+        uploadedAt: now,
+        originalSize: optimized.originalSize,
+        storedSize: optimized.finalSize,
+        compressed: optimized.compressed,
+      },
+    });
+    stream.end(optimized.buffer);
+    await new Promise((resolve, reject) => {
+      stream.on("finish", resolve);
+      stream.on("error", reject);
+    });
+
+    const row = {
+      _id: materialId,
+      ownerId: req.user._id,
+      fileId,
+      name: req.file.originalname,
+      originalSize: optimized.originalSize,
+      storedSize: optimized.finalSize,
+      compressed: optimized.compressed,
+      createdAt: now,
+      updatedAt: now,
+      schemaVersion: 1,
+    };
+    await materials.insertOne(row);
+    res.status(201).json({
+      material: {
+        id: row._id,
+        name: row.name,
+        fileId: String(row.fileId),
+        originalSize: row.originalSize,
+        storedSize: row.storedSize,
+        createdAt: row.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/materials/:id", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    if (req.user.guest) return res.status(403).json({ error: "FORBIDDEN" });
+    const id = String(req.params.id || "");
+    const material = await materials.findOne({ _id: id, ownerId: req.user._id });
+    if (!material) return res.status(404).json({ error: "MATERIAL_NOT_FOUND" });
+    if (await lessons.findOne({ materialId: id, active: true })) {
+      return res.status(409).json({ error: "MATERIAL_IN_USE" });
+    }
+    await materials.deleteOne({ _id: id, ownerId: req.user._id });
+    try {
+      await bucket.delete(new ObjectId(material.fileId));
+    } catch {
+      // GridFS cleanup is best effort after metadata is removed.
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/teacher/lessons/:id/material", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    if (req.user.guest) return res.status(403).json({ error: "FORBIDDEN" });
+    const lessonId = normalizeLessonId(req.params.id);
+    const materialId = String(req.body?.materialId || "");
+    if (!lessonId || !materialId) return res.status(400).json({ error: "INVALID_MATERIAL" });
+
+    const lesson = await lessons.findOne({ _id: lessonId, active: true });
+    if (!lesson || (req.user.role !== "admin" && lesson.ownerId !== req.user._id && !lesson.teacherIds?.includes(req.user._id))) {
+      return res.status(404).json({ error: "LESSON_NOT_FOUND" });
+    }
+    const material = await materials.findOne({ _id: materialId, ownerId: req.user._id });
+    if (!material) return res.status(404).json({ error: "MATERIAL_NOT_FOUND" });
+
+    const now = new Date();
+    await settings.updateOne(
+      { _id: `currentDocument:${lessonId}` },
+      {
+        $set: {
+          lessonId,
+          fileId: material.fileId,
+          materialId: material._id,
+          name: material.name,
+          uploadedAt: material.createdAt,
+          uploadedBy: req.user._id,
+        },
+      },
+      { upsert: true }
+    );
+    await lessons.updateOne(
+      { _id: lessonId },
+      { $set: { materialId: material._id, materialName: material.name, updatedAt: now } }
+    );
+    await annotations.deleteMany(annotationLessonFilter(lessonId));
+    io.to(lessonRoom(lessonId)).emit("document:changed", {
+      id: String(material.fileId),
+      name: material.name,
+    });
+    res.json({
+      ok: true,
+      material: { id: material._id, name: material.name, fileId: String(material.fileId) },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/teacher/lessons/:id/submissions", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const lessonId = normalizeLessonId(req.params.id);
+    if (!lessonId) return res.status(400).json({ error: "INVALID_LESSON" });
+    const lesson = await lessons.findOne({ _id: lessonId });
+    if (!lesson || (req.user.role !== "admin" && lesson.ownerId !== req.user._id && !lesson.teacherIds?.includes(req.user._id))) {
+      return res.status(404).json({ error: "LESSON_NOT_FOUND" });
+    }
+    const rows = await homeworkSubmissions.find({ lessonId }).sort({ submittedAt: -1 }).toArray();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      submissions: rows.map((row) => ({
+        id: row._id,
+        participantName: row.participantName,
+        status: row.status,
+        submittedAt: row.submittedAt,
+        updatedAt: row.updatedAt,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/homework/submit", requireApiRole("student"), requireLessonAccess, async (req, res, next) => {
+  try {
+    if (req.lesson.type !== "homework") return res.status(400).json({ error: "NOT_HOMEWORK" });
+    const now = new Date();
+    const participantKey = req.user._id;
+    const rowId = `${req.lessonId}:${participantKey}`;
+    await homeworkSubmissions.updateOne(
+      { _id: rowId },
+      {
+        $set: {
+          lessonId: req.lessonId,
+          participantKey,
+          participantName: req.user.displayName || req.user.username || "Ученик",
+          status: "submitted",
+          submittedAt: now,
+          updatedAt: now,
+        },
+        $setOnInsert: { createdAt: now, schemaVersion: 1 },
+      },
+      { upsert: true }
+    );
+    res.json({ ok: true, submittedAt: now });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/join/:token", async (req, res, next) => {
   try {
     const token = normalizeInviteToken(req.params.token);
@@ -416,6 +663,11 @@ app.post("/api/join/:token", async (req, res, next) => {
     if (!lesson) return res.status(404).json({ error: "INVITE_NOT_FOUND" });
 
     const guestToken = createGuestToken({ lessonId: lesson._id, name }, AUTH_SECRET);
+    const joinedAt = new Date();
+    await lessons.updateOne(
+      { _id: lesson._id },
+      { $set: { lastParticipantName: name, lastParticipantAt: joinedAt, updatedAt: joinedAt } }
+    );
     res.setHeader("Set-Cookie", guestCookie(guestToken, { secure: requestIsSecure(req) }));
     res.setHeader("Cache-Control", "no-store");
     res.json({ ok: true, redirect: `/student?lesson=${encodeURIComponent(lesson._id)}` });
@@ -741,14 +993,18 @@ app.post("/api/document", requireApiRole("teacher"), requireLessonAccess, upload
       return res.status(400).json({ error: "PDF_REQUIRED" });
     }
 
-    const current = await getCurrentDocument(req.lessonId);
     const optimized = await optimizePdfBuffer(req.file.buffer);
+    const materialId = `material_${crypto.randomUUID()}`;
+    const now = new Date();
 
     const fileId = new ObjectId();
     const stream = bucket.openUploadStreamWithId(fileId, req.file.originalname, {
       contentType: "application/pdf",
       metadata: {
-        uploadedAt: new Date(),
+        ownerId: req.user._id,
+        materialId,
+        library: true,
+        uploadedAt: now,
         originalSize: optimized.originalSize,
         storedSize: optimized.finalSize,
         compressed: optimized.compressed,
@@ -762,29 +1018,39 @@ app.post("/api/document", requireApiRole("teacher"), requireLessonAccess, upload
       stream.on("error", reject);
     });
 
+    await materials.insertOne({
+      _id: materialId,
+      ownerId: req.user._id,
+      fileId,
+      name: req.file.originalname,
+      originalSize: optimized.originalSize,
+      storedSize: optimized.finalSize,
+      compressed: optimized.compressed,
+      createdAt: now,
+      updatedAt: now,
+      schemaVersion: 1,
+    });
+
     await settings.updateOne(
       { _id: `currentDocument:${req.lessonId}` },
       {
         $set: {
           lessonId: req.lessonId,
           fileId,
+          materialId,
           name: req.file.originalname,
-          uploadedAt: new Date(),
+          uploadedAt: now,
           uploadedBy: req.user._id,
         },
       },
       { upsert: true }
     );
 
+    await lessons.updateOne(
+      { _id: req.lessonId },
+      { $set: { materialId, materialName: req.file.originalname, updatedAt: now } }
+    );
     await annotations.deleteMany(annotationLessonFilter(req.lessonId));
-
-    if (current?.fileId) {
-      try {
-        await bucket.delete(new ObjectId(current.fileId));
-      } catch {
-        // Old file cleanup is best effort.
-      }
-    }
 
     io.to(lessonRoom(req.lessonId)).emit("document:changed", {
       id: String(fileId),
@@ -797,6 +1063,7 @@ app.post("/api/document", requireApiRole("teacher"), requireLessonAccess, upload
       originalSize: optimized.originalSize,
       storedSize: optimized.finalSize,
       compressed: optimized.compressed,
+      materialId,
     });
   } catch (err) {
     next(err);
@@ -1007,10 +1274,11 @@ function erasePathHitsBox(erase, box) {
 
 io.use(async (socket, next) => {
   try {
-    const user = await userFromCookieHeader(socket.handshake.headers.cookie);
+    const lessonId = normalizeLessonId(socket.handshake.auth?.lessonId);
+    const user = await userFromCookieHeader(socket.handshake.headers.cookie, lessonId);
     if (!user) return next(new Error("AUTH_REQUIRED"));
 
-    const lessonId = normalizeLessonId(socket.handshake.auth?.lessonId);
+
     if (!lessonId) return next(new Error("LESSON_REQUIRED"));
     const lesson = await lessonForUser(user, lessonId);
     if (!lesson) return next(new Error("LESSON_FORBIDDEN"));
@@ -1316,14 +1584,18 @@ async function start() {
   performanceLogs = db.collection(collectionName("performance_logs"));
   users = db.collection(collectionName("users"));
   lessons = db.collection(collectionName("lessons"));
+  materials = db.collection(collectionName("materials"));
+  homeworkSubmissions = db.collection(collectionName("homework_submissions"));
 
   if (DATA_NAMESPACE && await users.countDocuments({}) === 0) {
     const sourceUsers = await db.collection("users").find({}).toArray();
     const sourceLessons = await db.collection("lessons").find({}).toArray();
+    const sourceMaterials = await db.collection("materials").find({}).toArray();
     if (sourceUsers.length) await users.insertMany(sourceUsers);
     if (sourceLessons.length) await lessons.insertMany(sourceLessons);
+    if (sourceMaterials.length) await materials.insertMany(sourceMaterials);
     console.log(
-      `Bootstrapped namespace "${DATA_NAMESPACE}" with ${sourceUsers.length} users and ${sourceLessons.length} lessons`
+      `Bootstrapped namespace "${DATA_NAMESPACE}" with ${sourceUsers.length} users, ${sourceLessons.length} lessons and ${sourceMaterials.length} materials`
     );
   }
 
@@ -1332,6 +1604,9 @@ async function start() {
   await lessons.createIndex({ studentIds: 1 });
   await lessons.createIndex({ ownerId: 1, updatedAt: -1 });
   await lessons.createIndex({ inviteToken: 1 }, { unique: true, sparse: true });
+  await materials.createIndex({ ownerId: 1, createdAt: -1 });
+  await homeworkSubmissions.createIndex({ lessonId: 1, submittedAt: -1 });
+  await homeworkSubmissions.createIndex({ lessonId: 1, participantKey: 1 }, { unique: true });
 
   async function ensureUser({ username, displayName, role, passwordSalt, passwordHash, lessonIds = [] }) {
     const id = normalizeUsername(username);
@@ -1378,21 +1653,26 @@ async function start() {
     lessonIds: ["default"],
   });
 
-  await lessons.updateOne(
-    { _id: "default" },
-    {
-      $setOnInsert: {
-        title: "Основной урок",
-        teacherIds: ["darya"],
-        studentIds: ["alisa"],
-        bookIds: [],
-        active: true,
-        createdAt: new Date(),
-        schemaVersion: 1,
-      },
-    },
-    { upsert: true }
-  );
+  // The old global "default" lesson predates teacher-owned sessions.
+  // It is intentionally removed now that children join only by explicit session links.
+  const legacyDefaultDocument =
+    await settings.findOne({ _id: "currentDocument:default" }) ||
+    await settings.findOne({ _id: "currentDocument" });
+
+  await lessons.deleteOne({ _id: "default" });
+  await settings.deleteMany({ _id: { $in: ["currentDocument:default", "currentDocument"] } });
+  await annotations.deleteMany(annotationLessonFilter("default"));
+
+  if (legacyDefaultDocument?.fileId) {
+    const stillInLibrary = await materials.findOne({ fileId: legacyDefaultDocument.fileId });
+    if (!stillInLibrary) {
+      try {
+        await bucket.delete(new ObjectId(legacyDefaultDocument.fileId));
+      } catch {
+        // Legacy file cleanup is best effort.
+      }
+    }
+  }
 
   await annotations.createIndex({ lessonId: 1, documentId: 1, page: 1, createdAt: 1 });
   await performanceLogs.createIndex(

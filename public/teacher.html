@@ -5,27 +5,31 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>School App · Учитель</title>
   <link rel="stylesheet" href="/styles.css?v=20260930-auth1" />
+  <link rel="stylesheet" href="/pdf-view.css?v=20261003-tablet1" />
 </head>
-<body data-role="teacher">
-  <header>
-    <div>
-      <strong>Учитель</strong>
+<body data-role="teacher" class="pdf-view-page">
+  <header class="pdf-header">
+    <a class="pdf-back" href="/cabinet" title="Назад в кабинет" aria-label="Назад">‹</a>
+    <a class="pdf-brand" href="/cabinet" aria-label="School App">
+      <span class="pdf-brand-owl">🦉</span>
+      <span>School <b>App</b></span>
+    </a>
+    <div class="pdf-lesson-title">
+      <strong id="lessonTitle">Занятие</strong>
       <span id="status">подключение…</span>
     </div>
-    <div class="header-actions">
-      <a class="cabinet-link" href="/cabinet" title="В кабинет">⌂ Кабинет</a>
-      <a id="downloadPdfBtn" class="cabinet-link" href="#" title="Скачать PDF" hidden>↓ PDF</a>
-      <label class="upload">
-        Загрузить PDF
+    <div class="pdf-header-actions">
+      <a id="downloadPdfBtn" class="pdf-action" href="#" title="Скачать PDF" hidden>↓ PDF</a>
+      <label class="pdf-action upload compact-upload" title="Загрузить PDF">
+        + PDF
         <input id="pdfUpload" type="file" accept="application/pdf" hidden />
       </label>
     </div>
   </header>
 
-
   <main>
-    <div class="lesson-sync-row">
-      <button id="followBtn" class="follow-button" type="button">🔗 Вести ученика</button>
+    <div class="lesson-sync-row compact-sync">
+      <button id="followBtn" class="follow-button" type="button" title="Режим следования">🔗 Следовать</button>
     </div>
     <div class="toolbar">
       <button id="penBtn" class="active tool-icon-btn" type="button" title="Ручка" aria-label="Ручка"><svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4.2-1 10.9-10.9a2 2 0 0 0 0-2.8l-.4-.4a2 2 0 0 0-2.8 0L5 15.8 4 20z"/><path d="M14.8 6l3.2 3.2M5 15.8l3.2 3.2"/></svg></button>
