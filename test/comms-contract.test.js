@@ -603,3 +603,22 @@ test("RTC v2 queued candidate flush failure does not block answer negotiation", 
   assert.match(client, /flushRemoteCandidates\(pc\)\.catch/);
   assert.match(client, /event: "candidate-flush-error-v2"/);
 });
+
+
+test("RTC v2 prefetches and caches ICE config outside the peer critical path", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /const ICE_CONFIG_CLIENT_TTL_MS = 4 \* 60 \* 1000/);
+  assert.match(client, /let iceConfigCache = null/);
+  assert.match(client, /let iceConfigPromise = null/);
+  assert.match(client, /function warmIceConfig\(\)/);
+  assert.match(client, /warmIceConfig\(\);[\s\S]{0,120}updateMediaButtons\(\)/);
+  assert.match(client, /event: "iceconfig-fetch-v2"/);
+  assert.match(client, /event: "peer-iceconfig-ready-v2"/);
+});
+
+test("RTC v2 records answer creation and local-description timing", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /event: "answer-created-v2"/);
+  assert.match(client, /event: "answer-local-set-v2"/);
+  assert.match(client, /const answerStartedAt = performance\.now\(\)/);
+});

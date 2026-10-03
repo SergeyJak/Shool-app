@@ -24,6 +24,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let reconnectTimer = null;
   let connectWatchdogTimer = null;
   let rebuilding = false;
+  let iceConfigCache = null;
+  let iceConfigPromise = null;
+  let iceConfigExpiresAt = 0;
+  const ICE_CONFIG_CLIENT_TTL_MS = 4 * 60 * 1000;
 
   function rtcNetworkSnapshot() {
     const connection =
@@ -329,17 +333,53 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       : '<span class="lesson-comms-control-icon" aria-hidden="true">🚫</span><span>Включить камеру</span>';
   }
 
-  async function getIceConfig() {
+  async function fetchIceConfig() {
+    const startedAt = performance.now();
     const response = await fetch(`/api/webrtc/config?lesson=${encodeURIComponent(lessonId)}`, {
       cache: "no-store",
     });
     if (!response.ok) throw new Error("ICE_CONFIG_FAILED");
     const payload = await response.json();
-    return {
+    const config = {
       iceServers: Array.isArray(payload.iceServers) ? payload.iceServers : [],
       iceTransportPolicy: payload.iceTransportPolicy === "relay" ? "relay" : "all",
       source: String(payload.source || "unknown"),
     };
+    emitRtcDebug({
+      event: "iceconfig-fetch-v2",
+      state: `ms=${Math.round(performance.now() - startedAt)};source=${config.source}`,
+    });
+    return config;
+  }
+
+  async function getIceConfig({ forceRefresh = false } = {}) {
+    const now = Date.now();
+    if (!forceRefresh && iceConfigCache && now < iceConfigExpiresAt) {
+      return iceConfigCache;
+    }
+    if (!forceRefresh && iceConfigPromise) {
+      return iceConfigPromise;
+    }
+
+    iceConfigPromise = fetchIceConfig()
+      .then((config) => {
+        iceConfigCache = config;
+        iceConfigExpiresAt = Date.now() + ICE_CONFIG_CLIENT_TTL_MS;
+        return config;
+      })
+      .finally(() => {
+        iceConfigPromise = null;
+      });
+    return iceConfigPromise;
+  }
+
+  function warmIceConfig() {
+    getIceConfig().catch((error) => {
+      emitRtcDebug({
+        event: "iceconfig-prefetch-error-v2",
+        state: String(error?.message || error),
+      });
+    });
   }
 
   function clearRtcTimers() {
@@ -460,12 +500,22 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     remoteStream = new MediaStream();
     remoteVideo.srcObject = remoteStream;
 
+    const peerStartedAt = performance.now();
+    const iceConfigStartedAt = performance.now();
     const iceConfig = await getIceConfig();
+    emitRtcDebug({
+      event: "peer-iceconfig-ready-v2",
+      state: `ms=${Math.round(performance.now() - iceConfigStartedAt)};source=${iceConfig.source}`,
+    });
     const pc = new RTCPeerConnection({
       iceServers: iceConfig.iceServers,
       iceTransportPolicy: iceConfig.iceTransportPolicy,
     });
     peerConnection = pc;
+    emitRtcDebug({
+      event: "peer-created-v2",
+      state: `ms=${Math.round(performance.now() - peerStartedAt)}`,
+    });
     emitRtcDebug({
       event: "iceconfig-v2",
       state: `${iceConfig.source}:${iceConfig.iceTransportPolicy}`,
@@ -613,8 +663,18 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         // Answer first. Remote ICE candidates are not required to create the SDP
         // answer and can be applied immediately afterwards. Waiting for a large
         // queued candidate batch here delays negotiation on mobile networks.
+        const answerStartedAt = performance.now();
         const answer = await pc.createAnswer();
+        emitRtcDebug({
+          event: "answer-created-v2",
+          state: `ms=${Math.round(performance.now() - answerStartedAt)}`,
+        });
+        const localDescriptionStartedAt = performance.now();
         await pc.setLocalDescription(answer);
+        emitRtcDebug({
+          event: "answer-local-set-v2",
+          state: `ms=${Math.round(performance.now() - localDescriptionStartedAt)}`,
+        });
         const result = await sendRtc2Signal({
           callId: activeCallId,
           targetClientId: payload.fromClientId,
@@ -1051,5 +1111,6 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     if (localStream) stopCall({ notify: false });
   });
 
+  warmIceConfig();
   updateMediaButtons();
 }
