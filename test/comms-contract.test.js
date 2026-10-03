@@ -139,20 +139,9 @@ test("Cloudflare TURN stays available as fallback and selected ICE pair is logge
 
 test("video capture and sender bitrate are tuned for lesson calls", () => {
   const client = read("public/lesson-comms.mjs");
-  assert.match(client, /width: \\{ ideal: 640, max: 960 \\}/);
-  assert.match(client, /height: \\{ ideal: 360, max: 540 \\}/);
-  assert.match(client, /frameRate: \\{ ideal: 20, max: 24 \\}/);
-  assert.match(client, /maxBitrate = 900_000/);
-  assert.match(client, /maxFramerate = 20/);
-  assert.match(client, /degradationPreference = "maintain-framerate"/);
-});
-
-
-test("video capture and sender bitrate are tuned for lesson calls", () => {
-  const client = read("public/lesson-comms.mjs");
-  assert.match(client, /width: \\{ ideal: 640, max: 960 \\}/);
-  assert.match(client, /height: \\{ ideal: 360, max: 540 \\}/);
-  assert.match(client, /frameRate: \\{ ideal: 20, max: 24 \\}/);
+  assert.match(client, /width: \{ ideal: 640, max: 960 \}/);
+  assert.match(client, /height: \{ ideal: 360, max: 540 \}/);
+  assert.match(client, /frameRate: \{ ideal: 20, max: 24 \}/);
   assert.match(client, /maxBitrate = 500000/);
   assert.match(client, /maxFramerate = 20/);
   assert.match(client, /degradationPreference = "maintain-framerate"/);
