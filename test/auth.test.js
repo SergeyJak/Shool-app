@@ -44,7 +44,7 @@ test("session cookie is HttpOnly and SameSite strict", () => {
 });
 
 
-test("authenticated session wins over a matching guest lesson cookie", async () => {
+test("authenticated session wins over a matching guest lesson cookie when account is explicitly preferred", async () => {
   const secret = "test-secret";
   const teacher = {
     _id: "teacher1",
@@ -63,6 +63,7 @@ test("authenticated session wins over a matching guest lesson cookie", async () 
   const identity = await resolveIdentityFromCookies({
     cookieHeader: `school_session=${encodeURIComponent(session)}; school_guest=${encodeURIComponent(guest)}`,
     preferredLessonId: "lesson_a",
+    preferAccount: true,
     secret,
     findActiveUserById: async (id) => id === teacher._id ? teacher : null,
   });
