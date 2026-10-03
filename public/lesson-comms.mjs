@@ -202,7 +202,20 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     peerConnection = pc;
 
     for (const track of localStream?.getTracks() || []) {
-      pc.addTrack(track, localStream);
+      const sender = pc.addTrack(track, localStream);
+      if (track.kind === "video") {
+        const params = sender.getParameters();
+        params.encodings = params.encodings?.length ? params.encodings : [{}];
+        params.encodings[0].maxBitrate = 900_000;
+        params.encodings[0].maxFramerate = 24;
+        sender.setParameters(params).catch(() => {});
+      }
+      if (track.kind === "audio") {
+        const params = sender.getParameters();
+        params.encodings = params.encodings?.length ? params.encodings : [{}];
+        params.encodings[0].maxBitrate = 48_000;
+        sender.setParameters(params).catch(() => {});
+      }
     }
 
     pc.addEventListener("icecandidate", ({ candidate }) => {
@@ -232,6 +245,15 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       if (pc !== peerConnection) return;
       if (pc.connectionState === "connected") {
         setCallState("Соединение установлено");
+        const videoSender = pc.getSenders().find((sender) => sender.track?.kind === "video");
+        if (videoSender) {
+          const params = videoSender.getParameters();
+          params.degradationPreference = "maintain-framerate";
+          params.encodings = params.encodings?.length ? params.encodings : [{}];
+          params.encodings[0].maxBitrate = 900_000;
+          params.encodings[0].maxFramerate = 24;
+          videoSender.setParameters(params).catch(() => {});
+        }
         pc.getStats()
           .then((stats) => {
             let pair = null;
@@ -373,8 +395,17 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     setCallState("Запрашиваем доступ к камере и микрофону…");
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: {
+          width: { ideal: 960, max: 1280 },
+          height: { ideal: 540, max: 720 },
+          frameRate: { ideal: 24, max: 30 },
+          facingMode: "user",
+        },
       });
       localVideo.srcObject = localStream;
       await localVideo.play().catch(() => {});
