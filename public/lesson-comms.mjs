@@ -28,6 +28,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   panel.innerHTML = `
     <div class="lesson-comms-head">
       <strong class="lesson-comms-title">Связь</strong>
+      <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видео" title="Свернуть видео">↙</button>
       <button class="lesson-comms-close" type="button" aria-label="Закрыть">×</button>
     </div>
     <div class="lesson-comms-view lesson-comms-video">
@@ -67,6 +68,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const chatButton = launcher.querySelector(".lesson-comms-chat-button");
   const unreadEl = launcher.querySelector(".lesson-comms-unread");
   const closeButton = panel.querySelector(".lesson-comms-close");
+  const minimizeButton = panel.querySelector(".lesson-comms-minimize");
   const titleEl = panel.querySelector(".lesson-comms-title");
   const videoView = panel.querySelector(".lesson-comms-video");
   const chatView = panel.querySelector(".lesson-comms-chat");
@@ -94,6 +96,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   function showView(view) {
     currentView = view;
     panel.hidden = false;
+    panel.classList.remove("mini-video");
     const isVideo = view === "video";
     videoView.hidden = !isVideo;
     chatView.hidden = isVideo;
@@ -109,6 +112,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   function closePanel() {
     panel.hidden = true;
+    panel.classList.remove("mini-video");
     currentView = null;
     videoButton.classList.remove("active");
     chatButton.classList.remove("active");
@@ -123,7 +127,28 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     else showView("chat");
   });
   closeButton.addEventListener("click", closePanel);
+
+  function minimizeVideo() {
+    if (currentView !== "video" || panel.hidden) return;
+    panel.classList.add("mini-video");
+    videoButton.classList.remove("active");
+  }
+
+  function restoreVideo() {
+    if (!panel.classList.contains("mini-video")) return;
+    panel.classList.remove("mini-video");
+    currentView = "video";
+    panel.hidden = false;
+    videoButton.classList.add("active");
+    remoteVideo.play().catch(() => {});
+  }
+
+  minimizeButton.addEventListener("click", minimizeVideo);
   remoteVideo.addEventListener("click", () => {
+    if (panel.classList.contains("mini-video")) {
+      restoreVideo();
+      return;
+    }
     remoteVideo.play().catch(() => {});
   });
 
