@@ -324,3 +324,15 @@ test("mobile hand mode lets the page scroll vertically while preserving pinch zo
   assert.match(styles, /#stage\.hand-mode[\s\S]{0,180}touch-action: pan-y pinch-zoom/);
   assert.match(app, /event\.touches\.length !== 2/);
 });
+
+
+test("hand mode pans the page when dragging directly on the PDF", () => {
+  const app = read("public/app.js");
+
+  assert.match(app, /let handPanLastTouch = null/);
+  assert.match(app, /event\.touches\.length === 1 && handPanLastTouch/);
+  assert.match(app, /window\.scrollBy\(0, deltaY\)/);
+  assert.match(app, /stage\.scrollLeft \+= deltaX/);
+  assert.match(app, /event\.touches\.length !== 2 \|\| !pinchStartDistance/);
+  assert.match(app, /touchcancel/);
+});
