@@ -18,9 +18,13 @@ form.addEventListener("submit", async (event) => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      errorEl.textContent = data.error === "INVALID_CREDENTIALS"
-        ? "Неверный логин или пароль."
-        : "Не удалось войти. Попробуйте ещё раз.";
+      const messages = {
+        INVALID_CREDENTIALS: "Неверный логин или пароль.",
+        ACCOUNT_PENDING: "Регистрация ожидает подтверждения администратора.",
+        ACCOUNT_REJECTED: "Регистрация отклонена администратором.",
+        ACCOUNT_INACTIVE: "Аккаунт отключён администратором.",
+      };
+      errorEl.textContent = messages[data.error] || "Не удалось войти. Попробуйте ещё раз.";
       errorEl.hidden = false;
       return;
     }
