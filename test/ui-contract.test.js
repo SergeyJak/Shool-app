@@ -277,7 +277,7 @@ test("teacher follow active state stays visible and distinct", () => {
   assert.match(css, /\.pdf-view-page \.follow-button\.active\s*\{/);
   assert.match(css, /\.follow-button\.active\s*\{[\s\S]*background:#6258ef/);
   assert.match(css, /\.follow-button\.active\s*\{[\s\S]*color:#fff/);
-  assert.match(app, /followBtn\.classList\.toggle\("active", teacherFollowEnabled\)/);
+  assert.match(app, /followBtn\.classList\.toggle\("active", teacherFollowEnabled && teacherFollowControlling\)/);
   assert.match(app, /"🔗 Страницы связаны"/);
 });
 
@@ -534,7 +534,7 @@ test("lesson realtime and data are scoped by lessonId", () => {
   const cabinet = read("public/cabinet.js");
 
   assert.match(client, /const lessonId = new URLSearchParams\(location\.search\)\.get\("lesson"\) \|\| "default"/);
-  assert.match(client, /io\(\{ auth: \{ role, lessonId \} \}\)/);
+  assert.match(client, /io\(\{ auth: \{ role, lessonId, clientId: realtimeClientId \} \}\)/);
   assert.match(client, /\/api\/document\?lesson=\$\{lessonParam\}/);
   assert.match(client, /\/api\/annotations\/\$\{pageNumber\}\?lesson=\$\{lessonParam\}/);
 
