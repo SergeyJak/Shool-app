@@ -58,7 +58,8 @@ const AUTH_SECRET =
 const ADMIN_TELEGRAM_BOT_TOKEN = String(process.env.ADMIN_TELEGRAM_BOT_TOKEN || "").trim();
 const ADMIN_TELEGRAM_CHAT_ID = String(process.env.ADMIN_TELEGRAM_CHAT_ID || "").trim();
 const WEBRTC_STUN_URLS = String(
-  process.env.WEBRTC_STUN_URLS || "stun:stun.l.google.com:19302"
+  process.env.WEBRTC_STUN_URLS ||
+    "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302,stun:stun.cloudflare.com:3478"
 )
   .split(",")
   .map((value) => value.trim())
@@ -1745,6 +1746,18 @@ io.on("connection", (socket) => {
       console.error("RTC presence failed", error);
       ack?.({ ok: false, error: "RTC_PRESENCE_FAILED" });
     }
+  });
+
+  socket.on("rtc:debug", (payload = {}) => {
+    if (role === "observer") return;
+    const event = String(payload.event || "").slice(0, 80);
+    const state = String(payload.state || "").slice(0, 80);
+    const errorCode = Number.isFinite(Number(payload.errorCode)) ? Number(payload.errorCode) : null;
+    const errorText = String(payload.errorText || "").slice(0, 300);
+    const url = String(payload.url || "").slice(0, 300);
+    console.info(
+      `RTC debug lesson=${lessonId} role=${role} event=${event} state=${state} errorCode=${errorCode ?? ""} errorText=${errorText} url=${url}`
+    );
   });
 
   socket.on("rtc:signal", (payload, ack) => {
