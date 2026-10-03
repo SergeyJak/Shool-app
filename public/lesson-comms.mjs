@@ -23,6 +23,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let peerCallId = null;
   let iceRestartTimer = null;
   let recoveryWatchdogTimer = null;
+  let initialConnectWatchdogTimer = null;
   let iceRestartAttempts = 0;
 
   function rtcNetworkSnapshot() {
@@ -582,6 +583,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           clearTimeout(recoveryWatchdogTimer);
           recoveryWatchdogTimer = null;
         }
+        if (initialConnectWatchdogTimer) {
+          clearTimeout(initialConnectWatchdogTimer);
+          initialConnectWatchdogTimer = null;
+        }
         iceRestartAttempts = 0;
         setCallState("Соединение установлено");
         const videoSender = pc.getSenders().find((sender) => sender.track?.kind === "video");
@@ -662,11 +667,63 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     return pc;
   }
 
+  function armInitialConnectWatchdog(peerId, pc) {
+    if (initialConnectWatchdogTimer) clearTimeout(initialConnectWatchdogTimer);
+    initialConnectWatchdogTimer = setTimeout(async () => {
+      initialConnectWatchdogTimer = null;
+      if (
+        !peerId ||
+        pc !== peerConnection ||
+        !activeCallId ||
+        ["connected", "closed"].includes(pc.connectionState)
+      ) return;
+
+      emitRtcDebug({
+        event: "initial-connect-timeout",
+        state: `connection=${pc.connectionState};ice=${pc.iceConnectionState}`,
+      });
+
+      if (rtcQualityTimer) {
+        clearInterval(rtcQualityTimer);
+        rtcQualityTimer = null;
+      }
+      if (recoveryWatchdogTimer) {
+        clearTimeout(recoveryWatchdogTimer);
+        recoveryWatchdogTimer = null;
+      }
+      if (iceRestartTimer) {
+        clearTimeout(iceRestartTimer);
+        iceRestartTimer = null;
+      }
+
+      if (peerConnection === pc) {
+        peerConnection = null;
+        peerCallId = null;
+        activePeerId = null;
+        pendingCandidates = [];
+        remoteStream = null;
+        remoteVideo.srcObject = null;
+      }
+      pc.close();
+
+      try {
+        emitRtcDebug({
+          event: "peer-rebuild",
+          state: "reason=initial-connect-timeout",
+        });
+        await createOffer(peerId);
+      } catch (error) {
+        console.warn("Initial WebRTC connection rebuild failed", error);
+      }
+    }, 12000);
+  }
+
   async function createOffer(peerId, { iceRestart = false } = {}) {
     if (!localStream || !peerId) return;
     const pc = await ensurePeer(peerId);
     const offer = await pc.createOffer(iceRestart ? { iceRestart: true } : undefined);
     await pc.setLocalDescription(offer);
+    if (!iceRestart) armInitialConnectWatchdog(peerId, pc);
     socket.emit("rtc:signal", {
       callId: activeCallId,
       targetId: peerId,
@@ -816,6 +873,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     if (recoveryWatchdogTimer) {
       clearTimeout(recoveryWatchdogTimer);
       recoveryWatchdogTimer = null;
+    }
+    if (initialConnectWatchdogTimer) {
+      clearTimeout(initialConnectWatchdogTimer);
+      initialConnectWatchdogTimer = null;
     }
     iceRestartAttempts = 0;
     peerConnection?.close();
