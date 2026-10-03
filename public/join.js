@@ -32,8 +32,10 @@ form.addEventListener("submit", async (event) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "JOIN_FAILED");
     location.replace(data.redirect);
-  } catch {
-    errorEl.textContent = "Не удалось подключиться. Проверьте ссылку и попробуйте ещё раз.";
+  } catch (error) {
+    errorEl.textContent = error.message === "TOO_MANY_ATTEMPTS"
+      ? "Слишком много попыток подключения. Подождите немного и попробуйте снова."
+      : "Не удалось подключиться. Проверьте ссылку и попробуйте ещё раз.";
     errorEl.hidden = false;
     button.disabled = false;
     button.textContent = "Войти в занятие";
