@@ -139,10 +139,11 @@ function rejectRateLimited(res, result) {
   });
 }
 
-async function userFromCookieHeader(cookieHeader, preferredLessonId = null) {
+async function userFromCookieHeader(cookieHeader, preferredLessonId = null, { preferAccount = false } = {}) {
   return resolveIdentityFromCookies({
     cookieHeader,
     preferredLessonId,
+    preferAccount,
     secret: AUTH_SECRET,
     findActiveUserById: (id) => users.findOne({ _id: id, active: true }),
   });
@@ -151,7 +152,8 @@ async function userFromCookieHeader(cookieHeader, preferredLessonId = null) {
 async function attachUser(req, _res, next) {
   try {
     const preferredLessonId = normalizeLessonId(req.query?.lesson);
-    req.user = await userFromCookieHeader(req.headers.cookie, preferredLessonId);
+    const preferAccount = req.path === "/teacher" || req.path === "/teacher.html";
+    req.user = await userFromCookieHeader(req.headers.cookie, preferredLessonId, { preferAccount });
     next();
   } catch (error) {
     next(error);
@@ -1227,9 +1229,10 @@ app.patch("/api/admin/lessons/:id", requireApiRole("admin"), async (req, res, ne
 app.get("/dashboard.html", requirePageAuth("teacher", "student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "dashboard.html"))
 );
-app.get("/teacher.html", requirePageAuth("teacher"), (_req, res) =>
-  res.sendFile(path.join(__dirname, "public", "teacher.html"))
-);
+app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
+  res.setHeader("Set-Cookie", clearGuestCookie({ secure: requestIsSecure(req) }));
+  res.sendFile(path.join(__dirname, "public", "teacher.html"));
+});
 app.get("/student.html", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
 );
@@ -1278,9 +1281,10 @@ app.get("/registration-pending", (_req, res) =>
 app.get("/cabinet", requirePageAuth("teacher", "student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "dashboard.html"))
 );
-app.get("/teacher", requirePageAuth("teacher"), (_req, res) =>
-  res.sendFile(path.join(__dirname, "public", "teacher.html"))
-);
+app.get("/teacher", requirePageAuth("teacher"), (req, res) => {
+  res.setHeader("Set-Cookie", clearGuestCookie({ secure: requestIsSecure(req) }));
+  res.sendFile(path.join(__dirname, "public", "teacher.html"));
+});
 app.get("/student", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
 );
