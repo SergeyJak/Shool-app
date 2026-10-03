@@ -201,8 +201,12 @@ test("explicit hangup ends the call for both participants while disconnect stays
   const server = read("server.js");
   const client = read("public/lesson-comms.mjs");
 
-  assert.match(server, /socket\.on\("rtc:leave"[\s\S]{0,260}rtc:ended/);
-  assert.doesNotMatch(server, /socket\.on\("rtc:leave"[\s\S]{0,260}rtc:peer-left/);
+  const leaveStart = server.indexOf('socket.on("rtc:leave"');
+  const chatStart = server.indexOf('socket.on("chat:history"', leaveStart);
+  const leaveBlock = server.slice(leaveStart, chatStart);
+
+  assert.match(leaveBlock, /rtc:ended/);
+  assert.doesNotMatch(leaveBlock, /rtc:peer-left/);
   assert.match(server, /socket\.on\("disconnect"[\s\S]{0,500}rtc:peer-left/);
 
   assert.match(client, /socket\.on\("rtc:ended"/);
