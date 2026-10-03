@@ -33,6 +33,12 @@ const adminNavButtons = [...document.querySelectorAll("[data-admin-view]")];
 const adminSections = [...document.querySelectorAll("[data-admin-section]")];
 const adminUsersCount = document.getElementById("adminUsersCount");
 const adminLessonsCount = document.getElementById("adminLessonsCount");
+const userStateButtons = [...document.querySelectorAll("[data-user-state]")];
+const lessonStateButtons = [...document.querySelectorAll("[data-lesson-state]")];
+const activeUsersCount = document.getElementById("activeUsersCount");
+const inactiveUsersCount = document.getElementById("inactiveUsersCount");
+const activeLessonsCount = document.getElementById("activeLessonsCount");
+const inactiveLessonsCount = document.getElementById("inactiveLessonsCount");
 
 let currentUser = null;
 let managedUsers = [];
@@ -40,6 +46,8 @@ let managedLessons = [];
 let pendingRegistrations = [];
 let teacherMaterials = [];
 let teacherView = "active";
+let adminUserState = "active";
+let adminLessonState = "active";
 
 document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
 dialog.addEventListener("click", (event) => {
@@ -65,6 +73,22 @@ function showAdminView(view) {
 
 for (const button of adminNavButtons) {
   button.addEventListener("click", () => showAdminView(button.dataset.adminView));
+}
+
+for (const button of userStateButtons) {
+  button.addEventListener("click", () => {
+    adminUserState = button.dataset.userState === "inactive" ? "inactive" : "active";
+    for (const tab of userStateButtons) tab.classList.toggle("active", tab === button);
+    renderAdminUsers();
+  });
+}
+
+for (const button of lessonStateButtons) {
+  button.addEventListener("click", () => {
+    adminLessonState = button.dataset.lessonState === "inactive" ? "inactive" : "active";
+    for (const tab of lessonStateButtons) tab.classList.toggle("active", tab === button);
+    renderAdminLessons();
+  });
 }
 
 function setAdminStatus(message, type = "") {
@@ -526,7 +550,15 @@ function renderAdminRegistrations() {
 
 function renderAdminUsers() {
   adminUserList.innerHTML = "";
-  for (const user of managedUsers) {
+  const visibleUsers = managedUsers.filter((user) => adminUserState === "active" ? user.active : !user.active);
+  if (!visibleUsers.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = adminUserState === "active" ? "Активных пользователей нет." : "Деактивированных пользователей нет.";
+    adminUserList.append(empty);
+    return;
+  }
+  for (const user of visibleUsers) {
     const row = document.createElement("div");
     row.className = `admin-row ${user.active ? "" : "is-inactive"}`;
 
@@ -590,7 +622,15 @@ function memberPicker(role, selected) {
 
 function renderAdminLessons() {
   adminLessonList.innerHTML = "";
-  for (const lesson of managedLessons) {
+  const visibleLessons = managedLessons.filter((lesson) => adminLessonState === "active" ? lesson.active : !lesson.active);
+  if (!visibleLessons.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = adminLessonState === "active" ? "Активных уроков нет." : "Деактивированных уроков нет.";
+    adminLessonList.append(empty);
+    return;
+  }
+  for (const lesson of visibleLessons) {
     const row = document.createElement("div");
     row.className = `admin-lesson-row ${lesson.active ? "" : "is-inactive"}`;
 
@@ -676,8 +716,16 @@ async function loadAdminData() {
     registrationBadge.textContent = String(pendingRegistrations.length);
     registrationBadge.hidden = pendingRegistrations.length === 0;
   }
-  if (adminUsersCount) adminUsersCount.textContent = String(managedUsers.length);
-  if (adminLessonsCount) adminLessonsCount.textContent = String(managedLessons.length);
+  const activeUsers = managedUsers.filter((user) => user.active).length;
+  const inactiveUsers = managedUsers.length - activeUsers;
+  const activeLessons = managedLessons.filter((lesson) => lesson.active).length;
+  const inactiveLessons = managedLessons.length - activeLessons;
+  if (adminUsersCount) adminUsersCount.textContent = String(activeUsers);
+  if (adminLessonsCount) adminLessonsCount.textContent = String(activeLessons);
+  if (activeUsersCount) activeUsersCount.textContent = String(activeUsers);
+  if (inactiveUsersCount) inactiveUsersCount.textContent = String(inactiveUsers);
+  if (activeLessonsCount) activeLessonsCount.textContent = String(activeLessons);
+  if (inactiveLessonsCount) inactiveLessonsCount.textContent = String(inactiveLessons);
   renderAdminRegistrations();
   renderAdminMemberChoices();
   renderAdminUsers();
