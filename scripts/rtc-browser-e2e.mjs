@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import puppeteer from "puppeteer-core";
 
 const root = path.resolve(import.meta.dirname, "..");
 const modulePath = path.join(root, "public", "lesson-comms.mjs");
@@ -454,62 +454,45 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const address = server.address();
 const url = `http://127.0.0.1:${address.port}/`;
 
-const child = spawn(
-  chrome,
-  [
-    "--headless=new",
+const browser = await puppeteer.launch({
+  executablePath: chrome,
+  headless: true,
+  args: [
     "--no-sandbox",
     "--disable-gpu",
     "--autoplay-policy=no-user-gesture-required",
-    "--use-fake-ui-for-media-stream",
-    "--use-fake-device-for-media-stream",
-    "--disable-features=MediaStreamTrackWebRtcStats",
-    "--virtual-time-budget=30000",
-    "--dump-dom",
-    url,
   ],
-  { stdio: ["ignore", "pipe", "pipe"] }
-);
-
-let stdout = "";
-let stderr = "";
-child.stdout.setEncoding("utf8");
-child.stderr.setEncoding("utf8");
-child.stdout.on("data", (chunk) => {
-  stdout += chunk;
-});
-child.stderr.on("data", (chunk) => {
-  stderr += chunk;
 });
 
-const timeout = setTimeout(() => {
-  child.kill("SIGKILL");
-}, 45000);
+let result;
+try {
+  const page = await browser.newPage();
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      console.error("[browser]", message.text());
+    }
+  });
+  page.on("pageerror", (error) => {
+    console.error("[browser pageerror]", error?.message || String(error));
+  });
 
-const exitCode = await new Promise((resolve) => child.on("close", resolve));
-clearTimeout(timeout);
-server.close();
-
-if (exitCode !== 0) {
-  throw new Error(
-    `RTC browser Chrome failed with ${exitCode}: ${stderr.slice(-2000)}\n${stdout.slice(-1000)}`
+  await page.goto(url, { waitUntil: "load", timeout: 15000 });
+  await page.waitForFunction(
+    () =>
+      document.title.startsWith("RTC_E2E_ERROR:") ||
+      (document.title.startsWith("RTC_E2E:") && document.title !== "RTC_E2E:PENDING"),
+    { timeout: 45000 }
   );
-}
 
-const errorMatch = stdout.match(/<title>RTC_E2E_ERROR:([^<]+)<\/title>/);
-if (errorMatch) {
-  throw new Error("RTC browser page error: " + decodeURIComponent(errorMatch[1]));
+  const title = await page.title();
+  if (title.startsWith("RTC_E2E_ERROR:")) {
+    throw new Error("RTC browser page error: " + decodeURIComponent(title.slice("RTC_E2E_ERROR:".length)));
+  }
+  result = JSON.parse(decodeURIComponent(title.slice("RTC_E2E:".length)));
+} finally {
+  await browser.close();
+  server.close();
 }
-
-const matches = [...stdout.matchAll(/<title>RTC_E2E:([^<]+)<\/title>/g)];
-const encoded = matches.map((match) => match[1]).find((value) => value !== "PENDING");
-if (!encoded) {
-  throw new Error(
-    `RTC browser test returned no final result; stderr=${stderr.slice(-1200)} stdout=${stdout.slice(-2000)}`
-  );
-}
-
-const result = JSON.parse(decodeURIComponent(encoded));
 
 if (!result.connectedRoles.includes("teacher") || !result.connectedRoles.includes("student")) {
   throw new Error(`Both peers did not connect: ${JSON.stringify(result)}`);
