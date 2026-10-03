@@ -326,7 +326,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
             const remote = stats.get(pair.remoteCandidateId);
             socket.emit("rtc:debug", {
               event: "selected-pair",
-              state: `local=${local?.candidateType || "?"}/${local?.protocol || "?"};remote=${remote?.candidateType || "?"}/${remote?.protocol || "?"}`,
+              state: `local=${local?.candidateType || "?"}/${local?.protocol || "?"}/${local?.relayProtocol || "?"};remote=${remote?.candidateType || "?"}/${remote?.protocol || "?"}/${remote?.relayProtocol || "?"}`,
             });
           })
           .catch(() => {});
