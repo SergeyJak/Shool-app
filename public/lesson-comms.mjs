@@ -605,7 +605,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         rebuilding = true;
         const pc = await createFreshPeer(payload.fromClientId);
         await pc.setRemoteDescription(payload.description);
-        await flushRemoteCandidates(pc);
+        emitRtcDebug({
+          event: "offer-remote-set-v2",
+          state: `from=${payload.fromClientId.slice(0, 8)};queuedCandidates=${pendingRemoteCandidates.length}`,
+        });
+
+        // Answer first. Remote ICE candidates are not required to create the SDP
+        // answer and can be applied immediately afterwards. Waiting for a large
+        // queued candidate batch here delays negotiation on mobile networks.
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         const result = await sendRtc2Signal({
@@ -618,10 +625,19 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           state: `sent=${Boolean(result?.ok)};target=${payload.fromClientId.slice(0, 8)}`,
         });
         if (!result?.ok) throw new Error(result?.error || "RTC2_SIGNAL_FAILED");
+
         canSendLocalCandidates = true;
         await flushLocalCandidates();
         armConnectWatchdog();
         rebuilding = false;
+
+        flushRemoteCandidates(pc).catch((error) => {
+          console.warn("RTC2 queued remote candidates failed", error);
+          emitRtcDebug({
+            event: "candidate-flush-error-v2",
+            state: String(error?.message || error),
+          });
+        });
         return;
       }
 
