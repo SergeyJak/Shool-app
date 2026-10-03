@@ -373,7 +373,62 @@ test("teacher invite sessions let children join without accounts", () => {
   assert.match(join, /Как тебя зовут/);
   assert.match(joinJs, /\/api\/join\//);
   assert.doesNotMatch(student, /href="\/cabinet"/);
-  assert.match(home, /href="\/register">Создать кабинет учителя/);
+  assert.match(home, /href="\/register">Зарегистрироваться/);
+});
+
+test("teacher registration is two-step and requires admin approval", () => {
+  const server = read("server.js");
+  const auth = read("lib/auth.js");
+  const register = read("public/register.html");
+  const registerJs = read("public/register.js");
+  const profile = read("public/register-profile.html");
+  const profileJs = read("public/register-profile.js");
+  const pending = read("public/registration-pending.html");
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const login = read("public/login.js");
+
+  assert.match(register, /id="username"/);
+  assert.match(register, /id="password"/);
+  assert.match(register, /id="passwordConfirm"/);
+  assert.match(register, />Зарегистрироваться</);
+  assert.doesNotMatch(register, /id="displayName"/);
+  assert.doesNotMatch(register, /type="email"/);
+  assert.doesNotMatch(register, /type="date"/);
+  assert.match(registerJs, /passwordConfirm/);
+  assert.match(registerJs, /PASSWORD_MISMATCH/);
+
+  assert.match(profile, /id="email"[^>]*required/);
+  assert.match(profile, /id="birthDate"[^>]*required/);
+  assert.match(profile, /id="firstName"[^>]*required/);
+  assert.match(profile, /id="phone"/);
+  assert.match(profile, /id="subjects"/);
+  assert.match(profile, /id="bio"/);
+  assert.match(profileJs, /\/api\/auth\/register\/profile/);
+  assert.match(pending, /Заявка отправлена/);
+
+  assert.match(auth, /REGISTRATION_COOKIE/);
+  assert.match(auth, /createRegistrationToken/);
+  assert.match(server, /approvalStatus: "onboarding"/);
+  assert.match(server, /approvalStatus: "pending"/);
+  assert.match(server, /approvalStatus: "approved"/);
+  assert.match(server, /approvalStatus: "rejected"/);
+  assert.match(server, /ACCOUNT_PENDING/);
+  assert.match(server, /ACCOUNT_REJECTED/);
+  assert.match(server, /app\.get\("\/api\/admin\/registrations"/);
+  assert.match(server, /app\.post\("\/api\/admin\/registrations\/:id\/approve"/);
+  assert.match(server, /app\.post\("\/api\/admin\/registrations\/:id\/reject"/);
+  assert.match(server, /notifyAdminRegistration/);
+  assert.match(server, /ADMIN_TELEGRAM_BOT_TOKEN/);
+
+  assert.match(dashboard, /data-admin-view="registrations"/);
+  assert.match(dashboard, /id="registrationBadge"/);
+  assert.match(dashboard, /id="adminRegistrationList"/);
+  assert.match(cabinet, /\/api\/admin\/registrations/);
+  assert.match(cabinet, /Одобрить/);
+  assert.match(cabinet, /Отклонить/);
+  assert.match(login, /ACCOUNT_PENDING/);
+  assert.match(login, /ACCOUNT_REJECTED/);
 });
 
 test("root is login and cabinet preserves account-aware lesson navigation", () => {
