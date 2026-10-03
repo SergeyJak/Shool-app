@@ -41,6 +41,7 @@ test("rtc candidates are normalized and bounded", () => {
       },
     }),
     {
+      callId: "call-12345",
       targetId: "peer-2",
       candidate: {
         candidate: "candidate:1",
