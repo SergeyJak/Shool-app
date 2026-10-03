@@ -3,36 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>School App · Регистрация учителя</title>
-  <link rel="stylesheet" href="/join.css?v=20261002-register1" />
+  <title>School App · Регистрация</title>
+  <link rel="stylesheet" href="/join.css?v=20261003-register2" />
 </head>
 <body>
   <main class="join-shell">
     <section class="join-card" aria-labelledby="registerTitle">
       <div class="join-mark">🦉</div>
       <span class="eyebrow">School App</span>
-      <h1 id="registerTitle">Кабинет учителя</h1>
-      <p>Создайте аккаунт, чтобы проводить уроки и отправлять ученикам ссылки без регистрации детей.</p>
+      <h1 id="registerTitle">Регистрация</h1>
+      <p>Шаг 1 из 2. Придумайте логин и пароль. После этого заполним профиль преподавателя.</p>
 
       <form id="registerForm">
         <label>
-          <span>Имя</span>
-          <input id="displayName" name="displayName" maxlength="80" autocomplete="name" required />
-        </label>
-        <label>
           <span>Логин</span>
           <input id="username" name="username" minlength="3" maxlength="50" autocomplete="username" required />
+          <small>Можно использовать латиницу, кириллицу, цифры, точку, дефис и подчёркивание.</small>
         </label>
         <label>
           <span>Пароль</span>
-          <input id="password" name="password" type="password" minlength="8" autocomplete="new-password" required />
+          <input id="password" name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required />
+          <small>Минимум 8 символов.</small>
+        </label>
+        <label>
+          <span>Повторите пароль</span>
+          <input id="passwordConfirm" name="passwordConfirm" type="password" minlength="8" maxlength="128" autocomplete="new-password" required />
         </label>
         <div id="registerError" class="error" hidden></div>
-        <button id="registerBtn" type="submit">Создать кабинет</button>
+        <button id="registerBtn" type="submit">Зарегистрироваться</button>
       </form>
       <p class="auth-switch">Уже есть аккаунт? <a href="/#login">Войти</a></p>
     </section>
   </main>
-  <script src="/register.js?v=20261002-1"></script>
+  <script src="/register.js?v=20261003-2"></script>
 </body>
 </html>
