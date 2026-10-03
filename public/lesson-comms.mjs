@@ -261,7 +261,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       if (track.kind === "video") {
         const params = sender.getParameters();
         params.encodings = params.encodings?.length ? params.encodings : [{}];
-        params.encodings[0].maxBitrate = 900_000;
+        params.encodings[0].maxBitrate = 500_000;
         params.encodings[0].maxFramerate = 20;
         sender.setParameters(params).catch(() => {});
       }
@@ -305,7 +305,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           const params = videoSender.getParameters();
           params.degradationPreference = "maintain-framerate";
           params.encodings = params.encodings?.length ? params.encodings : [{}];
-          params.encodings[0].maxBitrate = 900_000;
+          params.encodings[0].maxBitrate = 500_000;
           params.encodings[0].maxFramerate = 20;
           videoSender.setParameters(params).catch(() => {});
         }
