@@ -371,3 +371,11 @@ test("sending chat keeps the textarea focused and keyboard stable", () => {
   assert.match(submitBlock, /chatSubmitButton\.disabled = false/);
   assert.match(submitBlock, /chatInput\.value = ""/);
 });
+
+
+test("send button does not steal focus from the chat input on touch devices", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /chatSubmitButton\?\.addEventListener\("pointerdown"/);
+  assert.match(client, /document\.activeElement === chatInput/);
+  assert.match(client, /event\.preventDefault\(\)/);
+});
