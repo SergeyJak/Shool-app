@@ -14,6 +14,7 @@ const {
   isValidStroke,
 } = require("./lib/annotation-utils");
 const { createFollowState } = require("./lib/follow-state");
+const { createMemoryRateLimiter } = require("./lib/rate-limit");
 const { parseSingleByteRange } = require("./lib/http-range");
 const {
   normalizeUsername,
@@ -57,6 +58,8 @@ const ADMIN_TELEGRAM_BOT_TOKEN = String(process.env.ADMIN_TELEGRAM_BOT_TOKEN || 
 const ADMIN_TELEGRAM_CHAT_ID = String(process.env.ADMIN_TELEGRAM_CHAT_ID || "").trim();
 
 const app = express();
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server, { maxHttpBufferSize: 2e6 });
 const upload = multer({
@@ -79,10 +82,42 @@ let homeworkSubmissions;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 
+const loginIpLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
+const loginCredentialLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
+const registrationIpLimiter = createMemoryRateLimiter({ windowMs: 60 * 60 * 1000, max: 5 });
+const joinIpLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
+const joinInviteLimiter = createMemoryRateLimiter({ windowMs: 5 * 60 * 1000, max: 12 });
+
+const DUMMY_PASSWORD_SALT = "school-app-invalid-login";
+const DUMMY_PASSWORD_HASH = crypto
+  .scryptSync("invalid-login-placeholder", DUMMY_PASSWORD_SALT, 64)
+  .toString("hex");
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "same-origin");
+  res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=()");
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
 
 function requestIsSecure(req) {
   return req.secure || String(req.get("x-forwarded-proto") || "").split(",")[0].trim() === "https";
+}
+
+function clientIp(req) {
+  return String(req.ip || req.socket?.remoteAddress || "unknown").trim().slice(0, 120);
+}
+
+function rejectRateLimited(res, result) {
+  const retryAfterSeconds = Math.max(1, Math.ceil((result?.retryAfterMs || 1000) / 1000));
+  res.setHeader("Retry-After", String(retryAfterSeconds));
+  res.setHeader("Cache-Control", "no-store");
+  return res.status(429).json({
+    error: "TOO_MANY_ATTEMPTS",
+    retryAfterSeconds,
+  });
 }
 
 async function userFromCookieHeader(cookieHeader, preferredLessonId = null) {
@@ -279,6 +314,9 @@ app.post("/api/auth/register", async (req, res, next) => {
     const credentials = validateRegistrationCredentials(req.body || {});
     if (!credentials.ok) return res.status(400).json({ error: credentials.error });
     const { username, password } = credentials;
+    const registrationLimit = registrationIpLimiter.consume(clientIp(req));
+    if (!registrationLimit.allowed) return rejectRateLimited(res, registrationLimit);
+
     if (await users.findOne({ _id: username })) {
       return res.status(409).json({ error: "USER_EXISTS" });
     }
@@ -367,9 +405,30 @@ app.post("/api/auth/login", async (req, res, next) => {
   try {
     const username = normalizeUsername(req.body?.username);
     const password = String(req.body?.password || "");
+    const ipKey = clientIp(req);
+    const credentialKey = `${ipKey}:${username || "empty"}`;
+
+    const ipStatus = loginIpLimiter.status(ipKey);
+    if (!ipStatus.allowed) return rejectRateLimited(res, ipStatus);
+    const credentialStatus = loginCredentialLimiter.status(credentialKey);
+    if (!credentialStatus.allowed) return rejectRateLimited(res, credentialStatus);
+
     const user = await users.findOne({ _id: username });
-    const valid = user && await verifyPassword(password, user.passwordSalt, user.passwordHash);
-    if (!valid) return res.status(401).json({ error: "INVALID_CREDENTIALS" });
+    const passwordMatches = await verifyPassword(
+      password,
+      user?.passwordSalt || DUMMY_PASSWORD_SALT,
+      user?.passwordHash || DUMMY_PASSWORD_HASH
+    );
+    const valid = Boolean(user) && passwordMatches;
+    if (!valid) {
+      loginIpLimiter.hit(ipKey);
+      loginCredentialLimiter.hit(credentialKey);
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(401).json({ error: "INVALID_CREDENTIALS" });
+    }
+
+    loginIpLimiter.reset(ipKey);
+    loginCredentialLimiter.reset(credentialKey);
 
     if (user.approvalStatus === "onboarding" || user.profileComplete === false) {
       const registrationToken = createRegistrationToken(user, AUTH_SECRET);
@@ -793,6 +852,13 @@ app.post("/api/join/:token", async (req, res, next) => {
     const token = normalizeInviteToken(req.params.token);
     const name = String(req.body?.name || "").trim().slice(0, 80);
     if (!token || !name) return res.status(400).json({ error: "INVALID_JOIN" });
+
+    const ipKey = clientIp(req);
+    const joinIpLimit = joinIpLimiter.consume(ipKey);
+    if (!joinIpLimit.allowed) return rejectRateLimited(res, joinIpLimit);
+    const joinInviteLimit = joinInviteLimiter.consume(`${ipKey}:${token}`);
+    if (!joinInviteLimit.allowed) return rejectRateLimited(res, joinInviteLimit);
+
     const lesson = await lessons.findOne({ inviteToken: token, active: true });
     if (!lesson) return res.status(404).json({ error: "INVITE_NOT_FOUND" });
 
