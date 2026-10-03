@@ -1472,7 +1472,7 @@ window.addEventListener("resize", () => {
 loadDocument();
 
 
-import("./lesson-comms.mjs?v=20261003-recovery5")
+import("./lesson-comms.mjs?v=20261003-rtc2")
   .then(({ initLessonComms }) => {
     initLessonComms({ socket, role, lessonId, showSnackbar });
   })

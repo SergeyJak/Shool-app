@@ -4,9 +4,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let localStream = null;
   let remoteStream = null;
   let peerConnection = null;
-  let activePeerId = null;
-  let pendingCandidates = [];
-  let callStarted = false;
+  let peerClientId = null;
+  let pendingRemoteCandidates = [];
+  let pendingLocalCandidates = [];
+  let canSendLocalCandidates = false;
   let historyLoaded = false;
   let currentView = null;
   let unread = 0;
@@ -20,11 +21,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let activeCallId = null;
   let pendingCallId = null;
   let rtcQualityTimer = null;
-  let peerCallId = null;
-  let iceRestartTimer = null;
-  let recoveryWatchdogTimer = null;
-  let initialConnectWatchdogTimer = null;
-  let iceRestartAttempts = 0;
+  let reconnectTimer = null;
+  let connectWatchdogTimer = null;
+  let rebuilding = false;
 
   function rtcNetworkSnapshot() {
     const connection =
@@ -45,6 +44,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   function emitRtcDebug(payload = {}) {
     socket.emit("rtc:debug", {
       ...payload,
+      callId: activeCallId || pendingCallId || null,
       network: rtcNetworkSnapshot(),
     });
   }
@@ -342,30 +342,53 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     };
   }
 
-  function startRtcQualityMonitor(pc) {
+  function clearRtcTimers() {
     if (rtcQualityTimer) {
       clearInterval(rtcQualityTimer);
       rtcQualityTimer = null;
     }
-    let previousPacketsLost = 0;
-    let previousPacketsReceived = 0;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    if (connectWatchdogTimer) {
+      clearTimeout(connectWatchdogTimer);
+      connectWatchdogTimer = null;
+    }
+  }
+
+  function destroyPeer() {
+    clearRtcTimers();
+    peerConnection?.close();
+    peerConnection = null;
+    peerClientId = null;
+    pendingRemoteCandidates = [];
+    pendingLocalCandidates = [];
+    canSendLocalCandidates = false;
+    remoteStream = null;
+    remoteVideo.srcObject = null;
+  }
+
+  function startRtcQualityMonitor(pc) {
+    if (rtcQualityTimer) clearInterval(rtcQualityTimer);
+    let previousLost = 0;
+    let previousReceived = 0;
     rtcQualityTimer = setInterval(async () => {
-      if (pc !== peerConnection || pc.connectionState === "closed") {
-        clearInterval(rtcQualityTimer);
-        rtcQualityTimer = null;
-        return;
-      }
+      if (pc !== peerConnection || pc.connectionState === "closed") return;
       try {
         const stats = await pc.getStats();
-        let availableOutgoingBitrate = null;
+        let selectedPair = null;
         let jitter = null;
         let packetsLost = null;
         let packetsReceived = null;
-        let framesDropped = null;
-        let framesDecoded = null;
-
+        let availableOutgoingBitrate = null;
         stats.forEach((report) => {
-          if (report.type === "candidate-pair" && (report.selected || report.nominated) && report.state === "succeeded") {
+          if (
+            report.type === "candidate-pair" &&
+            (report.selected || report.nominated) &&
+            report.state === "succeeded"
+          ) {
+            selectedPair = report;
             if (Number.isFinite(report.availableOutgoingBitrate)) {
               availableOutgoingBitrate = Math.round(report.availableOutgoingBitrate);
             }
@@ -374,52 +397,66 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
             if (Number.isFinite(report.jitter)) jitter = Number(report.jitter.toFixed(4));
             if (Number.isFinite(report.packetsLost)) packetsLost = report.packetsLost;
             if (Number.isFinite(report.packetsReceived)) packetsReceived = report.packetsReceived;
-            if (Number.isFinite(report.framesDropped)) framesDropped = report.framesDropped;
-            if (Number.isFinite(report.framesDecoded)) framesDecoded = report.framesDecoded;
           }
         });
-
-        const lostDelta = packetsLost == null ? null : Math.max(0, packetsLost - previousPacketsLost);
-        const receivedDelta = packetsReceived == null ? null : Math.max(0, packetsReceived - previousPacketsReceived);
-        if (packetsLost != null) previousPacketsLost = packetsLost;
-        if (packetsReceived != null) previousPacketsReceived = packetsReceived;
-
         emitRtcDebug({
           event: "quality",
           state: JSON.stringify({
             availableOutgoingBitrate,
             jitter,
-            lostDelta,
-            receivedDelta,
-            framesDropped,
-            framesDecoded,
-          }).slice(0, 300),
+            lostDelta: packetsLost == null ? null : Math.max(0, packetsLost - previousLost),
+            receivedDelta: packetsReceived == null ? null : Math.max(0, packetsReceived - previousReceived),
+          }),
         });
-      } catch {
-        // Stats are best-effort and must never affect the call.
-      }
+        if (packetsLost != null) previousLost = packetsLost;
+        if (packetsReceived != null) previousReceived = packetsReceived;
+
+        if (selectedPair) {
+          const local = stats.get(selectedPair.localCandidateId);
+          const remote = stats.get(selectedPair.remoteCandidateId);
+          emitRtcDebug({
+            event: "selected-pair",
+            state: `local=${local?.candidateType || "?"}/${local?.protocol || "?"}/${local?.relayProtocol || "?"};remote=${remote?.candidateType || "?"}/${remote?.protocol || "?"}/${remote?.relayProtocol || "?"}`,
+          });
+        }
+      } catch {}
     }, 5000);
   }
 
-  async function ensurePeer(peerId) {
-    if (!activeCallId) throw new Error("CALL_ID_REQUIRED");
-    if (
-      peerConnection &&
-      activePeerId === peerId &&
-      peerCallId === activeCallId &&
-      !["failed", "closed"].includes(peerConnection.connectionState)
-    ) {
-      return peerConnection;
-    }
-    if (peerConnection) {
-      peerConnection.close();
-      peerConnection = null;
-    }
+  function sendRtc2Signal(payload) {
+    return new Promise((resolve) => {
+      socket.emit("rtc2:signal", payload, (result) => resolve(result || { ok: false }));
+    });
+  }
 
-    const connectionCallId = activeCallId;
-    peerCallId = connectionCallId;
-    activePeerId = peerId;
-    pendingCandidates = [];
+  async function flushLocalCandidates() {
+    if (!canSendLocalCandidates || !activeCallId || !peerClientId) return;
+    const queued = pendingLocalCandidates;
+    pendingLocalCandidates = [];
+    for (const candidate of queued) {
+      await sendRtc2Signal({
+        callId: activeCallId,
+        targetClientId: peerClientId,
+        candidate,
+      });
+    }
+  }
+
+  async function flushRemoteCandidates(pc) {
+    if (!pc.remoteDescription) return;
+    const queued = pendingRemoteCandidates;
+    pendingRemoteCandidates = [];
+    for (const candidate of queued) {
+      await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+  }
+
+  async function createFreshPeer(targetClientId) {
+    if (!activeCallId || !targetClientId || !localStream) {
+      throw new Error("RTC2_PEER_PRECONDITION");
+    }
+    destroyPeer();
+    peerClientId = targetClientId;
     remoteStream = new MediaStream();
     remoteVideo.srcObject = remoteStream;
 
@@ -428,41 +465,41 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       iceServers: iceConfig.iceServers,
       iceTransportPolicy: iceConfig.iceTransportPolicy,
     });
+    peerConnection = pc;
     emitRtcDebug({
-      event: "iceconfig",
+      event: "iceconfig-v2",
       state: `${iceConfig.source}:${iceConfig.iceTransportPolicy}`,
     });
-    peerConnection = pc;
-    startRtcQualityMonitor(pc);
 
-    for (const track of localStream?.getTracks() || []) {
+    for (const track of localStream.getTracks()) {
       const sender = pc.addTrack(track, localStream);
+      const params = sender.getParameters();
+      params.encodings = params.encodings?.length ? params.encodings : [{}];
       if (track.kind === "video") {
-        const params = sender.getParameters();
-        params.encodings = params.encodings?.length ? params.encodings : [{}];
         params.encodings[0].maxBitrate = 500_000;
         params.encodings[0].maxFramerate = 20;
-        sender.setParameters(params).catch(() => {});
-      }
-      if (track.kind === "audio") {
-        const params = sender.getParameters();
-        params.encodings = params.encodings?.length ? params.encodings : [{}];
+      } else if (track.kind === "audio") {
         params.encodings[0].maxBitrate = 48_000;
-        sender.setParameters(params).catch(() => {});
       }
+      sender.setParameters(params).catch(() => {});
     }
 
     pc.addEventListener("icecandidate", ({ candidate }) => {
-      if (!candidate || !activePeerId || connectionCallId !== activeCallId) return;
-      socket.emit("rtc:signal", {
-        callId: connectionCallId,
-        targetId: activePeerId,
-        candidate: candidate.toJSON ? candidate.toJSON() : candidate,
+      if (!candidate || pc !== peerConnection || targetClientId !== peerClientId) return;
+      const serialized = candidate.toJSON ? candidate.toJSON() : candidate;
+      if (!canSendLocalCandidates) {
+        pendingLocalCandidates.push(serialized);
+        return;
+      }
+      sendRtc2Signal({
+        callId: activeCallId,
+        targetClientId,
+        candidate: serialized,
       });
     });
 
     pc.addEventListener("track", ({ track, streams }) => {
-      if (connectionCallId !== activeCallId || pc !== peerConnection) return;
+      if (pc !== peerConnection) return;
       const stream = streams?.[0];
       if (stream) {
         remoteStream = stream;
@@ -470,323 +507,170 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       } else if (!remoteStream.getTracks().includes(track)) {
         remoteStream.addTrack(track);
       }
-      remoteVideo.play().catch((error) => {
-        console.warn("Remote video autoplay was blocked", error);
-        setCallState("Связь есть. Нажмите на окно видео для запуска.");
-      });
+      remoteVideo.play().catch(() => {});
       setCallState("Соединение установлено");
     });
 
-    const rebuildPeerAfterRouteFailure = async (peerId) => {
-      if (
-        connectionCallId !== activeCallId ||
-        pc !== peerConnection ||
-        !peerId ||
-        ["connected", "closed"].includes(pc.connectionState)
-      ) return;
-
-      emitRtcDebug({
-        event: "peer-rebuild",
-        state: `connection=${pc.connectionState};ice=${pc.iceConnectionState}`,
-      });
-
-      if (rtcQualityTimer) {
-        clearInterval(rtcQualityTimer);
-        rtcQualityTimer = null;
-      }
-      if (iceRestartTimer) {
-        clearTimeout(iceRestartTimer);
-        iceRestartTimer = null;
-      }
-      if (recoveryWatchdogTimer) {
-        clearTimeout(recoveryWatchdogTimer);
-        recoveryWatchdogTimer = null;
-      }
-
-      if (peerConnection === pc) {
-        peerConnection = null;
-        peerCallId = null;
-        activePeerId = null;
-        pendingCandidates = [];
-        remoteStream = null;
-        remoteVideo.srcObject = null;
-      }
-      pc.close();
-
-      try {
-        await createOffer(peerId);
-      } catch (error) {
-        console.warn("WebRTC peer rebuild failed", error);
-      }
-    };
-
-    const armRecoveryWatchdog = (peerId) => {
-      if (recoveryWatchdogTimer) clearTimeout(recoveryWatchdogTimer);
-      recoveryWatchdogTimer = setTimeout(() => {
-        recoveryWatchdogTimer = null;
-        if (
-          connectionCallId !== activeCallId ||
-          pc !== peerConnection ||
-          ["connected", "closed"].includes(pc.connectionState)
-        ) return;
-
-        emitRtcDebug({
-          event: "recovery-timeout",
-          state: `connection=${pc.connectionState};ice=${pc.iceConnectionState}`,
-        });
-        rebuildPeerAfterRouteFailure(peerId);
-      }, 5000);
-    };
-
-    const scheduleIceRestart = () => {
-      if (iceRestartTimer || connectionCallId !== activeCallId || pc !== peerConnection) return;
-      if (iceRestartAttempts >= 1) return;
-
-      iceRestartTimer = setTimeout(async () => {
-        iceRestartTimer = null;
-        if (
-          connectionCallId !== activeCallId ||
-          pc !== peerConnection ||
-          !["disconnected", "failed"].includes(pc.connectionState)
-        ) return;
-
-        const peerId = activePeerId;
-        const shouldOffer = role === "teacher" || String(socket.id) < String(peerId || "");
-        if (!shouldOffer || !peerId) return;
-
-        iceRestartAttempts += 1;
-        emitRtcDebug({
-          event: "ice-restart",
-          state: `attempt=1;connection=${pc.connectionState}`,
-        });
-
-        // Arm the watchdog before starting offer creation. Some browsers can
-        // spend a long time inside setLocalDescription while gathering ICE.
-        armRecoveryWatchdog(peerId);
-
-        try {
-          await createOffer(peerId, { iceRestart: true });
-        } catch (error) {
-          console.warn("ICE restart failed", error);
-        }
-      }, pc.connectionState === "failed" ? 250 : 1500);
-    };
-
     pc.addEventListener("connectionstatechange", () => {
       if (pc !== peerConnection) return;
+      emitRtcDebug({ event: "connectionstate-v2", state: pc.connectionState });
+
       if (pc.connectionState === "connected") {
-        if (iceRestartTimer) {
-          clearTimeout(iceRestartTimer);
-          iceRestartTimer = null;
+        if (connectWatchdogTimer) {
+          clearTimeout(connectWatchdogTimer);
+          connectWatchdogTimer = null;
         }
-        if (recoveryWatchdogTimer) {
-          clearTimeout(recoveryWatchdogTimer);
-          recoveryWatchdogTimer = null;
-        }
-        if (initialConnectWatchdogTimer) {
-          clearTimeout(initialConnectWatchdogTimer);
-          initialConnectWatchdogTimer = null;
-        }
-        iceRestartAttempts = 0;
+        rebuilding = false;
         setCallState("Соединение установлено");
-        const videoSender = pc.getSenders().find((sender) => sender.track?.kind === "video");
-        if (videoSender) {
-          const params = videoSender.getParameters();
-          params.degradationPreference = "maintain-framerate";
-          params.encodings = params.encodings?.length ? params.encodings : [{}];
-          params.encodings[0].maxBitrate = 500_000;
-          params.encodings[0].maxFramerate = 20;
-          videoSender.setParameters(params).catch(() => {});
-        }
-        pc.getStats()
-          .then((stats) => {
-            let pair = null;
-            stats.forEach((report) => {
-              if (
-                report.type === "candidate-pair" &&
-                (report.selected || report.nominated) &&
-                report.state === "succeeded"
-              ) {
-                pair = report;
-              }
-            });
-            if (!pair) return;
-            const local = stats.get(pair.localCandidateId);
-            const remote = stats.get(pair.remoteCandidateId);
-            emitRtcDebug({
-              event: "selected-pair",
-              state: `local=${local?.candidateType || "?"}/${local?.protocol || "?"}/${local?.relayProtocol || "?"};remote=${remote?.candidateType || "?"}/${remote?.protocol || "?"}/${remote?.relayProtocol || "?"}`,
-            });
-          })
-          .catch(() => {});
+        startRtcQualityMonitor(pc);
+      } else if (pc.connectionState === "connecting") {
+        setCallState("Соединяем…");
+      } else if (["disconnected", "failed"].includes(pc.connectionState)) {
+        setCallState("Связь прервалась. Восстанавливаем…");
+        scheduleRtc2Resume(`connection-${pc.connectionState}`);
       }
-      if (pc.connectionState === "connecting") setCallState("Соединяем…");
-      if (pc.connectionState === "failed") {
-        setCallState("Связь потеряна. Пытаемся восстановить маршрут…");
-        scheduleIceRestart();
-      } else if (pc.connectionState === "disconnected") {
-        setCallState("Связь прервалась. Пытаемся переподключиться…");
-        scheduleIceRestart();
-      }
-      if (pc.connectionState === "closed") setCallState("Звонок завершён");
-      emitRtcDebug({
-        event: "connectionstate",
-        state: pc.connectionState,
-      });
     });
 
     pc.addEventListener("iceconnectionstatechange", () => {
       if (pc !== peerConnection) return;
-      const state = pc.iceConnectionState;
-      if (state === "checking") setCallState("Проверяем сетевой маршрут…");
-      if (state === "connected" || state === "completed") setCallState("Соединение установлено");
-      if (state === "failed") setCallState("ICE failed: прямой маршрут не найден. Нужен TURN.");
-      emitRtcDebug({
-        event: "iceconnectionstate",
-        state,
-      });
+      emitRtcDebug({ event: "iceconnectionstate-v2", state: pc.iceConnectionState });
+    });
+
+    pc.addEventListener("icegatheringstatechange", () => {
+      if (pc !== peerConnection) return;
+      emitRtcDebug({ event: "icegatheringstate-v2", state: pc.iceGatheringState });
     });
 
     pc.addEventListener("icecandidateerror", (event) => {
-      console.warn("ICE candidate error", event);
       emitRtcDebug({
-        event: "icecandidateerror",
+        event: "icecandidateerror-v2",
         errorCode: event.errorCode || null,
         errorText: String(event.errorText || "").slice(0, 300),
         url: String(event.url || "").slice(0, 300),
       });
     });
 
-    pc.addEventListener("icegatheringstatechange", () => {
-      emitRtcDebug({
-        event: "icegatheringstate",
-        state: pc.iceGatheringState,
-      });
-    });
-
     return pc;
   }
 
-  function armInitialConnectWatchdog(peerId, pc) {
-    if (initialConnectWatchdogTimer) clearTimeout(initialConnectWatchdogTimer);
-    initialConnectWatchdogTimer = setTimeout(async () => {
-      initialConnectWatchdogTimer = null;
-      if (
-        !peerId ||
-        pc !== peerConnection ||
-        !activeCallId ||
-        ["connected", "closed"].includes(pc.connectionState)
-      ) return;
-
+  function armConnectWatchdog() {
+    if (connectWatchdogTimer) clearTimeout(connectWatchdogTimer);
+    connectWatchdogTimer = setTimeout(() => {
+      connectWatchdogTimer = null;
+      if (!peerConnection || peerConnection.connectionState === "connected") return;
       emitRtcDebug({
-        event: "initial-connect-timeout",
-        state: `connection=${pc.connectionState};ice=${pc.iceConnectionState}`,
+        event: "connect-timeout-v2",
+        state: `connection=${peerConnection.connectionState};ice=${peerConnection.iceConnectionState}`,
       });
-
-      if (rtcQualityTimer) {
-        clearInterval(rtcQualityTimer);
-        rtcQualityTimer = null;
-      }
-      if (recoveryWatchdogTimer) {
-        clearTimeout(recoveryWatchdogTimer);
-        recoveryWatchdogTimer = null;
-      }
-      if (iceRestartTimer) {
-        clearTimeout(iceRestartTimer);
-        iceRestartTimer = null;
-      }
-
-      if (peerConnection === pc) {
-        peerConnection = null;
-        peerCallId = null;
-        activePeerId = null;
-        pendingCandidates = [];
-        remoteStream = null;
-        remoteVideo.srcObject = null;
-      }
-      pc.close();
-
-      try {
-        emitRtcDebug({
-          event: "peer-rebuild",
-          state: "reason=initial-connect-timeout",
-        });
-        await createOffer(peerId);
-      } catch (error) {
-        console.warn("Initial WebRTC connection rebuild failed", error);
-      }
+      resumeRtc2Session("connect-timeout");
     }, 12000);
   }
 
-  async function createOffer(peerId, { iceRestart = false } = {}) {
-    if (!localStream || !peerId) return;
-    const pc = await ensurePeer(peerId);
-    const offer = await pc.createOffer(iceRestart ? { iceRestart: true } : undefined);
-    await pc.setLocalDescription(offer);
-    if (!iceRestart) armInitialConnectWatchdog(peerId, pc);
-    socket.emit("rtc:signal", {
-      callId: activeCallId,
-      targetId: peerId,
-      description: pc.localDescription,
-    });
-    setCallState("Соединяем…");
-  }
-
-  async function flushPendingCandidates() {
-    if (!peerConnection?.remoteDescription) return;
-    const queued = pendingCandidates;
-    pendingCandidates = [];
-    for (const candidate of queued) {
-      await peerConnection.addIceCandidate(candidate);
-    }
-  }
-
-  async function handleSignal(payload) {
-    if (!localStream || !payload?.from || !payload?.callId) return;
-    if (payload.callId !== activeCallId) return;
+  async function startOffer(targetClientId, reason = "accepted") {
+    if (rebuilding) return;
+    rebuilding = true;
     try {
-      const pc = await ensurePeer(payload.from);
-      if (payload.description) {
-        await pc.setRemoteDescription(payload.description);
-        await flushPendingCandidates();
-        if (payload.description.type === "offer") {
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          socket.emit("rtc:signal", {
-            callId: activeCallId,
-            targetId: payload.from,
-            description: pc.localDescription,
-          });
-        }
-        return;
-      }
-      if (payload.candidate) {
-        const candidate = new RTCIceCandidate(payload.candidate);
-        if (pc.remoteDescription) await pc.addIceCandidate(candidate);
-        else pendingCandidates.push(candidate);
-      }
+      const pc = await createFreshPeer(targetClientId);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      const result = await sendRtc2Signal({
+        callId: activeCallId,
+        targetClientId,
+        description: pc.localDescription,
+      });
+      if (!result?.ok) throw new Error(result?.error || "RTC2_SIGNAL_FAILED");
+      canSendLocalCandidates = true;
+      await flushLocalCandidates();
+      armConnectWatchdog();
+      emitRtcDebug({ event: "offer-v2", state: reason });
+      setCallState("Соединяем…");
     } catch (error) {
-      console.error("WebRTC signaling failed", error);
+      rebuilding = false;
+      console.error("RTC2 offer failed", error);
       setCallState("Не удалось установить видеосвязь.");
     }
   }
 
-  function announceReady() {
-    if (!localStream || !socket.connected) return;
-    socket.emit("rtc:ready", { callId: activeCallId }, async (result) => {
-      if (!result?.ok) return;
-      const peer = (result.peers || []).find((item) => item.role !== role) || result.peers?.[0];
-      if (!peer) {
+  async function handleRtc2Signal(payload = {}) {
+    if (!payload.callId || payload.callId !== activeCallId || !payload.fromClientId || !localStream) return;
+    try {
+      if (payload.description?.type === "offer") {
+        rebuilding = true;
+        const pc = await createFreshPeer(payload.fromClientId);
+        await pc.setRemoteDescription(payload.description);
+        await flushRemoteCandidates(pc);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        const result = await sendRtc2Signal({
+          callId: activeCallId,
+          targetClientId: payload.fromClientId,
+          description: pc.localDescription,
+        });
+        if (!result?.ok) throw new Error(result?.error || "RTC2_SIGNAL_FAILED");
+        canSendLocalCandidates = true;
+        await flushLocalCandidates();
+        armConnectWatchdog();
+        rebuilding = false;
+        return;
+      }
+
+      if (payload.description?.type === "answer") {
+        if (!peerConnection || peerClientId !== payload.fromClientId) return;
+        await peerConnection.setRemoteDescription(payload.description);
+        await flushRemoteCandidates(peerConnection);
+        return;
+      }
+
+      if (payload.candidate) {
+        if (
+          peerConnection &&
+          peerClientId === payload.fromClientId &&
+          peerConnection.remoteDescription
+        ) {
+          await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
+        } else {
+          pendingRemoteCandidates.push(payload.candidate);
+        }
+      }
+    } catch (error) {
+      rebuilding = false;
+      console.error("RTC2 signaling failed", error);
+      emitRtcDebug({ event: "signal-error-v2", state: String(error?.message || error) });
+      scheduleRtc2Resume("signal-error");
+    }
+  }
+
+  function scheduleRtc2Resume(reason) {
+    if (reconnectTimer || !activeCallId || !callAccepted) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      resumeRtc2Session(reason);
+    }, 1200);
+  }
+
+  function resumeRtc2Session(reason = "resume") {
+    if (!activeCallId || !callAccepted || !socket.connected) return;
+    socket.emit("rtc2:resume", { callId: activeCallId }, (result) => {
+      if (!result?.ok) {
+        setCallState("Не удалось восстановить видеосвязь.");
+        return;
+      }
+      emitRtcDebug({
+        event: "resume-v2",
+        state: `reason=${reason};offerer=${Boolean(result.offerer)};peerOnline=${Boolean(result.peerOnline)}`,
+      });
+      if (!result.peerOnline) {
         setCallState("Ждём переподключения второго участника…");
         return;
       }
-      const shouldOffer = role === "teacher" || String(socket.id) < String(peer.id);
-      if (!shouldOffer) return;
-      try {
-        await createOffer(peer.id);
-      } catch (error) {
-        console.error("WebRTC reconnect offer failed", error);
-        setCallState("Не удалось восстановить видеосвязь.");
+      if (result.offerer) {
+        rebuilding = false;
+        startOffer(result.peerClientId, reason);
+      } else {
+        rebuilding = false;
+        destroyPeer();
+        peerClientId = result.peerClientId;
+        setCallState("Ждём восстановления соединения…");
       }
     });
   }
@@ -810,19 +694,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       });
       localVideo.srcObject = localStream;
       await localVideo.play().catch(() => {});
-      const audioTrack = localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = true;
-        emitRtcDebug({
-          event: "local-audio",
-          state: `readyState=${audioTrack.readyState};enabled=${audioTrack.enabled};muted=${audioTrack.muted}`,
-        });
-      }
-      callStarted = true;
+      emitRtcDebug({ event: "local-media-v2", state: "ready" });
       updateMediaButtons();
       return true;
     } catch (error) {
-      callStarted = false;
       setCallState("Камера или микрофон недоступны.");
       showSnackbar?.({
         title: "Видеосвязь",
@@ -841,51 +716,23 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     pendingCallerId = null;
     pendingCallId = null;
     activeCallId = crypto.randomUUID();
-    incomingBox.hidden = true;
     outgoingCall = true;
     callAccepted = false;
-    updateMediaButtons();
+    incomingBox.hidden = true;
     startButton.textContent = "Звоним…";
     setCallState("Звоним второму участнику…");
+    updateMediaButtons();
 
-    socket.emit("rtc:call", { callId: activeCallId }, (result) => {
+    socket.emit("rtc2:call", { callId: activeCallId }, (result) => {
       if (!result?.ok) {
         outgoingCall = false;
         startButton.textContent = "Позвонить";
         setCallState("Не удалось начать звонок.");
-        return;
-      }
-      if (!(result.recipients || []).length) {
+        updateMediaButtons();
+      } else if (!result.recipients) {
         setCallState("Звонок начат. Ждём второго участника…");
       }
     });
-  }
-
-  function closePeer() {
-    if (rtcQualityTimer) {
-      clearInterval(rtcQualityTimer);
-      rtcQualityTimer = null;
-    }
-    if (iceRestartTimer) {
-      clearTimeout(iceRestartTimer);
-      iceRestartTimer = null;
-    }
-    if (recoveryWatchdogTimer) {
-      clearTimeout(recoveryWatchdogTimer);
-      recoveryWatchdogTimer = null;
-    }
-    if (initialConnectWatchdogTimer) {
-      clearTimeout(initialConnectWatchdogTimer);
-      initialConnectWatchdogTimer = null;
-    }
-    iceRestartAttempts = 0;
-    peerConnection?.close();
-    peerConnection = null;
-    peerCallId = null;
-    activePeerId = null;
-    pendingCandidates = [];
-    remoteStream = null;
-    remoteVideo.srcObject = null;
   }
 
   function resetIncomingCall() {
@@ -903,17 +750,17 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   } = {}) {
     const callId = activeCallId || pendingCallId;
     if (notify && socket.connected && callId) {
-      if (outgoingCall && !callAccepted) socket.emit("rtc:cancel", { callId });
-      else socket.emit("rtc:leave", { callId });
+      if (outgoingCall && !callAccepted) socket.emit("rtc2:cancel", { callId });
+      else socket.emit("rtc2:leave", { callId });
     }
-    closePeer();
+    destroyPeer();
     for (const track of localStream?.getTracks() || []) track.stop();
     localStream = null;
     localVideo.srcObject = null;
-    callStarted = false;
     outgoingCall = false;
     callAccepted = false;
     activeCallId = null;
+    rebuilding = false;
     resetIncomingCall();
     startButton.textContent = "Позвонить";
     updateMediaButtons();
@@ -926,19 +773,17 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   hangupButton.addEventListener("click", () => stopCall());
 
   acceptButton.addEventListener("click", async () => {
-    const callerId = pendingCallerId;
+    const callerClientId = pendingCallerId;
     const callId = pendingCallId;
-    if (!callerId || !callId) return;
+    if (!callerClientId || !callId) return;
     stopRingtone();
     acceptButton.disabled = true;
-    activeCallId = callId;
     if (!(await acquireLocalMedia())) {
-      activeCallId = null;
       acceptButton.disabled = false;
       return;
     }
-
-    socket.emit("rtc:accept", { callerId, callId }, (result) => {
+    activeCallId = callId;
+    socket.emit("rtc2:accept", { callerClientId, callId }, (result) => {
       acceptButton.disabled = false;
       if (!result?.ok) {
         activeCallId = null;
@@ -946,20 +791,22 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         setCallState("Звонок уже завершён.");
         return;
       }
-      if (result.callId !== callId) return;
-      callAccepted = true;
       outgoingCall = false;
-      activeCallId = callId;
-      activePeerId = callerId;
+      callAccepted = true;
+      peerClientId = callerClientId;
       resetIncomingCall();
       startButton.textContent = "Подключено";
       setCallState("Соединяем…");
+      updateMediaButtons();
     });
   });
 
   declineButton.addEventListener("click", () => {
     if (pendingCallerId && pendingCallId) {
-      socket.emit("rtc:decline", { callerId: pendingCallerId, callId: pendingCallId });
+      socket.emit("rtc2:decline", {
+        callerClientId: pendingCallerId,
+        callId: pendingCallId,
+      });
     }
     resetIncomingCall();
     closePanel();
@@ -981,29 +828,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   window.addEventListener("pagehide", stopRingtone);
 
-  const connection =
-    navigator.connection ||
-    navigator.mozConnection ||
-    navigator.webkitConnection ||
-    null;
-
-  const reportNetworkChange = () => {
-    if (!localStream || !activeCallId) return;
-    emitRtcDebug({
-      event: "network-change",
-      state: `online=${navigator.onLine};effectiveType=${rtcNetworkSnapshot().effectiveType || "unknown"}`,
-    });
-  };
-
-  connection?.addEventListener?.("change", reportNetworkChange);
-  window.addEventListener("online", reportNetworkChange);
-  window.addEventListener("offline", reportNetworkChange);
-
-  socket.on("rtc:incoming-call", ({ from, caller, callId } = {}) => {
-    if (!from || !callId || localStream || outgoingCall || callAccepted) return;
-    pendingCallerId = from;
+  socket.on("rtc2:incoming-call", ({ caller, callId } = {}) => {
+    if (!caller?.clientId || !callId || localStream || outgoingCall || callAccepted) return;
+    pendingCallerId = caller.clientId;
     pendingCallId = callId;
-    incomingName.textContent = `${caller?.displayName || "Участник"} хочет присоединиться`;
+    incomingName.textContent = `${caller.displayName || "Участник"} хочет присоединиться`;
     incomingBox.hidden = false;
     updateMediaButtons();
     startRingtone();
@@ -1013,75 +842,74 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     setCallState("Можно ответить, когда будете готовы 🙂");
   });
 
-  socket.on("rtc:accepted", async ({ peer, callId } = {}) => {
-    if (!outgoingCall || !localStream || !peer?.id || callId !== activeCallId) return;
+  socket.on("rtc2:accepted", ({ peer, callId } = {}) => {
+    if (!outgoingCall || !localStream || !peer?.clientId || callId !== activeCallId) return;
     outgoingCall = false;
     callAccepted = true;
+    peerClientId = peer.clientId;
     startButton.textContent = "Подключено";
-    setCallState("Соединяем…");
-    try {
-      await createOffer(peer.id);
-    } catch (error) {
-      console.error("WebRTC offer failed", error);
-      setCallState("Не удалось установить видеосвязь.");
+    updateMediaButtons();
+    startOffer(peer.clientId, "accepted");
+  });
+
+  socket.on("rtc2:signal", handleRtc2Signal);
+
+  socket.on("rtc2:restart", ({ callId, peerClientId: otherClientId, offerer } = {}) => {
+    if (!callAccepted || callId !== activeCallId || !otherClientId) return;
+    if (offerer) {
+      rebuilding = false;
+      startOffer(otherClientId, "peer-resume");
+    } else {
+      rebuilding = false;
+      destroyPeer();
+      peerClientId = otherClientId;
+      setCallState("Ждём восстановления соединения…");
     }
   });
 
-  socket.on("rtc:declined", ({ callId } = {}) => {
-    if (!callId || callId !== activeCallId) return;
-    stopCall({ notify: false });
-    setCallState("Звонок отклонён.");
+  socket.on("rtc2:declined", ({ callId } = {}) => {
+    if (callId !== activeCallId) return;
+    stopCall({ notify: false, finalState: "Звонок отклонён." });
   });
 
-  socket.on("rtc:cancelled", ({ from, callId } = {}) => {
-    if (!callId || callId !== pendingCallId) return;
-    if (from && pendingCallerId && from !== pendingCallerId) return;
+  socket.on("rtc2:cancelled", ({ callId } = {}) => {
+    if (callId !== pendingCallId) return;
     resetIncomingCall();
     setCallState("Входящий звонок завершён.");
   });
 
-  socket.on("rtc:peer-ready", async (peer) => {
-    if (!localStream || !callAccepted || !peer?.id || peer.role === role) return;
-    if (!peer.callId || peer.callId !== activeCallId) return;
-    const shouldOffer = role === "teacher" || String(socket.id) < String(peer.id);
-    if (!shouldOffer) return;
-    try {
-      await createOffer(peer.id);
-    } catch (error) {
-      console.error("WebRTC reconnect offer failed", error);
-    }
-  });
-
-  socket.on("rtc:signal", (payload) => {
-    handleSignal(payload);
-  });
-
-  socket.on("rtc:ended", ({ from, callId } = {}) => {
-    if (!callId || callId !== activeCallId) return;
-    if (from && activePeerId && from !== activePeerId) return;
+  socket.on("rtc2:ended", ({ callId } = {}) => {
+    if (callId !== activeCallId) return;
     stopCall({
       notify: false,
       finalState: "Собеседник завершил звонок. Можно позвонить снова.",
     });
   });
 
-  socket.on("rtc:peer-left", ({ id, callId } = {}) => {
-    if (!callId || callId !== activeCallId || id !== activePeerId) return;
-    closePeer();
-    if (localStream) {
-      callAccepted = true;
-      setCallState("Второй участник отключился. Ждём переподключения…");
+  socket.on("connect", () => {
+    if (callAccepted && activeCallId) {
+      resumeRtc2Session("socket-reconnect");
+    } else if (outgoingCall && activeCallId) {
+      socket.emit("rtc2:call", { callId: activeCallId });
     }
   });
 
-  socket.on("connect", () => {
-    if (localStream && callAccepted) announceReady();
-    else if (localStream && outgoingCall) {
-      socket.emit("rtc:call", { callId: activeCallId }, (result) => {
-        if (!result?.ok) setCallState("Не удалось восстановить звонок.");
-      });
-    }
-  });
+  const rtc2NetworkChange = () => {
+    if (!callAccepted || !activeCallId) return;
+    emitRtcDebug({
+      event: "network-change-v2",
+      state: `online=${navigator.onLine};effectiveType=${rtcNetworkSnapshot().effectiveType || "unknown"}`,
+    });
+    scheduleRtc2Resume("network-change");
+  };
+  const rtc2Connection =
+    navigator.connection ||
+    navigator.mozConnection ||
+    navigator.webkitConnection ||
+    null;
+  rtc2Connection?.addEventListener?.("change", rtc2NetworkChange);
+  window.addEventListener("online", rtc2NetworkChange);
+  window.addEventListener("offline", rtc2NetworkChange);
 
   function appendMessage(message) {
     if (!message?.id || messagesEl.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`)) return;
