@@ -1854,7 +1854,7 @@ io.on("connection", (socket) => {
     if (call?.callerId === socket.id) rtcCallsByLesson.delete(lessonId);
     if (socket.data.rtcReady !== true) return;
     socket.data.rtcReady = false;
-    socket.to(room).emit("rtc:peer-left", { id: socket.id });
+    socket.to(room).emit("rtc:ended", { from: socket.id });
   });
 
   socket.on("chat:history", async (_payload, ack) => {

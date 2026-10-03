@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video8/);
+    assert.match(read(file), /app\.js\?v=20261003-video9/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -83,7 +83,8 @@ test("incoming call has a prominent ringing indicator and explicit actions", () 
   const css = read("public/lesson-comms.css");
   assert.match(client, /lesson-comms-incoming/);
   assert.match(client, /Ответить/);
-  assert.match(client, /Отклонить/);
+  assert.match(client, /lesson-comms-decline/);
+  assert.match(client, /Не сейчас/);
   assert.match(client, /videoButton\.classList\.add\("ringing"\)/);
   assert.match(css, /lesson-comms-video-button\.ringing/);
 });
@@ -116,6 +117,7 @@ test("video call can collapse to opponent-only mini window and restore on click"
   const client = read("public/lesson-comms.mjs");
   const css = read("public/lesson-comms.css");
   assert.match(client, /lesson-comms-minimize/);
+  assert.match(client, /lesson-comms-close/);
   assert.match(client, /panel\.classList\.add\("mini-video"\)/);
   assert.match(client, /panel\.classList\.remove\("mini-video"\)/);
   assert.match(client, /remoteVideo\.addEventListener\("click"/);
@@ -170,4 +172,222 @@ test("selected ICE pair diagnostics include relay transport protocol", () => {
   const client = read("public/lesson-comms.mjs");
   assert.match(client, /relayProtocol/);
   assert.match(client, /event: "selected-pair"/);
+});
+
+
+test("incoming call ringtone is soft, repeating and stops with call state", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /new AudioContextClass\(\)/);
+  assert.match(client, /oscillator\.type = "sine"/);
+  assert.match(client, /window\.setInterval\(playRingtoneBubble, 2400\)/);
+  assert.match(client, /function stopRingtone\(\)/);
+  assert.match(client, /function resetIncomingCall\(\)[\s\S]{0,120}stopRingtone\(\)/);
+  assert.match(client, /rtc:incoming-call[\s\S]{0,500}startRingtone\(\)/);
+});
+
+test("lesson video call uses friendly child-oriented visual treatment", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+  assert.match(client, /lesson-comms-mascot/);
+  assert.match(client, /Вы на занятии вместе/);
+  assert.match(client, /К вам звонят/);
+  assert.match(css, /lesson-comms-brand/);
+  assert.match(css, /linear-gradient/);
+  assert.match(css, /lesson-comms-controls button\.primary/);
+});
+
+
+test("explicit hangup ends the call for both participants while disconnect stays reconnectable", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(server, /socket\.on\("rtc:leave"[\s\S]{0,260}rtc:ended/);
+  assert.doesNotMatch(server, /socket\.on\("rtc:leave"[\s\S]{0,260}rtc:peer-left/);
+  assert.match(server, /socket\.on\("disconnect"[\s\S]{0,500}rtc:peer-left/);
+
+  assert.match(client, /socket\.on\("rtc:ended"/);
+  assert.match(client, /Собеседник завершил звонок/);
+  assert.match(client, /socket\.on\("rtc:peer-left"[\s\S]{0,400}Ждём переподключения/);
+  assert.match(client, /finalState/);
+});
+
+
+test("kid-friendly call controls stay minimal and hide hangup before a call", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /lesson-comms-start primary/);
+  assert.match(client, /lesson-comms-hangup danger call-control/);
+  assert.match(client, /button\.hidden = !callIsActive/);
+  assert.match(client, /startButton\.hidden = callIsActive/);
+  assert.match(client, /Свернуть/);
+  assert.match(client, /lesson-comms-close/);
+  assert.match(client, /Закрыть/);
+  assert.match(css, /grid-template-columns: repeat\(3/);
+  assert.match(css, /call-control\[hidden\]/);
+});
+
+test("incoming ringtone is clearly audible but remains soft", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /exponentialRampToValueAtTime\(0\.16/);
+  assert.match(client, /oscillator\.type = "sine"/);
+});
+
+
+test("window actions clearly separate minimize close and hangup", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /lesson-comms-window-actions/);
+  assert.match(client, /lesson-comms-minimize/);
+  assert.match(client, /lesson-comms-close/);
+  assert.match(client, /Свернуть/);
+  assert.match(client, /Закрыть/);
+  assert.match(client, /closeButton\.addEventListener\("click", closePanel\)/);
+  assert.match(client, /lesson-comms-hangup danger call-control/);
+  assert.match(css, /lesson-comms-window-actions/);
+});
+
+
+test("incoming call hides the outgoing call action until the incoming state ends", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /const incomingCallPending = Boolean\(pendingCallerId\)/);
+  assert.match(client, /startButton\.hidden = callIsActive \|\| incomingCallPending/);
+  assert.match(client, /function resetIncomingCall\(\)[\s\S]{0,220}pendingCallerId = null/);
+});
+
+
+test("answering stops the ringtone immediately before media setup", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(
+    client,
+    /acceptButton\.addEventListener\("click",[\s\S]{0,180}stopRingtone\(\)[\s\S]{0,220}acquireLocalMedia/
+  );
+  assert.match(
+    client,
+    /function stopRingtone\(\)[\s\S]{0,260}ringtoneContext\.suspend\(\)/
+  );
+});
+
+
+test("chat opening does not summon the mobile keyboard automatically", () => {
+  const client = read("public/lesson-comms.mjs");
+  const showViewStart = client.indexOf("function showView(view)");
+  const closePanelStart = client.indexOf("function closePanel()", showViewStart);
+  const showView = client.slice(showViewStart, closePanelStart);
+
+  assert.match(showView, /loadChatHistory\(\)/);
+  assert.doesNotMatch(showView, /chatInput\.focus/);
+});
+
+test("lesson starts in hand mode instead of drawing mode", () => {
+  const app = read("public/app.js");
+  assert.match(app, /let tool = "hand"/);
+
+  for (const file of ["public/teacher.html", "public/student.html"]) {
+    const html = read(file);
+    assert.match(html, /id="handBtn" class="active"/);
+    assert.doesNotMatch(html, /id="penBtn" class="active/);
+  }
+});
+
+
+test("mobile chat remains scrollable without trapping the page", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /visualViewport/);
+  assert.match(client, /--lesson-viewport-height/);
+  assert.match(css, /lesson-comms-messages[\s\S]{0,260}touch-action: pan-y/);
+  assert.match(css, /overscroll-behavior: contain/);
+  assert.match(css, /max-height: min\(34dvh, 300px\)/);
+});
+
+
+test("chat hides the video-only minimize action", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /minimizeButton\.hidden = !isVideo/);
+  assert.match(client, /titleEl\.textContent = isVideo \? "Видеосвязь" : "Чат занятия"/);
+});
+
+
+test("mobile hand mode lets the page scroll vertically while preserving pinch zoom", () => {
+  const app = read("public/app.js");
+  const pdfCss = read("public/pdf-view.css");
+  const styles = read("public/styles.css");
+
+  assert.match(app, /let tool = "hand"/);
+  assert.match(app, /setTool\(tool\)[\s\S]{0,120}penBtn\.addEventListener/);
+  assert.match(pdfCss, /#stage\.hand-mode[\s\S]{0,260}overflow-y: visible/);
+  assert.match(pdfCss, /overscroll-behavior-y: auto/);
+  assert.match(pdfCss, /touch-action: pan-y pinch-zoom/);
+  assert.match(styles, /#stage\.hand-mode[\s\S]{0,180}touch-action: pan-y pinch-zoom/);
+  assert.match(app, /event\.touches\.length !== 2/);
+});
+
+
+test("hand mode pans the page when dragging directly on the PDF", () => {
+  const app = read("public/app.js");
+
+  assert.match(app, /let handPanLastTouch = null/);
+  assert.match(app, /event\.touches\.length === 1 && handPanLastTouch/);
+  assert.match(app, /window\.scrollBy\(0, deltaY\)/);
+  assert.match(app, /stage\.scrollLeft \+= deltaX/);
+  assert.match(app, /event\.touches\.length !== 2 \|\| !pinchStartDistance/);
+  assert.match(app, /touchcancel/);
+});
+
+
+test("pinch zoom keeps the gesture center anchored and defers PDF rendering", () => {
+  const app = read("public/app.js");
+
+  assert.match(app, /function touchCenter\(touches\)/);
+  assert.match(app, /anchorX: originX \/ rect\.width/);
+  assert.match(app, /anchorY: originY \/ rect\.height/);
+  assert.match(app, /shell\.style\.transformOrigin/);
+  assert.match(app, /shell\.style\.transform =[\s\S]{0,180}translate/);
+  assert.match(app, /scale\(\$\{scale\}\)/);
+  assert.match(app, /async function finishPinchGesture\(\)/);
+  assert.match(app, /await renderPage\(\)/);
+  assert.match(app, /stage\.scrollLeft \+= anchorScreenX - targetCenter\.x/);
+  assert.match(app, /window\.scrollBy\(0, anchorScreenY - targetCenter\.y\)/);
+  assert.doesNotMatch(
+    app,
+    /event\.touches\.length !== 2[\s\S]{0,500}setZoom\(nextZoom\)/
+  );
+});
+
+
+test("sending chat keeps the textarea focused and keyboard stable", () => {
+  const client = read("public/lesson-comms.mjs");
+  const submitStart = client.indexOf('chatForm.addEventListener("submit"');
+  const keydownStart = client.indexOf('chatInput.addEventListener("keydown"', submitStart);
+  const submitBlock = client.slice(submitStart, keydownStart);
+
+  assert.match(client, /chatSubmitButton/);
+  assert.doesNotMatch(submitBlock, /chatInput\.disabled/);
+  assert.doesNotMatch(submitBlock, /chatInput\.focus/);
+  assert.match(submitBlock, /chatSubmitButton\.disabled = true/);
+  assert.match(submitBlock, /chatSubmitButton\.disabled = false/);
+  assert.match(submitBlock, /chatInput\.value = ""/);
+});
+
+
+test("send button does not steal focus from the chat input on touch devices", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /chatSubmitButton\?\.addEventListener\("pointerdown"/);
+  assert.match(client, /document\.activeElement === chatInput/);
+  assert.match(client, /event\.preventDefault\(\)/);
+});
+
+
+test("mobile chat hides its launcher so the composer stays usable", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /launcher\.classList\.toggle\("chat-open", !isVideo\)/);
+  assert.match(client, /launcher\.classList\.remove\("chat-open"\)/);
+  assert.match(css, /lesson-comms-launcher\.chat-open[\s\S]{0,100}display: none/);
+  assert.match(css, /--lesson-viewport-height/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
 });

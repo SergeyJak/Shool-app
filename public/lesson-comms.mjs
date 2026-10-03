@@ -14,6 +14,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let pendingCallerId = null;
   let outgoingCall = false;
   let callAccepted = false;
+  let ringtoneTimer = null;
+  let ringtoneContext = null;
+  let ringtoneUnlocked = false;
 
   const launcher = document.createElement("div");
   launcher.className = "lesson-comms-launcher";
@@ -27,19 +30,33 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   panel.hidden = true;
   panel.innerHTML = `
     <div class="lesson-comms-head">
-      <strong class="lesson-comms-title">Связь</strong>
-      <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видео" title="Свернуть видео">↙</button>
-      <button class="lesson-comms-close" type="button" aria-label="Закрыть">×</button>
+      <div class="lesson-comms-brand">
+        <span class="lesson-comms-mascot" aria-hidden="true">🦉</span>
+        <span>
+          <strong class="lesson-comms-title">Связь</strong>
+          <small class="lesson-comms-subtitle">Вы на занятии вместе</small>
+        </span>
+      </div>
+      <div class="lesson-comms-window-actions">
+        <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видеозвонок">
+          <span aria-hidden="true">▁</span>
+          <span>Свернуть</span>
+        </button>
+        <button class="lesson-comms-close" type="button" aria-label="Закрыть окно видеозвонка">
+          <span aria-hidden="true">✕</span>
+          <span>Закрыть</span>
+        </button>
+      </div>
     </div>
     <div class="lesson-comms-view lesson-comms-video">
       <div class="lesson-comms-incoming" hidden>
         <div>
-          <strong class="lesson-comms-incoming-title">Входящий звонок</strong>
-          <span class="lesson-comms-incoming-name">Участник звонит…</span>
+          <strong class="lesson-comms-incoming-title">К вам звонят 👋</strong>
+          <span class="lesson-comms-incoming-name">Участник хочет присоединиться</span>
         </div>
         <div class="lesson-comms-incoming-actions">
-          <button class="lesson-comms-accept" type="button">Ответить</button>
-          <button class="lesson-comms-decline danger" type="button">Отклонить</button>
+          <button class="lesson-comms-accept" type="button">📹 Ответить</button>
+          <button class="lesson-comms-decline danger" type="button">Не сейчас</button>
         </div>
       </div>
       <div class="lesson-comms-video-stage">
@@ -48,10 +65,22 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
       </div>
       <div class="lesson-comms-controls">
-        <button class="lesson-comms-start" type="button">Позвонить</button>
-        <button class="lesson-comms-mic" type="button" disabled>🎙 Микрофон</button>
-        <button class="lesson-comms-camera" type="button" disabled>📷 Камера</button>
-        <button class="lesson-comms-hangup danger" type="button" disabled>Завершить</button>
+        <button class="lesson-comms-start primary" type="button">
+          <span class="lesson-comms-control-icon" aria-hidden="true">📞</span>
+          <span>Позвонить</span>
+        </button>
+        <button class="lesson-comms-mic call-control" type="button" hidden disabled>
+          <span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span>
+          <span>Микрофон</span>
+        </button>
+        <button class="lesson-comms-camera call-control" type="button" hidden disabled>
+          <span class="lesson-comms-control-icon" aria-hidden="true">📷</span>
+          <span>Камера</span>
+        </button>
+        <button class="lesson-comms-hangup danger call-control" type="button" hidden disabled>
+          <span class="lesson-comms-control-icon" aria-hidden="true">🔴</span>
+          <span>Завершить</span>
+        </button>
       </div>
     </div>
     <div class="lesson-comms-view lesson-comms-chat" hidden>
@@ -67,8 +96,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const videoButton = launcher.querySelector(".lesson-comms-video-button");
   const chatButton = launcher.querySelector(".lesson-comms-chat-button");
   const unreadEl = launcher.querySelector(".lesson-comms-unread");
-  const closeButton = panel.querySelector(".lesson-comms-close");
   const minimizeButton = panel.querySelector(".lesson-comms-minimize");
+  const closeButton = panel.querySelector(".lesson-comms-close");
   const titleEl = panel.querySelector(".lesson-comms-title");
   const videoView = panel.querySelector(".lesson-comms-video");
   const chatView = panel.querySelector(".lesson-comms-chat");
@@ -86,6 +115,16 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const messagesEl = panel.querySelector(".lesson-comms-messages");
   const chatForm = panel.querySelector(".lesson-comms-form");
   const chatInput = chatForm.querySelector("textarea");
+  const chatSubmitButton = chatForm.querySelector('button[type="submit"]');
+
+  function syncChatViewportHeight() {
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    panel.style.setProperty("--lesson-viewport-height", `${Math.round(viewportHeight)}px`);
+  }
+
+  window.visualViewport?.addEventListener("resize", syncChatViewportHeight);
+  window.addEventListener("resize", syncChatViewportHeight);
+  syncChatViewportHeight();
 
   function setUnread(value) {
     unread = Math.max(0, value);
@@ -101,18 +140,20 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     videoView.hidden = !isVideo;
     chatView.hidden = isVideo;
     titleEl.textContent = isVideo ? "Видеосвязь" : "Чат занятия";
+    minimizeButton.hidden = !isVideo;
+    launcher.classList.toggle("chat-open", !isVideo);
     videoButton.classList.toggle("active", isVideo);
     chatButton.classList.toggle("active", !isVideo);
     if (!isVideo) {
       setUnread(0);
       loadChatHistory();
-      requestAnimationFrame(() => chatInput.focus({ preventScroll: true }));
     }
   }
 
   function closePanel() {
     panel.hidden = true;
     panel.classList.remove("mini-video");
+    launcher.classList.remove("chat-open");
     currentView = null;
     videoButton.classList.remove("active");
     chatButton.classList.remove("active");
@@ -126,7 +167,6 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     if (!panel.hidden && currentView === "chat") closePanel();
     else showView("chat");
   });
-  closeButton.addEventListener("click", closePanel);
 
   function minimizeVideo() {
     if (currentView !== "video" || panel.hidden) return;
@@ -144,6 +184,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   minimizeButton.addEventListener("click", minimizeVideo);
+  closeButton.addEventListener("click", closePanel);
   remoteVideo.addEventListener("click", () => {
     if (panel.classList.contains("mini-video")) {
       restoreVideo();
@@ -151,6 +192,82 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     }
     remoteVideo.play().catch(() => {});
   });
+
+  function ensureRingtoneContext() {
+    if (!ringtoneContext) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return null;
+      ringtoneContext = new AudioContextClass();
+    }
+    return ringtoneContext;
+  }
+
+  function unlockRingtone() {
+    const context = ensureRingtoneContext();
+    if (!context) return;
+    context.resume().then(() => {
+      ringtoneUnlocked = true;
+    }).catch(() => {});
+  }
+
+  function playRingtoneBubble() {
+    const context = ensureRingtoneContext();
+    if (!context || context.state !== "running") return;
+
+    const now = context.currentTime;
+    const master = context.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
+    master.connect(context.destination);
+
+    [
+      { frequency: 520, start: 0, duration: 0.22 },
+      { frequency: 690, start: 0.28, duration: 0.26 },
+    ].forEach(({ frequency, start, duration }) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, now + start);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        frequency * 0.92,
+        now + start + duration
+      );
+      gain.gain.setValueAtTime(0.0001, now + start);
+      gain.gain.exponentialRampToValueAtTime(0.75, now + start + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
+      oscillator.connect(gain);
+      gain.connect(master);
+      oscillator.start(now + start);
+      oscillator.stop(now + start + duration + 0.03);
+    });
+  }
+
+  function startRingtone() {
+    stopRingtone();
+    const context = ensureRingtoneContext();
+    if (!context) return;
+    context.resume()
+      .then(() => {
+        ringtoneUnlocked = true;
+        playRingtoneBubble();
+        ringtoneTimer = window.setInterval(playRingtoneBubble, 2400);
+      })
+      .catch(() => {});
+  }
+
+  function stopRingtone() {
+    if (ringtoneTimer) {
+      window.clearInterval(ringtoneTimer);
+      ringtoneTimer = null;
+    }
+    if (ringtoneContext?.state === "running") {
+      ringtoneContext.suspend().catch(() => {});
+    }
+  }
+
+  document.addEventListener("pointerdown", unlockRingtone, { once: true, passive: true });
+  document.addEventListener("keydown", unlockRingtone, { once: true });
 
   function setCallState(text) {
     callState.textContent = text;
@@ -160,12 +277,24 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   function updateMediaButtons() {
     const audio = localStream?.getAudioTracks()[0];
     const video = localStream?.getVideoTracks()[0];
+    const callIsActive = Boolean(localStream || outgoingCall || callAccepted);
+    const incomingCallPending = Boolean(pendingCallerId);
+
+    startButton.hidden = callIsActive || incomingCallPending;
+    for (const button of [micButton, cameraButton, hangupButton]) {
+      button.hidden = !callIsActive;
+    }
+
     micButton.disabled = !audio;
     cameraButton.disabled = !video;
-    hangupButton.disabled = !localStream;
-    startButton.disabled = Boolean(localStream);
-    micButton.textContent = audio?.enabled ? "🎙 Микрофон" : "🔇 Микрофон";
-    cameraButton.textContent = video?.enabled ? "📷 Камера" : "🚫 Камера";
+    hangupButton.disabled = !callIsActive;
+
+    micButton.innerHTML = audio?.enabled
+      ? '<span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span><span>Микрофон</span>'
+      : '<span class="lesson-comms-control-icon" aria-hidden="true">🔇</span><span>Включить звук</span>';
+    cameraButton.innerHTML = video?.enabled
+      ? '<span class="lesson-comms-control-icon" aria-hidden="true">📷</span><span>Камера</span>'
+      : '<span class="lesson-comms-control-icon" aria-hidden="true">🚫</span><span>Включить камеру</span>';
   }
 
   async function getIceConfig() {
@@ -488,6 +617,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     incomingBox.hidden = true;
     outgoingCall = true;
     callAccepted = false;
+    updateMediaButtons();
     startButton.textContent = "Звоним…";
     setCallState("Звоним второму участнику…");
 
@@ -514,13 +644,17 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   function resetIncomingCall() {
+    stopRingtone();
     pendingCallerId = null;
     incomingBox.hidden = true;
     videoButton.classList.remove("ringing");
     videoButton.textContent = "🎥 Связь";
   }
 
-  function stopCall({ notify = true } = {}) {
+  function stopCall({
+    notify = true,
+    finalState = "Нажмите «Позвонить», чтобы начать видеосвязь.",
+  } = {}) {
     if (notify && socket.connected) {
       if (outgoingCall && !callAccepted) socket.emit("rtc:cancel");
       else socket.emit("rtc:leave");
@@ -535,8 +669,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     resetIncomingCall();
     startButton.textContent = "Позвонить";
     updateMediaButtons();
-    setCallState("Нажмите «Позвонить», чтобы начать видеосвязь.");
+    setCallState(finalState);
   }
+
+  updateMediaButtons();
 
   startButton.addEventListener("click", startCall);
   hangupButton.addEventListener("click", () => stopCall());
@@ -544,6 +680,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   acceptButton.addEventListener("click", async () => {
     const callerId = pendingCallerId;
     if (!callerId) return;
+    stopRingtone();
     acceptButton.disabled = true;
     if (!(await acquireLocalMedia())) {
       acceptButton.disabled = false;
@@ -586,15 +723,19 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     updateMediaButtons();
   });
 
+  window.addEventListener("pagehide", stopRingtone);
+
   socket.on("rtc:incoming-call", ({ from, caller } = {}) => {
     if (!from || localStream || outgoingCall || callAccepted) return;
     pendingCallerId = from;
-    incomingName.textContent = `${caller?.displayName || "Участник"} звонит…`;
+    incomingName.textContent = `${caller?.displayName || "Участник"} хочет присоединиться`;
     incomingBox.hidden = false;
+    updateMediaButtons();
+    startRingtone();
     videoButton.classList.add("ringing");
     videoButton.textContent = "📞 Входящий";
     showView("video");
-    setCallState("Входящий видеозвонок");
+    setCallState("Можно ответить, когда будете готовы 🙂");
   });
 
   socket.on("rtc:accepted", async ({ peer } = {}) => {
@@ -635,6 +776,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   socket.on("rtc:signal", (payload) => {
     handleSignal(payload);
+  });
+
+  socket.on("rtc:ended", ({ from } = {}) => {
+    if (from && activePeerId && from !== activePeerId) return;
+    stopCall({
+      notify: false,
+      finalState: "Собеседник завершил звонок. Можно позвонить снова.",
+    });
   });
 
   socket.on("rtc:peer-left", ({ id } = {}) => {
@@ -686,16 +835,24 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     });
   }
 
+  chatSubmitButton?.addEventListener("pointerdown", (event) => {
+    if (document.activeElement === chatInput) {
+      event.preventDefault();
+    }
+  });
+
   chatForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const text = chatInput.value.trim();
-    if (!text) return;
-    chatInput.disabled = true;
+    if (!text || chatSubmitButton?.disabled) return;
+
+    if (chatSubmitButton) chatSubmitButton.disabled = true;
+
     socket.emit("chat:send", { text }, (result) => {
-      chatInput.disabled = false;
+      if (chatSubmitButton) chatSubmitButton.disabled = false;
+
       if (result?.ok) {
         chatInput.value = "";
-        chatInput.focus();
       } else {
         showSnackbar?.({
           title: "Чат",

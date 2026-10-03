@@ -337,3 +337,16 @@
     top:64px;
   }
 }
+
+/* On mobile, hand mode gives vertical gestures back to the page.
+   The PDF stage keeps horizontal panning for zoomed pages. */
+@media (max-width: 600px) {
+  .pdf-view-page #stage.hand-mode {
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: visible;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+    touch-action: pan-y pinch-zoom;
+  }
+}

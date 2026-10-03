@@ -543,3 +543,11 @@ canvas { display: block; }
   cursor: default;
   opacity: .78;
 }
+
+
+@media (max-width: 600px) {
+  #stage.hand-mode {
+    overscroll-behavior-y: auto;
+    touch-action: pan-y pinch-zoom;
+  }
+}
