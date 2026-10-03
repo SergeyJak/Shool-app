@@ -128,10 +128,10 @@ test("video call can collapse to opponent-only mini window and restore on click"
 });
 
 
-test("Cloudflare TURN is forced for reliable remote calls and selected ICE pair is logged", () => {
+test("Cloudflare TURN remains available while direct ICE fallback is allowed", () => {
   const server = read("server.js");
   const client = read("public/lesson-comms.mjs");
-  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "relay"/);
+  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
   assert.match(client, /iceTransportPolicy: iceConfig\.iceTransportPolicy/);
   assert.match(client, /event: "selected-pair"/);
   assert.match(client, /candidateType/);
@@ -160,13 +160,12 @@ test("RTC quality monitor reports bandwidth jitter and packet loss without affec
 });
 
 
-test("Cloudflare TURN keeps transport fallbacks while still forcing relay", () => {
+test("Cloudflare TURN keeps transport fallbacks without relay-only ICE", () => {
   const server = read("server.js");
-
   assert.match(server, /return payload\.iceServers/);
   assert.doesNotMatch(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
   assert.doesNotMatch(server, /\^turns:\.\*:443\\\?transport=tcp\$\/i/);
-  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "relay"/);
+  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
 });
 
 
