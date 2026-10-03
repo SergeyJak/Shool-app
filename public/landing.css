@@ -920,3 +920,62 @@ h1 {
     flex: 1 1 150px;
   }
 }
+
+.admin-badge{
+  display:inline-grid;
+  place-items:center;
+  min-width:20px;
+  height:20px;
+  margin-left:5px;
+  padding:0 6px;
+  border-radius:999px;
+  background:#ef5b73;
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+}
+.admin-section-title{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+}
+.admin-section-title h3{margin:3px 0 0}
+.registration-list{display:grid;gap:12px}
+.registration-card{
+  padding:16px;
+  border:1px solid #e1e6eb;
+  border-radius:14px;
+  background:#fff;
+}
+.registration-card-header{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.registration-card-header>div{display:grid;gap:3px}
+.registration-card-header strong{font-size:16px}
+.registration-card-header span,
+.registration-card-header small{color:#7d8792;font-size:12px}
+.registration-details{
+  display:grid;
+  grid-template-columns:130px 1fr;
+  gap:7px 12px;
+  margin:0 0 14px;
+}
+.registration-details dt{color:#7a8591;font-size:12px;font-weight:700}
+.registration-details dd{margin:0;color:#26313c;font-size:13px;white-space:pre-wrap}
+.admin-row-actions button.danger{
+  border:1px solid #efc6cc;
+  background:#fff5f6;
+  color:#aa3444;
+}
+@media(max-width:720px){
+  .admin-section-title{flex-direction:column}
+  .registration-card-header{flex-direction:column}
+  .registration-details{grid-template-columns:1fr}
+  .registration-details dd{padding-bottom:5px}
+}
