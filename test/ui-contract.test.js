@@ -569,6 +569,20 @@ test("login sends every role through the cabinet instead of hardcoding default l
   assert.doesNotMatch(server, /return "\/student\?lesson=default"/);
 });
 
+test("mobile admin navigation stays inside viewport with four sections", () => {
+  const dashboard = read("public/dashboard.html");
+  const css = read("public/landing.css");
+
+  assert.match(dashboard, /data-admin-view="overview"/);
+  assert.match(dashboard, /data-admin-view="registrations"/);
+  assert.match(dashboard, /data-admin-view="users"/);
+  assert.match(dashboard, /data-admin-view="lessons"/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.admin-nav\s*\{[\s\S]*display:\s*grid/);
+  assert.match(css, /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.admin-nav-btn\s*\{[\s\S]*min-width:\s*0/);
+  assert.match(css, /\.landing-side-button\s*\{[\s\S]*display:\s*none/);
+});
+
 test("admin management UI is responsive", () => {
   const css = read("public/landing.css");
   assert.match(css, /\.admin-panel/);
