@@ -298,3 +298,10 @@ test("mobile chat remains scrollable without trapping the page", () => {
   assert.match(css, /overscroll-behavior: contain/);
   assert.match(css, /max-height: min\(34dvh, 300px\)/);
 });
+
+
+test("chat hides the video-only minimize action", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /minimizeButton\.hidden = !isVideo/);
+  assert.match(client, /titleEl\.textContent = isVideo \? "Видеосвязь" : "Чат занятия"/);
+});
