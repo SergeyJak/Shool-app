@@ -100,8 +100,6 @@ let lessonMessages;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 const rtcCallsByLesson = new Map();
-const rtcResumeSessions = new Map();
-const RTC_RESUME_TTL_MS = 60_000;
 
 const loginIpLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
 const loginCredentialLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
@@ -342,48 +340,6 @@ function rtcPeer(socket) {
 function normalizeRtcCallId(value) {
   const callId = String(value || "").trim();
   return /^[a-zA-Z0-9_-]{8,120}$/.test(callId) ? callId : null;
-}
-
-function rtcClientId(socket) {
-  return realtimeClientId(socket.handshake.auth?.clientId);
-}
-
-function rtcResumeKey(lessonId, clientId, callId) {
-  return `${lessonId}:${clientId}:${callId}`;
-}
-
-function rememberRtcSession(socket, callId) {
-  const clientId = rtcClientId(socket);
-  if (!clientId || !callId) return;
-  rtcResumeSessions.set(rtcResumeKey(socket.data.lessonId, clientId, callId), {
-    userId: String(socket.data.user?._id || ""),
-    role: socket.data.role,
-    expiresAt: Date.now() + RTC_RESUME_TTL_MS,
-  });
-}
-
-function canResumeRtcSession(socket, callId) {
-  const clientId = rtcClientId(socket);
-  if (!clientId || !callId) return false;
-  const key = rtcResumeKey(socket.data.lessonId, clientId, callId);
-  const entry = rtcResumeSessions.get(key);
-  if (!entry) return false;
-  if (entry.expiresAt < Date.now()) {
-    rtcResumeSessions.delete(key);
-    return false;
-  }
-  return (
-    entry.userId === String(socket.data.user?._id || "") &&
-    entry.role === socket.data.role
-  );
-}
-
-function clearRtcResumeCall(lessonId, callId) {
-  const suffix = `:${callId}`;
-  const prefix = `${lessonId}:`;
-  for (const key of rtcResumeSessions.keys()) {
-    if (key.startsWith(prefix) && key.endsWith(suffix)) rtcResumeSessions.delete(key);
-  }
 }
 
 function activeRtcCall(lessonId) {
@@ -1763,7 +1719,6 @@ io.on("connection", (socket) => {
   const accountRole = socket.data.user.role;
   const role = accountRole === "admin" ? requestedRole : accountRole;
   socket.data.role = role;
-  socket.data.connectedAt = Date.now();
   const lessonId = socket.data.lessonId;
   const room = lessonRoom(lessonId);
   const teacherFollow = followForLesson(lessonId);
@@ -1786,7 +1741,6 @@ io.on("connection", (socket) => {
     if (!callId) return ack?.({ ok: false, error: "INVALID_CALL_ID" });
     socket.data.rtcReady = true;
     socket.data.rtcCallId = callId;
-    rememberRtcSession(socket, callId);
     rtcCallsByLesson.set(lessonId, {
       callerId: socket.id,
       callId,
@@ -1795,25 +1749,15 @@ io.on("connection", (socket) => {
 
     try {
       const roomSockets = await io.in(room).fetchSockets();
-      const byParticipant = new Map();
-      for (const peer of roomSockets) {
-        if (peer.id === socket.id || peer.data.role === "observer") continue;
-        const key = `${peer.data.role}:${rtcClientId(peer) || peer.id}`;
-        const current = byParticipant.get(key);
-        if (!current || Number(peer.data.connectedAt || 0) > Number(current.data.connectedAt || 0)) {
-          byParticipant.set(key, peer);
-        }
-      }
-      const recipientSockets = [...byParticipant.values()];
-      const recipients = recipientSockets.map(rtcPeer);
+      const recipients = roomSockets
+        .filter((peer) => peer.id !== socket.id && peer.data.role !== "observer")
+        .map(rtcPeer);
 
-      for (const peer of recipientSockets) {
-        peer.emit("rtc:incoming-call", {
-          from: socket.id,
-          callId,
-          caller: rtcPeer(socket),
-        });
-      }
+      socket.to(room).emit("rtc:incoming-call", {
+        from: socket.id,
+        callId,
+        caller: rtcPeer(socket),
+      });
       console.info(`RTC call requested lesson=${lessonId} role=${role} recipients=${recipients.length}`);
       ack?.({ ok: true, recipients });
     } catch (error) {
@@ -1832,10 +1776,7 @@ io.on("connection", (socket) => {
 
     socket.data.rtcReady = true;
     socket.data.rtcCallId = callId;
-    call.caller.data.rtcReady = true;
     call.caller.data.rtcCallId = callId;
-    rememberRtcSession(socket, callId);
-    rememberRtcSession(call.caller, callId);
     rtcCallsByLesson.delete(lessonId);
     console.info(`RTC call accepted lesson=${lessonId} callerRole=${call.caller.data.role} peerRole=${role}`);
     call.caller.emit("rtc:accepted", {
@@ -1850,7 +1791,6 @@ io.on("connection", (socket) => {
     const call = activeRtcCall(lessonId);
     if (!callId || !call || call.callerId !== callerId || call.callId !== callId) return;
     rtcCallsByLesson.delete(lessonId);
-    clearRtcResumeCall(lessonId, callId);
     call.caller.emit("rtc:declined", { callId, by: rtcPeer(socket) });
   });
 
@@ -1859,57 +1799,7 @@ io.on("connection", (socket) => {
     const call = activeRtcCall(lessonId);
     if (!callId || !call || call.callerId !== socket.id || call.callId !== callId) return;
     rtcCallsByLesson.delete(lessonId);
-    clearRtcResumeCall(lessonId, callId);
     socket.to(room).emit("rtc:cancelled", { from: socket.id, callId });
-  });
-
-  socket.on("rtc:resume", async ({ callId: rawCallId } = {}, ack) => {
-    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
-    const callId = normalizeRtcCallId(rawCallId);
-    if (!callId || !canResumeRtcSession(socket, callId)) {
-      return ack?.({ ok: false, error: "RESUME_NOT_FOUND" });
-    }
-
-    const clientId = rtcClientId(socket);
-    try {
-      const roomSockets = await io.in(room).fetchSockets();
-      const replacedIds = [];
-      for (const peer of roomSockets) {
-        if (
-          peer.id !== socket.id &&
-          rtcClientId(peer) === clientId &&
-          peer.data.role === role &&
-          peer.data.rtcCallId === callId
-        ) {
-          replacedIds.push(peer.id);
-          peer.data.rtcReady = false;
-          peer.data.rtcCallId = null;
-        }
-      }
-
-      socket.data.rtcReady = true;
-      socket.data.rtcCallId = callId;
-      rememberRtcSession(socket, callId);
-
-      const peers = roomSockets
-        .filter((peer) =>
-          peer.id !== socket.id &&
-          peer.data.rtcReady === true &&
-          peer.data.rtcCallId === callId &&
-          peer.data.role !== role &&
-          peer.data.role !== "observer"
-        )
-        .map(rtcPeer);
-
-      socket.to(room).emit("rtc:peer-ready", rtcPeer(socket));
-      console.info(
-        `RTC resumed lesson=${lessonId} role=${role} replaced=${replacedIds.length} peers=${peers.length}`
-      );
-      ack?.({ ok: true, peers, replacedIds });
-    } catch (error) {
-      console.error("RTC resume failed", error);
-      ack?.({ ok: false, error: "RTC_RESUME_FAILED" });
-    }
   });
 
   socket.on("rtc:ready", async ({ callId: rawCallId } = {}, ack) => {
@@ -1988,7 +1878,6 @@ io.on("connection", (socket) => {
     if (socket.data.rtcReady !== true) return;
     socket.data.rtcReady = false;
     socket.data.rtcCallId = null;
-    clearRtcResumeCall(lessonId, callId);
     socket.to(room).emit("rtc:ended", { from: socket.id, callId });
   });
 
