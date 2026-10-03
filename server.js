@@ -380,16 +380,34 @@ function findReplacementRtcPeer(staleTargetId, callId) {
 
 function rtc2SocketForClient(lessonId, clientId) {
   if (!clientId) return null;
+  let newest = null;
   for (const peer of io.sockets.sockets.values()) {
     if (
-      peer.data.lessonId === lessonId &&
-      peer.data.role !== "observer" &&
-      realtimeClientId(peer.handshake.auth?.clientId) === clientId
+      peer.data.lessonId !== lessonId ||
+      peer.data.role === "observer" ||
+      realtimeClientId(peer.handshake.auth?.clientId) !== clientId
     ) {
-      return peer;
+      continue;
+    }
+    if (!newest || Number(peer.data.connectedAt || 0) > Number(newest.data.connectedAt || 0)) {
+      newest = peer;
     }
   }
-  return null;
+  return newest;
+}
+
+function rtc2UniquePeersForLesson(lessonId, excludeClientId = null) {
+  const peersByClientId = new Map();
+  for (const peer of io.sockets.sockets.values()) {
+    if (peer.data.lessonId !== lessonId || peer.data.role === "observer") continue;
+    const clientId = realtimeClientId(peer.handshake.auth?.clientId);
+    if (!clientId || clientId === excludeClientId) continue;
+    const current = peersByClientId.get(clientId);
+    if (!current || Number(peer.data.connectedAt || 0) > Number(current.data.connectedAt || 0)) {
+      peersByClientId.set(clientId, peer);
+    }
+  }
+  return [...peersByClientId.values()];
 }
 
 function rtc2SessionForLesson(lessonId) {
@@ -1795,6 +1813,7 @@ io.on("connection", (socket) => {
   const accountRole = socket.data.user.role;
   const role = accountRole === "admin" ? requestedRole : accountRole;
   socket.data.role = role;
+  socket.data.connectedAt = Date.now();
   const lessonId = socket.data.lessonId;
   const room = lessonRoom(lessonId);
   const teacherFollow = followForLesson(lessonId);
@@ -1837,16 +1856,10 @@ io.on("connection", (socket) => {
     }
 
     const caller = rtc2Peer(socket);
-    let recipients = 0;
-    for (const peer of io.sockets.sockets.values()) {
-      if (
-        peer.id !== socket.id &&
-        peer.data.lessonId === lessonId &&
-        peer.data.role !== "observer"
-      ) {
-        recipients += 1;
-        peer.emit("rtc2:incoming-call", { callId, caller });
-      }
+    const recipientPeers = rtc2UniquePeersForLesson(lessonId, callerClientId);
+    const recipients = recipientPeers.length;
+    for (const peer of recipientPeers) {
+      peer.emit("rtc2:incoming-call", { callId, caller });
     }
     console.info(`RTC2 call requested lesson=${lessonId} role=${role} recipients=${recipients}`);
     ack?.({ ok: true, recipients });
@@ -1903,10 +1916,8 @@ io.on("connection", (socket) => {
     const session = rtc2SessionForLesson(lessonId);
     if (!callId || !clientId || !session || session.callId !== callId || session.callerClientId !== clientId) return;
     rtc2CallsByLesson.delete(lessonId);
-    for (const peer of io.sockets.sockets.values()) {
-      if (peer.id !== socket.id && peer.data.lessonId === lessonId && peer.data.role !== "observer") {
-        peer.emit("rtc2:cancelled", { callId, callerClientId: clientId });
-      }
+    for (const peer of rtc2UniquePeersForLesson(lessonId, clientId)) {
+      peer.emit("rtc2:cancelled", { callId, callerClientId: clientId });
     }
   });
 
