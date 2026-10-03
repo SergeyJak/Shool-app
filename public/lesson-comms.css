@@ -694,3 +694,345 @@
     min-width: 0;
   }
 }
+
+
+/* 2026-10 friendly video-window redesign.
+   Visual-only layer: RTC behavior and signaling stay unchanged. */
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) {
+  width: min(560px, calc(100vw - 28px));
+  max-height: min(760px, calc(100dvh - 96px));
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 24px;
+  background: #101722;
+  box-shadow:
+    0 28px 80px rgba(9,15,25,.34),
+    0 2px 12px rgba(9,15,25,.18);
+  color: #f7f9fc;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-head {
+  min-height: 64px;
+  padding: 11px 12px 11px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.075);
+  background:
+    radial-gradient(circle at 10% -20%, rgba(126,109,255,.22), transparent 38%),
+    #111926;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-mascot {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border: 1px solid rgba(166,155,255,.20);
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgba(126,109,255,.24), rgba(79,70,229,.12));
+  box-shadow: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-title {
+  color: #f8f9ff;
+  font-size: 16px;
+  letter-spacing: -.01em;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-subtitle {
+  color: #99a6b8;
+  font-size: 12px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions button {
+  min-width: 0;
+  height: 38px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.055);
+  color: #cbd4e1;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions button:hover {
+  background: rgba(255,255,255,.10);
+  color: #fff;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-view {
+  padding: 12px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-video-stage {
+  min-height: 350px;
+  border: 0;
+  border-radius: 19px;
+  background:
+    radial-gradient(circle at 50% 25%, #253247 0%, #172130 42%, #0e151f 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.045),
+    0 10px 28px rgba(0,0,0,.20);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-remote {
+  width: 100%;
+  height: 350px;
+  border-radius: 19px;
+  background: #111923;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-local {
+  top: 14px;
+  right: 14px;
+  bottom: auto;
+  width: 132px;
+  height: 94px;
+  z-index: 3;
+  border: 2px solid rgba(255,255,255,.94);
+  border-radius: 14px;
+  background: #263347;
+  box-shadow: 0 10px 26px rgba(0,0,0,.32);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-call-state {
+  inset: auto 50% 86px auto;
+  transform: translateX(50%);
+  width: max-content;
+  max-width: calc(100% - 44px);
+  display: block;
+  padding: 8px 12px;
+  z-index: 4;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  background: rgba(9,14,22,.68);
+  color: #dce4ef;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-shadow: none;
+  backdrop-filter: blur(10px);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-call-state[hidden] {
+  display: none !important;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 5;
+  width: auto;
+  max-width: calc(100% - 28px);
+  margin: 0;
+  display: flex;
+  grid-template-columns: none;
+  flex-wrap: nowrap;
+  gap: 10px;
+  transform: translateX(-50%);
+  padding: 8px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  background: rgba(12,18,27,.76);
+  box-shadow: 0 12px 30px rgba(0,0,0,.28);
+  backdrop-filter: blur(16px);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls button {
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  min-height: 58px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 50%;
+  background: rgba(255,255,255,.10);
+  color: #f4f7fb;
+  font-size: 0;
+  box-shadow: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls button:hover:not(:disabled) {
+  background: rgba(255,255,255,.17);
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .lesson-comms-start {
+  width: auto;
+  min-width: 156px;
+  height: 54px;
+  min-height: 54px;
+  padding: 0 22px;
+  display: inline-flex;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 17px;
+  border-color: rgba(126,109,255,.36);
+  background: linear-gradient(135deg, #7568f2, #5e52db);
+  color: #fff;
+  font-size: 14px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .lesson-comms-start .lesson-comms-control-icon {
+  font-size: 22px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .call-control > span:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-control-icon {
+  font-size: 24px;
+  filter: saturate(.92);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .lesson-comms-hangup {
+  border-color: rgba(255,111,111,.22);
+  background: #ff5156;
+  color: white;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .lesson-comms-hangup:hover:not(:disabled) {
+  background: #ff6267;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming {
+  margin: 0 0 12px;
+  padding: 14px;
+  border: 1px solid rgba(138,196,255,.18);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 90% -20%, rgba(126,109,255,.20), transparent 42%),
+    #172131;
+  box-shadow: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming::after {
+  display: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming-title {
+  color: #f7f9fd;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming-name {
+  color: #aeb8c7;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming-actions button {
+  min-height: 44px;
+  border-radius: 13px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-accept {
+  border-color: rgba(49,207,128,.28) !important;
+  background: #1dc47a !important;
+  color: #07180f !important;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-decline {
+  border-color: rgba(255,255,255,.08) !important;
+  background: rgba(255,255,255,.07) !important;
+  color: #d7deea !important;
+}
+
+.lesson-comms-panel.mini-video {
+  width: clamp(210px, 22vw, 300px);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 18px;
+  background: #101722;
+  box-shadow: 0 18px 48px rgba(10,15,25,.30);
+}
+
+.lesson-comms-panel.mini-video .lesson-comms-remote,
+.lesson-comms-panel.mini-video .lesson-comms-video-stage {
+  border-radius: 17px;
+}
+
+@media (max-width: 600px) {
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) {
+    right: 8px;
+    bottom: 60px;
+    width: calc(100vw - 16px);
+    max-height: calc(var(--lesson-viewport-height, 100dvh) - 72px);
+    border-radius: 22px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-head {
+    align-items: center;
+    flex-wrap: nowrap;
+    min-height: 58px;
+    padding: 9px 10px 9px 12px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-brand {
+    flex: 1 1 auto;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions {
+    width: auto;
+    margin-left: auto;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions .lesson-comms-minimize,
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions .lesson-comms-close {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions .lesson-comms-minimize > span:first-child,
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions .lesson-comms-close > span:first-child {
+    display: inline;
+    font-size: 16px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-view {
+    padding: 8px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-video-stage {
+    min-height: min(64dvh, 520px);
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-remote {
+    height: min(64dvh, 520px);
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-local {
+    top: 10px;
+    right: 10px;
+    width: 104px;
+    height: 78px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls {
+    bottom: 12px;
+    gap: 8px;
+    padding: 7px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls button {
+    width: 54px;
+    height: 54px;
+    min-height: 54px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .lesson-comms-start {
+    width: auto;
+    min-width: 150px;
+    height: 52px;
+    min-height: 52px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-call-state {
+    bottom: 82px;
+    max-width: calc(100% - 24px);
+    font-size: 11px;
+  }
+}
