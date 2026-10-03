@@ -269,7 +269,7 @@ function followControllerKey(socket) {
   if (socket.data.role !== "teacher") return null;
   const clientId = realtimeClientId(socket.handshake.auth?.clientId);
   if (!clientId) return null;
-  return `${socket.data.user._id}:${clientId}`;
+  return clientId;
 }
 
 app.use(attachUser);
