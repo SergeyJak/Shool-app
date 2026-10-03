@@ -98,25 +98,25 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       <div class="lesson-comms-video-stage">
         <video class="lesson-comms-remote" autoplay playsinline></video>
         <video class="lesson-comms-local" autoplay playsinline muted></video>
-        <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
-      </div>
-      <div class="lesson-comms-controls">
-        <button class="lesson-comms-start primary" type="button">
-          <span class="lesson-comms-control-icon" aria-hidden="true">📞</span>
-          <span>Позвонить</span>
-        </button>
-        <button class="lesson-comms-mic call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span>
-          <span>Микрофон</span>
-        </button>
-        <button class="lesson-comms-camera call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">📷</span>
-          <span>Камера</span>
-        </button>
-        <button class="lesson-comms-hangup danger call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">🔴</span>
-          <span>Завершить</span>
-        </button>
+        <div class="lesson-comms-call-state">Нажмите «Позвонить», чтобы подключить камеру и микрофон.</div>
+        <div class="lesson-comms-controls">
+          <button class="lesson-comms-start primary" type="button">
+            <span class="lesson-comms-control-icon" aria-hidden="true">📞</span>
+            <span>Позвонить</span>
+          </button>
+          <button class="lesson-comms-mic call-control" type="button" hidden disabled>
+            <span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span>
+            <span>Микрофон</span>
+          </button>
+          <button class="lesson-comms-camera call-control" type="button" hidden disabled>
+            <span class="lesson-comms-control-icon" aria-hidden="true">📷</span>
+            <span>Камера</span>
+          </button>
+          <button class="lesson-comms-hangup danger call-control" type="button" hidden disabled>
+            <span class="lesson-comms-control-icon" aria-hidden="true">☎</span>
+            <span>Завершить</span>
+          </button>
+        </div>
       </div>
     </div>
     <div class="lesson-comms-view lesson-comms-chat" hidden>
