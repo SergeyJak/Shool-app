@@ -126,6 +126,7 @@ let pageNumber = 1;
 let zoom = 1;
 let pinchStartDistance = null;
 let pinchStartZoom = 1;
+let handPanLastTouch = null;
 let zoomRenderTimer = null;
 let tool = "hand";
 let strokes = [];
@@ -1328,13 +1329,39 @@ function touchDistance(touches) {
 }
 
 stage.addEventListener("touchstart", (event) => {
-  if (tool !== "hand" || event.touches.length !== 2) return;
-  pinchStartDistance = touchDistance(event.touches);
-  pinchStartZoom = zoom;
+  if (tool !== "hand") return;
+
+  if (event.touches.length === 1) {
+    const touch = event.touches[0];
+    handPanLastTouch = { x: touch.clientX, y: touch.clientY };
+    pinchStartDistance = null;
+    return;
+  }
+
+  if (event.touches.length === 2) {
+    handPanLastTouch = null;
+    pinchStartDistance = touchDistance(event.touches);
+    pinchStartZoom = zoom;
+  }
 }, { passive: true });
 
 stage.addEventListener("touchmove", (event) => {
-  if (tool !== "hand" || event.touches.length !== 2 || !pinchStartDistance) return;
+  if (tool !== "hand") return;
+
+  if (event.touches.length === 1 && handPanLastTouch) {
+    event.preventDefault();
+    const touch = event.touches[0];
+    const deltaX = handPanLastTouch.x - touch.clientX;
+    const deltaY = handPanLastTouch.y - touch.clientY;
+
+    if (Math.abs(deltaY) > 0.5) window.scrollBy(0, deltaY);
+    if (Math.abs(deltaX) > 0.5) stage.scrollLeft += deltaX;
+
+    handPanLastTouch = { x: touch.clientX, y: touch.clientY };
+    return;
+  }
+
+  if (event.touches.length !== 2 || !pinchStartDistance) return;
 
   event.preventDefault();
   const nextDistance = touchDistance(event.touches);
@@ -1346,9 +1373,21 @@ stage.addEventListener("touchmove", (event) => {
 }, { passive: false });
 
 stage.addEventListener("touchend", (event) => {
+  if (event.touches.length === 1) {
+    const touch = event.touches[0];
+    handPanLastTouch = { x: touch.clientX, y: touch.clientY };
+  } else if (event.touches.length === 0) {
+    handPanLastTouch = null;
+  }
+
   if (event.touches.length < 2) {
     pinchStartDistance = null;
   }
+}, { passive: true });
+
+stage.addEventListener("touchcancel", () => {
+  handPanLastTouch = null;
+  pinchStartDistance = null;
 }, { passive: true });
 
 let resizeTimer;
