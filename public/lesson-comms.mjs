@@ -10,6 +10,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let historyLoaded = false;
   let currentView = null;
   let unread = 0;
+  let currentUserId = null;
 
   const launcher = document.createElement("div");
   launcher.className = "lesson-comms-launcher";
@@ -342,7 +343,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     const item = document.createElement("div");
     item.className = "lesson-comms-message";
     item.dataset.messageId = message.id;
-    if (message.userId && message.userId === message.currentUserId) item.classList.add("mine");
+    if (message.userId && message.userId === currentUserId) item.classList.add("mine");
 
     const meta = document.createElement("span");
     meta.className = "lesson-comms-message-meta";
@@ -363,10 +364,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     socket.emit("chat:history", {}, (result) => {
       if (!result?.ok) return;
       historyLoaded = true;
-      for (const message of result.messages || []) appendMessage({
-        ...message,
-        currentUserId: result.currentUserId,
-      });
+      currentUserId = result.currentUserId || currentUserId;
+      for (const message of result.messages || []) appendMessage(message);
     });
   }
 
@@ -398,7 +397,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   });
 
   socket.on("chat:message", (message) => {
-    appendMessage({ ...message, currentUserId: message.currentUserId || null });
+    appendMessage(message);
     if (currentView !== "chat") setUnread(unread + 1);
   });
 
