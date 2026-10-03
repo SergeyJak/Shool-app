@@ -126,11 +126,10 @@ test("video call can collapse to opponent-only mini window and restore on click"
 });
 
 
-test("Cloudflare TURN stays available as fallback and selected ICE pair is logged", () => {
+test("Cloudflare TURN is forced for reliable remote calls and selected ICE pair is logged", () => {
   const server = read("server.js");
   const client = read("public/lesson-comms.mjs");
-  assert.doesNotMatch(server, /source: "cloudflare-turn",[\s\S]{0,100}iceTransportPolicy: "relay"/);
-  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,100}iceTransportPolicy: "all"/);
+  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "relay"/);
   assert.match(client, /iceTransportPolicy: iceConfig\.iceTransportPolicy/);
   assert.match(client, /event: "selected-pair"/);
   assert.match(client, /candidateType/);
