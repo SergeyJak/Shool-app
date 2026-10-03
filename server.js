@@ -1586,12 +1586,20 @@ app.get("/api/webrtc/config", requireApiRole("teacher", "student"), requireLesso
   try {
     const cloudflareIceServers = await cloudflareTurnIceServers();
     if (cloudflareIceServers?.length) {
-      return res.json({ iceServers: cloudflareIceServers, source: "cloudflare-turn" });
+      return res.json({
+        iceServers: cloudflareIceServers,
+        source: "cloudflare-turn",
+        iceTransportPolicy: "relay",
+      });
     }
   } catch (error) {
     console.error("Cloudflare TURN config failed", error);
   }
-  res.json({ iceServers: staticWebrtcIceServers(), source: "static-fallback" });
+  res.json({
+    iceServers: staticWebrtcIceServers(),
+    source: "static-fallback",
+    iceTransportPolicy: "all",
+  });
 });
 
 app.get("/api/annotations/:page", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
