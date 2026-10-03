@@ -117,7 +117,7 @@ test("video call can collapse to opponent-only mini window and restore on click"
   const client = read("public/lesson-comms.mjs");
   const css = read("public/lesson-comms.css");
   assert.match(client, /lesson-comms-minimize/);
-  assert.doesNotMatch(client, /lesson-comms-close/);
+  assert.match(client, /lesson-comms-close/);
   assert.match(client, /panel\.classList\.add\("mini-video"\)/);
   assert.match(client, /panel\.classList\.remove\("mini-video"\)/);
   assert.match(client, /remoteVideo\.addEventListener\("click"/);
@@ -221,7 +221,8 @@ test("kid-friendly call controls stay minimal and hide hangup before a call", ()
   assert.match(client, /button\.hidden = !callIsActive/);
   assert.match(client, /startButton\.hidden = callIsActive/);
   assert.match(client, /Свернуть/);
-  assert.doesNotMatch(client, /lesson-comms-close/);
+  assert.match(client, /lesson-comms-close/);
+  assert.match(client, /Закрыть/);
   assert.match(css, /grid-template-columns: repeat\(3/);
   assert.match(css, /call-control\[hidden\]/);
 });
@@ -230,4 +231,19 @@ test("incoming ringtone is clearly audible but remains soft", () => {
   const client = read("public/lesson-comms.mjs");
   assert.match(client, /exponentialRampToValueAtTime\(0\.16/);
   assert.match(client, /oscillator\.type = "sine"/);
+});
+
+
+test("window actions clearly separate minimize close and hangup", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /lesson-comms-window-actions/);
+  assert.match(client, /lesson-comms-minimize/);
+  assert.match(client, /lesson-comms-close/);
+  assert.match(client, /Свернуть/);
+  assert.match(client, /Закрыть/);
+  assert.match(client, /closeButton\.addEventListener\("click", closePanel\)/);
+  assert.match(client, /lesson-comms-hangup danger call-control/);
+  assert.match(css, /lesson-comms-window-actions/);
 });
