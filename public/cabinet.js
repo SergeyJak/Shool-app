@@ -22,6 +22,9 @@ const adminPanel = document.getElementById("adminPanel");
 const adminStatus = document.getElementById("adminStatus");
 const adminUserList = document.getElementById("adminUserList");
 const adminLessonList = document.getElementById("adminLessonList");
+const adminRegistrationList = document.getElementById("adminRegistrationList");
+const registrationBadge = document.getElementById("registrationBadge");
+const adminRegistrationsCount = document.getElementById("adminRegistrationsCount");
 const createUserForm = document.getElementById("createUserForm");
 const createLessonForm = document.getElementById("createLessonForm");
 const newLessonTeachers = document.getElementById("newLessonTeachers");
@@ -34,6 +37,7 @@ const adminLessonsCount = document.getElementById("adminLessonsCount");
 let currentUser = null;
 let managedUsers = [];
 let managedLessons = [];
+let pendingRegistrations = [];
 let teacherMaterials = [];
 let teacherView = "active";
 
@@ -436,6 +440,90 @@ function renderAdminMemberChoices() {
   fillMemberPicker(newLessonStudents, "student");
 }
 
+function renderAdminRegistrations() {
+  if (!adminRegistrationList) return;
+  adminRegistrationList.innerHTML = "";
+
+  if (!pendingRegistrations.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = "Новых заявок нет.";
+    adminRegistrationList.append(empty);
+    return;
+  }
+
+  for (const registration of pendingRegistrations) {
+    const card = document.createElement("article");
+    card.className = "registration-card";
+
+    const header = document.createElement("div");
+    header.className = "registration-card-header";
+    const title = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = registration.displayName || registration.username;
+    const login = document.createElement("span");
+    login.textContent = `@${registration.username}`;
+    title.append(name, login);
+
+    const submitted = document.createElement("small");
+    submitted.textContent = registration.registrationSubmittedAt
+      ? new Date(registration.registrationSubmittedAt).toLocaleString()
+      : "";
+    header.append(title, submitted);
+
+    const details = document.createElement("dl");
+    details.className = "registration-details";
+    const items = [
+      ["Email", registration.email || "—"],
+      ["Дата рождения", registration.birthDate || "—"],
+      ["Телефон", registration.phone || "—"],
+      ["Предметы", registration.subjects || "—"],
+      ["О себе", registration.bio || "—"],
+    ];
+    for (const [label, value] of items) {
+      const dt = document.createElement("dt");
+      dt.textContent = label;
+      const dd = document.createElement("dd");
+      dd.textContent = value;
+      details.append(dt, dd);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "admin-row-actions";
+    const approve = document.createElement("button");
+    approve.type = "button";
+    approve.textContent = "Одобрить";
+    approve.addEventListener("click", async () => {
+      try {
+        await apiJson(`/api/admin/registrations/${encodeURIComponent(registration.id)}/approve`, { method: "POST" });
+        setAdminStatus("Регистрация одобрена", "success");
+        await loadAdminData();
+      } catch (error) {
+        setAdminStatus(`Ошибка: ${error.message}`, "error");
+      }
+    });
+
+    const reject = document.createElement("button");
+    reject.type = "button";
+    reject.className = "danger";
+    reject.textContent = "Отклонить";
+    reject.addEventListener("click", async () => {
+      if (!confirm(`Отклонить регистрацию ${registration.displayName || registration.username}?`)) return;
+      try {
+        await apiJson(`/api/admin/registrations/${encodeURIComponent(registration.id)}/reject`, { method: "POST" });
+        setAdminStatus("Регистрация отклонена", "success");
+        await loadAdminData();
+      } catch (error) {
+        setAdminStatus(`Ошибка: ${error.message}`, "error");
+      }
+    });
+
+    actions.append(approve, reject);
+    card.append(header, details, actions);
+    adminRegistrationList.append(card);
+  }
+}
+
 function renderAdminUsers() {
   adminUserList.innerHTML = "";
   for (const user of managedUsers) {
@@ -575,14 +663,22 @@ function renderAdminLessons() {
 }
 
 async function loadAdminData() {
-  const [usersPayload, lessonsPayload] = await Promise.all([
+  const [registrationsPayload, usersPayload, lessonsPayload] = await Promise.all([
+    apiJson("/api/admin/registrations"),
     apiJson("/api/admin/users"),
     apiJson("/api/admin/lessons"),
   ]);
+  pendingRegistrations = registrationsPayload.registrations || [];
   managedUsers = usersPayload.users || [];
   managedLessons = lessonsPayload.lessons || [];
+  if (adminRegistrationsCount) adminRegistrationsCount.textContent = String(pendingRegistrations.length);
+  if (registrationBadge) {
+    registrationBadge.textContent = String(pendingRegistrations.length);
+    registrationBadge.hidden = pendingRegistrations.length === 0;
+  }
   if (adminUsersCount) adminUsersCount.textContent = String(managedUsers.length);
   if (adminLessonsCount) adminLessonsCount.textContent = String(managedLessons.length);
+  renderAdminRegistrations();
   renderAdminMemberChoices();
   renderAdminUsers();
   renderAdminLessons();
