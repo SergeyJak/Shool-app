@@ -915,20 +915,50 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   const rtc2NetworkChange = () => {
     if (!callAccepted || !activeCallId) return;
+    const snapshot = rtcNetworkSnapshot();
     emitRtcDebug({
       event: "network-change-v2",
-      state: `online=${navigator.onLine};effectiveType=${rtcNetworkSnapshot().effectiveType || "unknown"}`,
+      state: `online=${snapshot.online};effectiveType=${snapshot.effectiveType || "unknown"}`,
     });
+
+    // Browser effectiveType changes (for example 4g -> 3g) do not necessarily
+    // mean the active WebRTC route is broken. Keep a healthy peer untouched.
+    if (
+      peerConnection &&
+      !["disconnected", "failed"].includes(peerConnection.connectionState)
+    ) {
+      return;
+    }
     scheduleRtc2Resume("network-change");
   };
+
+  const rtc2Online = () => {
+    if (!callAccepted || !activeCallId) return;
+    emitRtcDebug({
+      event: "network-online-v2",
+      state: `connection=${peerConnection?.connectionState || "none"}`,
+    });
+    if (!peerConnection || peerConnection.connectionState !== "connected") {
+      scheduleRtc2Resume("network-online");
+    }
+  };
+
+  const rtc2Offline = () => {
+    if (!callAccepted || !activeCallId) return;
+    emitRtcDebug({
+      event: "network-offline-v2",
+      state: `connection=${peerConnection?.connectionState || "none"}`,
+    });
+  };
+
   const rtc2Connection =
     navigator.connection ||
     navigator.mozConnection ||
     navigator.webkitConnection ||
     null;
   rtc2Connection?.addEventListener?.("change", rtc2NetworkChange);
-  window.addEventListener("online", rtc2NetworkChange);
-  window.addEventListener("offline", rtc2NetworkChange);
+  window.addEventListener("online", rtc2Online);
+  window.addEventListener("offline", rtc2Offline);
 
   function appendMessage(message) {
     if (!message?.id || messagesEl.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`)) return;
