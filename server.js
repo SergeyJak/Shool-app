@@ -1999,7 +1999,10 @@ io.on("connection", (socket) => {
     const call = activeRtcCall(lessonId);
     if (call?.callerId === socket.id) {
       rtcCallsByLesson.delete(lessonId);
-      socket.to(room).emit("rtc:cancelled", { from: socket.id });
+      socket.to(room).emit("rtc:cancelled", {
+        from: socket.id,
+        callId: call.callId,
+      });
     }
     if (socket.data.rtcReady === true) {
       socket.to(room).emit("rtc:peer-left", {
