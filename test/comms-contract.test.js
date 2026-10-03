@@ -156,3 +156,11 @@ test("RTC quality monitor reports bandwidth jitter and packet loss without affec
   assert.match(client, /event: "quality"/);
   assert.match(client, /5000/);
 });
+
+
+test("Cloudflare TURN prefers TLS over TCP 443 for unstable UDP networks", () => {
+  const server = read("server.js");
+  assert.match(server, /\^turns:\.\*:443\\\?transport=tcp\$/i);
+  assert.match(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
+  assert.match(server, /iceTransportPolicy: "relay"/);
+});
