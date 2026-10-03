@@ -454,6 +454,12 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     const scheduleIceRestart = () => {
       if (iceRestartTimer || connectionCallId !== activeCallId || pc !== peerConnection) return;
       if (iceRestartAttempts >= 2) return;
+
+      const delay =
+        iceRestartAttempts === 0
+          ? (pc.connectionState === "failed" ? 250 : 1500)
+          : 250;
+
       iceRestartTimer = setTimeout(async () => {
         iceRestartTimer = null;
         if (
@@ -461,19 +467,66 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           pc !== peerConnection ||
           !["disconnected", "failed"].includes(pc.connectionState)
         ) return;
+
+        const peerId = activePeerId;
+        const shouldOffer = role === "teacher" || String(socket.id) < String(peerId || "");
+        if (!shouldOffer || !peerId) return;
+
         iceRestartAttempts += 1;
-        const shouldOffer = role === "teacher" || String(socket.id) < String(activePeerId || "");
-        if (!shouldOffer || !activePeerId) return;
-        socket.emit("rtc:debug", {
-          event: "ice-restart",
-          state: `attempt=${iceRestartAttempts};connection=${pc.connectionState}`,
-        });
+        const attempt = iceRestartAttempts;
+
         try {
-          await createOffer(activePeerId, { iceRestart: true });
+          if (attempt === 1) {
+            socket.emit("rtc:debug", {
+              event: "ice-restart",
+              state: `attempt=1;connection=${pc.connectionState}`,
+            });
+            await createOffer(peerId, { iceRestart: true });
+
+            // A restart can finish gathering without ever producing a usable
+            // candidate pair. If the route is still dead a few seconds later,
+            // escalate to a fresh RTCPeerConnection.
+            iceRestartTimer = setTimeout(() => {
+              iceRestartTimer = null;
+              if (
+                connectionCallId === activeCallId &&
+                pc === peerConnection &&
+                ["disconnected", "failed"].includes(pc.connectionState)
+              ) {
+                scheduleIceRestart();
+              }
+            }, 5000);
+            return;
+          }
+
+          socket.emit("rtc:debug", {
+            event: "peer-rebuild",
+            state: `attempt=2;connection=${pc.connectionState}`,
+          });
+
+          if (rtcQualityTimer) {
+            clearInterval(rtcQualityTimer);
+            rtcQualityTimer = null;
+          }
+
+          // Detach the dead peer without touching the local camera/microphone
+          // or the active call. ensurePeer() will fetch a fresh ICE config and
+          // construct a brand-new RTCPeerConnection for the same callId.
+          if (peerConnection === pc) {
+            peerConnection = null;
+            peerCallId = null;
+            activePeerId = null;
+            pendingCandidates = [];
+            remoteStream = null;
+            remoteVideo.srcObject = null;
+          }
+          pc.close();
+
+          await createOffer(peerId);
         } catch (error) {
-          console.warn("ICE restart failed", error);
+          console.warn("WebRTC route recovery failed", error);
         }
-      }, pc.connectionState === "failed" ? 250 : 1500);
+      }, delay);
     };
 
     pc.addEventListener("connectionstatechange", () => {
