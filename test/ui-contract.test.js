@@ -244,6 +244,32 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("follow realtime ownership survives reconnect and isolates teacher tabs", () => {
+  const server = read("server.js");
+  const app = read("public/app.js");
+  const follow = read("lib/follow-state.js");
+
+  assert.match(app, /school:realtimeClientId/);
+  assert.match(app, /io\(\{ auth: \{ role, lessonId, clientId: realtimeClientId \} \}\)/);
+  assert.match(app, /teacherFollowControlling/);
+  assert.match(app, /Перехватить ведение/);
+  assert.match(app, /teacherFollowEnabled && teacherFollowControlling/);
+  assert.match(app, /role === "student" && teacherFollowEnabled/);
+
+  assert.match(server, /disconnectGraceMs: 8000/);
+  assert.match(server, /teacherFollow\.reconnect\(controllerKey\)/);
+  assert.match(server, /teacherFollow\.disconnect\(controllerKey\)/);
+  assert.match(server, /teacherFollow\.move\(page, controllerKey\)/);
+  assert.match(server, /teacherFollow\.stop\(controllerKey\)/);
+  assert.match(server, /FOLLOW_NOT_CONTROLLER/);
+  assert.match(server, /return clientId;/);
+
+  assert.match(follow, /controllerKey/);
+  assert.match(follow, /disconnect\(requesterKey\)/);
+  assert.match(follow, /reconnect\(requesterKey\)/);
+  assert.match(follow, /controlling:/);
+});
+
 test("teacher follow active state stays visible and distinct", () => {
   const css = read("public/pdf-view.css");
   const app = read("public/app.js");
