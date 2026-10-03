@@ -286,3 +286,15 @@ test("lesson starts in hand mode instead of drawing mode", () => {
     assert.doesNotMatch(html, /id="penBtn" class="active/);
   }
 });
+
+
+test("mobile chat remains scrollable without trapping the page", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /visualViewport/);
+  assert.match(client, /--lesson-viewport-height/);
+  assert.match(css, /lesson-comms-messages[\s\S]{0,260}touch-action: pan-y/);
+  assert.match(css, /overscroll-behavior: contain/);
+  assert.match(css, /max-height: min\(34dvh, 300px\)/);
+});
