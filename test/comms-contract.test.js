@@ -472,7 +472,7 @@ test("network handover can trigger bounded ICE restart recovery", () => {
 
   assert.match(client, /let iceRestartAttempts = 0/);
   assert.match(client, /iceRestartAttempts >= 2/);
-  assert.match(client, /createOffer\(activePeerId, \{ iceRestart: true \}\)/);
+  assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
   assert.match(client, /createOffer\(iceRestart \? \{ iceRestart: true \} : undefined\)/);
   assert.match(client, /event: "ice-restart"/);
 });
