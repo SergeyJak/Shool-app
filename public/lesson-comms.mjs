@@ -139,6 +139,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     videoView.hidden = !isVideo;
     chatView.hidden = isVideo;
     titleEl.textContent = isVideo ? "Видеосвязь" : "Чат занятия";
+    minimizeButton.hidden = !isVideo;
     videoButton.classList.toggle("active", isVideo);
     chatButton.classList.toggle("active", !isVideo);
     if (!isVideo) {
