@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-recovery3/);
+    assert.match(read(file), /app\.js\?v=20261003-recovery4/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -449,9 +449,9 @@ test("WebRTC protocol changes are cache-busted on lesson pages", () => {
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
 
-  assert.match(app, /lesson-comms\.mjs\?v=20261003-recovery3/);
-  assert.match(teacher, /app\.js\?v=20261003-recovery3/);
-  assert.match(student, /app\.js\?v=20261003-recovery3/);
+  assert.match(app, /lesson-comms\.mjs\?v=20261003-recovery4/);
+  assert.match(teacher, /app\.js\?v=20261003-recovery4/);
+  assert.match(student, /app\.js\?v=20261003-recovery4/);
 });
 
 
@@ -467,20 +467,21 @@ test("failed WebRTC peers are never reused across call generations", () => {
   assert.match(client, /peerCallId = null/);
 });
 
-test("network handover can trigger bounded ICE restart recovery", () => {
+test("network handover can trigger one ICE restart before watchdog rebuild", () => {
   const client = read("public/lesson-comms.mjs");
 
   assert.match(client, /let iceRestartAttempts = 0/);
-  assert.match(client, /iceRestartAttempts >= 2/);
+  assert.match(client, /iceRestartAttempts >= 1/);
   assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
   assert.match(client, /createOffer\(iceRestart \? \{ iceRestart: true \} : undefined\)/);
   assert.match(client, /event: "ice-restart"/);
+  assert.match(client, /armRecoveryWatchdog\(peerId\)/);
 });
 
 test("network handover WebRTC fix is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery3/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery3/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery3/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery4/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery4/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery4/);
 });
 
 
@@ -522,7 +523,9 @@ test("failed media routes escalate from ICE restart to a fresh peer connection",
 
   assert.match(client, /event: "ice-restart"/);
   assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
-  assert.match(client, /setTimeout\(\(\) => \{[\s\S]{0,500}scheduleIceRestart\(\);[\s\S]{0,100}\}, 5000\)/);
+  assert.match(client, /recoveryWatchdogTimer = setTimeout\(\(\) => \{/);
+  assert.match(client, /event: "recovery-timeout"/);
+  assert.match(client, /rebuildPeerAfterRouteFailure\(peerId\)/);
   assert.match(client, /event: "peer-rebuild"/);
   assert.match(client, /peerConnection = null/);
   assert.match(client, /peerCallId = null/);
@@ -542,9 +545,9 @@ test("route recovery keeps local media and active call intact", () => {
 });
 
 test("peer rebuild recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery3/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery3/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery3/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery4/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery4/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery4/);
 });
 
 
@@ -578,14 +581,42 @@ test("RTC diagnostics include network context without SDP or candidate bodies", 
 test("route recovery rebuilds peers stuck connecting after ICE restart", () => {
   const client = read("public/lesson-comms.mjs");
 
-  assert.match(client, /!\["connected", "closed"\]\.includes\(pc\.connectionState\)/);
+  assert.match(client, /\["connected", "closed"\]\.includes\(pc\.connectionState\)/);
   assert.match(client, /event: "recovery-timeout"/);
-  assert.match(client, /scheduleIceRestart\(\)/);
+  assert.match(client, /rebuildPeerAfterRouteFailure\(peerId\)/);
+  assert.doesNotMatch(client, /event: "recovery-timeout"[\s\S]{0,300}scheduleIceRestart\(\)/);
   assert.match(client, /event: "peer-rebuild"/);
 });
 
 test("stuck-connecting recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery3/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery3/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery3/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery4/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery4/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery4/);
+});
+
+
+test("RTC recovery watchdog directly rebuilds a peer instead of re-entering restart scheduling", () => {
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(client, /let recoveryWatchdogTimer = null/);
+  assert.match(client, /function|const rebuildPeerAfterRouteFailure/);
+  assert.match(client, /event: "recovery-timeout"/);
+  assert.match(client, /rebuildPeerAfterRouteFailure\(peerId\)/);
+  assert.doesNotMatch(client, /event: "recovery-timeout"[\s\S]{0,300}scheduleIceRestart\(\)/);
+  assert.match(client, /armRecoveryWatchdog\(peerId\)[\s\S]{0,220}createOffer\(peerId, \{ iceRestart: true \}\)/);
+});
+
+test("RTC recovery watchdog is cleared when connection recovers or call closes", () => {
+  const client = read("public/lesson-comms.mjs");
+
+  const clears = client.match(/clearTimeout\(recoveryWatchdogTimer\)/g) || [];
+  assert.ok(clears.length >= 2);
+  assert.match(client, /event: "peer-rebuild"/);
+  assert.match(client, /await createOffer\(peerId\)/);
+});
+
+test("direct peer rebuild recovery is cache-busted on lesson pages", () => {
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery4/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery4/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery4/);
 });
