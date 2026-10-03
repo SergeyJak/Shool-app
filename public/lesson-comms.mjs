@@ -20,6 +20,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let activeCallId = null;
   let pendingCallId = null;
   let rtcQualityTimer = null;
+  let peerCallId = null;
+  let iceRestartTimer = null;
+  let iceRestartAttempts = 0;
 
   const launcher = document.createElement("div");
   launcher.className = "lesson-comms-launcher";
@@ -374,10 +377,21 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   async function ensurePeer(peerId) {
     if (!activeCallId) throw new Error("CALL_ID_REQUIRED");
-    if (peerConnection && activePeerId === peerId) return peerConnection;
-    const peerCallId = activeCallId;
-    if (peerConnection) peerConnection.close();
+    if (
+      peerConnection &&
+      activePeerId === peerId &&
+      peerCallId === activeCallId &&
+      !["failed", "closed"].includes(peerConnection.connectionState)
+    ) {
+      return peerConnection;
+    }
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
 
+    const connectionCallId = activeCallId;
+    peerCallId = connectionCallId;
     activePeerId = peerId;
     pendingCandidates = [];
     remoteStream = new MediaStream();
@@ -413,16 +427,16 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     }
 
     pc.addEventListener("icecandidate", ({ candidate }) => {
-      if (!candidate || !activePeerId || peerCallId !== activeCallId) return;
+      if (!candidate || !activePeerId || connectionCallId !== activeCallId) return;
       socket.emit("rtc:signal", {
-        callId: peerCallId,
+        callId: connectionCallId,
         targetId: activePeerId,
         candidate: candidate.toJSON ? candidate.toJSON() : candidate,
       });
     });
 
     pc.addEventListener("track", ({ track, streams }) => {
-      if (peerCallId !== activeCallId || pc !== peerConnection) return;
+      if (connectionCallId !== activeCallId || pc !== peerConnection) return;
       const stream = streams?.[0];
       if (stream) {
         remoteStream = stream;
@@ -437,9 +451,39 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       setCallState("Соединение установлено");
     });
 
+    const scheduleIceRestart = () => {
+      if (iceRestartTimer || connectionCallId !== activeCallId || pc !== peerConnection) return;
+      if (iceRestartAttempts >= 2) return;
+      iceRestartTimer = setTimeout(async () => {
+        iceRestartTimer = null;
+        if (
+          connectionCallId !== activeCallId ||
+          pc !== peerConnection ||
+          !["disconnected", "failed"].includes(pc.connectionState)
+        ) return;
+        iceRestartAttempts += 1;
+        const shouldOffer = role === "teacher" || String(socket.id) < String(activePeerId || "");
+        if (!shouldOffer || !activePeerId) return;
+        socket.emit("rtc:debug", {
+          event: "ice-restart",
+          state: `attempt=${iceRestartAttempts};connection=${pc.connectionState}`,
+        });
+        try {
+          await createOffer(activePeerId, { iceRestart: true });
+        } catch (error) {
+          console.warn("ICE restart failed", error);
+        }
+      }, pc.connectionState === "failed" ? 250 : 1500);
+    };
+
     pc.addEventListener("connectionstatechange", () => {
       if (pc !== peerConnection) return;
       if (pc.connectionState === "connected") {
+        if (iceRestartTimer) {
+          clearTimeout(iceRestartTimer);
+          iceRestartTimer = null;
+        }
+        iceRestartAttempts = 0;
         setCallState("Соединение установлено");
         const videoSender = pc.getSenders().find((sender) => sender.track?.kind === "video");
         if (videoSender) {
@@ -474,9 +518,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       }
       if (pc.connectionState === "connecting") setCallState("Соединяем…");
       if (pc.connectionState === "failed") {
-        setCallState("Не удалось проложить медиаканал. Нужен TURN.");
+        setCallState("Связь потеряна. Пытаемся восстановить маршрут…");
+        scheduleIceRestart();
       } else if (pc.connectionState === "disconnected") {
         setCallState("Связь прервалась. Пытаемся переподключиться…");
+        scheduleIceRestart();
       }
       if (pc.connectionState === "closed") setCallState("Звонок завершён");
       socket.emit("rtc:debug", {
@@ -517,10 +563,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     return pc;
   }
 
-  async function createOffer(peerId) {
+  async function createOffer(peerId, { iceRestart = false } = {}) {
     if (!localStream || !peerId) return;
     const pc = await ensurePeer(peerId);
-    const offer = await pc.createOffer();
+    const offer = await pc.createOffer(iceRestart ? { iceRestart: true } : undefined);
     await pc.setLocalDescription(offer);
     socket.emit("rtc:signal", {
       callId: activeCallId,
@@ -664,8 +710,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       clearInterval(rtcQualityTimer);
       rtcQualityTimer = null;
     }
+    if (iceRestartTimer) {
+      clearTimeout(iceRestartTimer);
+      iceRestartTimer = null;
+    }
+    iceRestartAttempts = 0;
     peerConnection?.close();
     peerConnection = null;
+    peerCallId = null;
     activePeerId = null;
     pendingCandidates = [];
     remoteStream = null;
