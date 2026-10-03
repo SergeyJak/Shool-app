@@ -268,3 +268,21 @@ test("answering stops the ringtone immediately before media setup", () => {
     /function stopRingtone\(\)[\s\S]{0,260}ringtoneContext\.suspend\(\)/
   );
 });
+
+
+test("chat opening does not summon the mobile keyboard automatically", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.doesNotMatch(client, /chatInput\.focus/);
+  assert.match(client, /loadChatHistory\(\)/);
+});
+
+test("lesson starts in hand mode instead of drawing mode", () => {
+  const app = read("public/app.js");
+  assert.match(app, /let tool = "hand"/);
+
+  for (const file of ["public/teacher.html", "public/student.html"]) {
+    const html = read(file);
+    assert.match(html, /id="handBtn" class="active"/);
+    assert.doesNotMatch(html, /id="penBtn" class="active/);
+  }
+});
