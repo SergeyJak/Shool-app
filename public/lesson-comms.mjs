@@ -472,7 +472,16 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     });
 
     for (const track of localStream.getTracks()) {
-      pc.addTrack(track, localStream);
+      const sender = pc.addTrack(track, localStream);
+      const params = sender.getParameters();
+      params.encodings = params.encodings?.length ? params.encodings : [{}];
+      if (track.kind === "video") {
+        params.encodings[0].maxBitrate = 500_000;
+        params.encodings[0].maxFramerate = 20;
+      } else if (track.kind === "audio") {
+        params.encodings[0].maxBitrate = 48_000;
+      }
+      sender.setParameters(params).catch(() => {});
     }
 
     pc.addEventListener("icecandidate", ({ candidate }) => {
