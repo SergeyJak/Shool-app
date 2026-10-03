@@ -244,6 +244,54 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("follow realtime ownership survives reconnect and isolates teacher tabs", () => {
+  const server = read("server.js");
+  const app = read("public/app.js");
+  const follow = read("lib/follow-state.js");
+
+  assert.match(app, /school:realtimeClientId/);
+  assert.match(app, /io\(\{ auth: \{ role, lessonId, clientId: realtimeClientId \} \}\)/);
+  assert.match(app, /teacherFollowControlling/);
+  assert.match(app, /Перехватить ведение/);
+  assert.match(app, /teacherFollowEnabled && teacherFollowControlling/);
+  assert.match(app, /role === "student" && teacherFollowEnabled/);
+
+  assert.match(server, /disconnectGraceMs: 8000/);
+  assert.match(server, /teacherFollow\.reconnect\(controllerKey\)/);
+  assert.match(server, /teacherFollow\.disconnect\(controllerKey\)/);
+  assert.match(server, /teacherFollow\.move\(page, controllerKey\)/);
+  assert.match(server, /teacherFollow\.stop\(controllerKey\)/);
+  assert.match(server, /FOLLOW_NOT_CONTROLLER/);
+  assert.match(server, /return clientId;/);
+
+  assert.match(follow, /controllerKey/);
+  assert.match(follow, /disconnect\(requesterKey\)/);
+  assert.match(follow, /reconnect\(requesterKey\)/);
+  assert.match(follow, /controlling:/);
+});
+
+test("teacher follow active state stays visible and distinct", () => {
+  const css = read("public/pdf-view.css");
+  const app = read("public/app.js");
+
+  assert.match(css, /\.pdf-view-page \.follow-button\.active\s*\{/);
+  assert.match(css, /\.follow-button\.active\s*\{[\s\S]*background:#6258ef/);
+  assert.match(css, /\.follow-button\.active\s*\{[\s\S]*color:#fff/);
+  assert.match(app, /followBtn\.classList\.toggle\("active", teacherFollowEnabled && teacherFollowControlling\)/);
+  assert.match(app, /"🔗 Страницы связаны"/);
+});
+
+test("mobile teacher follow control has its own row and cannot overlay toolbar", () => {
+  const teacher = read("public/teacher.html");
+  const css = read("public/pdf-view.css");
+
+  assert.match(teacher, /class="lesson-sync-row compact-sync"/);
+  assert.match(teacher, /id="followBtn"/);
+  assert.match(css, /\.pdf-view-page \.compact-sync\{[\s\S]*position:static/);
+  assert.match(css, /@media \(max-width:699px\)[\s\S]*\.compact-sync[\s\S]*justify-content:flex-end/);
+  assert.match(css, /@media \(min-width:700px\) and \(max-width:1100px\) and \(orientation:portrait\)[\s\S]*\.compact-sync\{[\s\S]*position:static/);
+});
+
 test("tablet PDF view prioritizes document space in portrait and landscape", () => {
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
@@ -373,7 +421,62 @@ test("teacher invite sessions let children join without accounts", () => {
   assert.match(join, /Как тебя зовут/);
   assert.match(joinJs, /\/api\/join\//);
   assert.doesNotMatch(student, /href="\/cabinet"/);
-  assert.match(home, /href="\/register">Создать кабинет учителя/);
+  assert.match(home, /href="\/register">Зарегистрироваться/);
+});
+
+test("teacher registration is two-step and requires admin approval", () => {
+  const server = read("server.js");
+  const auth = read("lib/auth.js");
+  const register = read("public/register.html");
+  const registerJs = read("public/register.js");
+  const profile = read("public/register-profile.html");
+  const profileJs = read("public/register-profile.js");
+  const pending = read("public/registration-pending.html");
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const login = read("public/login.js");
+
+  assert.match(register, /id="username"/);
+  assert.match(register, /id="password"/);
+  assert.match(register, /id="passwordConfirm"/);
+  assert.match(register, />Зарегистрироваться</);
+  assert.doesNotMatch(register, /id="displayName"/);
+  assert.doesNotMatch(register, /type="email"/);
+  assert.doesNotMatch(register, /type="date"/);
+  assert.match(registerJs, /passwordConfirm/);
+  assert.match(registerJs, /PASSWORD_MISMATCH/);
+
+  assert.match(profile, /id="email"[^>]*required/);
+  assert.match(profile, /id="birthDate"[^>]*required/);
+  assert.match(profile, /id="firstName"[^>]*required/);
+  assert.match(profile, /id="phone"/);
+  assert.match(profile, /id="subjects"/);
+  assert.match(profile, /id="bio"/);
+  assert.match(profileJs, /\/api\/auth\/register\/profile/);
+  assert.match(pending, /Заявка отправлена/);
+
+  assert.match(auth, /REGISTRATION_COOKIE/);
+  assert.match(auth, /createRegistrationToken/);
+  assert.match(server, /approvalStatus: "onboarding"/);
+  assert.match(server, /approvalStatus: "pending"/);
+  assert.match(server, /approvalStatus: "approved"/);
+  assert.match(server, /approvalStatus: "rejected"/);
+  assert.match(server, /ACCOUNT_PENDING/);
+  assert.match(server, /ACCOUNT_REJECTED/);
+  assert.match(server, /app\.get\("\/api\/admin\/registrations"/);
+  assert.match(server, /app\.post\("\/api\/admin\/registrations\/:id\/approve"/);
+  assert.match(server, /app\.post\("\/api\/admin\/registrations\/:id\/reject"/);
+  assert.match(server, /notifyAdminRegistration/);
+  assert.match(server, /ADMIN_TELEGRAM_BOT_TOKEN/);
+
+  assert.match(dashboard, /data-admin-view="registrations"/);
+  assert.match(dashboard, /id="registrationBadge"/);
+  assert.match(dashboard, /id="adminRegistrationList"/);
+  assert.match(cabinet, /\/api\/admin\/registrations/);
+  assert.match(cabinet, /Одобрить/);
+  assert.match(cabinet, /Отклонить/);
+  assert.match(login, /ACCOUNT_PENDING/);
+  assert.match(login, /ACCOUNT_REJECTED/);
 });
 
 test("root is login and cabinet preserves account-aware lesson navigation", () => {
@@ -431,7 +534,7 @@ test("lesson realtime and data are scoped by lessonId", () => {
   const cabinet = read("public/cabinet.js");
 
   assert.match(client, /const lessonId = new URLSearchParams\(location\.search\)\.get\("lesson"\) \|\| "default"/);
-  assert.match(client, /io\(\{ auth: \{ role, lessonId \} \}\)/);
+  assert.match(client, /io\(\{ auth: \{ role, lessonId, clientId: realtimeClientId \} \}\)/);
   assert.match(client, /\/api\/document\?lesson=\$\{lessonParam\}/);
   assert.match(client, /\/api\/annotations\/\$\{pageNumber\}\?lesson=\$\{lessonParam\}/);
 
@@ -512,6 +615,37 @@ test("login sends every role through the cabinet instead of hardcoding default l
   assert.match(server, /function homeForRole\(_role\) \{\s*return "\/cabinet";\s*\}/);
   assert.doesNotMatch(server, /return "\/teacher\?lesson=default"/);
   assert.doesNotMatch(server, /return "\/student\?lesson=default"/);
+});
+
+test("mobile admin navigation stays inside viewport with four sections", () => {
+  const dashboard = read("public/dashboard.html");
+  const css = read("public/landing.css");
+
+  assert.match(dashboard, /data-admin-view="overview"/);
+  assert.match(dashboard, /data-admin-view="registrations"/);
+  assert.match(dashboard, /data-admin-view="users"/);
+  assert.match(dashboard, /data-admin-view="lessons"/);
+  assert.match(css, /@media \(max-width: 620px\)[\s\S]*\.admin-nav\s*\{[\s\S]*display:\s*grid/);
+  assert.match(css, /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(css, /\.admin-nav-btn\s*\{[\s\S]*min-width:\s*0/);
+  assert.match(css, /\.landing-side-button\s*\{[\s\S]*display:\s*none/);
+});
+
+test("deactivated admin users and lessons are hidden behind dedicated subtabs", () => {
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+
+  assert.match(dashboard, /data-user-state="active"/);
+  assert.match(dashboard, /data-user-state="inactive"/);
+  assert.match(dashboard, /data-lesson-state="active"/);
+  assert.match(dashboard, /data-lesson-state="inactive"/);
+  assert.match(dashboard, /Деактивированные/);
+  assert.match(cabinet, /adminUserState === "active" \? user\.active : !user\.active/);
+  assert.match(cabinet, /adminLessonState === "active" \? lesson\.active : !lesson\.active/);
+  assert.match(cabinet, /activeUsersCount/);
+  assert.match(cabinet, /inactiveUsersCount/);
+  assert.match(cabinet, /activeLessonsCount/);
+  assert.match(cabinet, /inactiveLessonsCount/);
 });
 
 test("admin management UI is responsive", () => {

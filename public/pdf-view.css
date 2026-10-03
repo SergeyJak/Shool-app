@@ -95,16 +95,13 @@
   padding:6px;
 }
 .pdf-view-page .compact-sync{
-  position:fixed;
-  right:10px;
-  top:66px;
-  z-index:14;
-  width:auto;
+  position:static;
+  width:min(1600px,calc(100vw - 12px));
   min-height:0;
-  margin:0;
-  pointer-events:none;
-}
-.pdf-view-page .compact-sync>*{
+  margin:0 auto 6px;
+  padding:0 2px;
+  display:flex;
+  justify-content:flex-end;
   pointer-events:auto;
 }
 .pdf-view-page .follow-button,
@@ -115,6 +112,17 @@
   background:rgba(255,255,255,.94);
   box-shadow:0 6px 18px rgba(49,60,111,.10);
   font-size:11px;
+}
+.pdf-view-page .follow-button.active{
+  background:#6258ef;
+  color:#fff;
+  border-color:#6258ef;
+  box-shadow:0 7px 18px rgba(98,88,239,.28);
+}
+.pdf-view-page .follow-button.takeover{
+  background:#fff8e7;
+  color:#7a5c11;
+  border-color:#ead28b;
 }
 .pdf-view-page .toolbar{
   width:min(1600px,calc(100vw - 12px));
@@ -240,7 +248,18 @@
     display:none;
   }
   .pdf-view-page .compact-sync{
-    top:60px;
+    position:static;
+    width:100%;
+    min-height:0;
+    margin:0 auto 6px;
+    padding:0 2px;
+    justify-content:flex-end;
+    pointer-events:auto;
+  }
+  .pdf-view-page .compact-sync .follow-button,
+  .pdf-view-page .compact-sync .follow-status{
+    width:auto;
+    max-width:100%;
   }
   .pdf-view-page .toolbar{
     width:calc(100vw - 10px);
@@ -299,4 +318,22 @@
   .pdf-view-page .pdf-brand span:last-child{display:none}
   .pdf-view-page .pdf-lesson-title strong{font-size:12px}
   .pdf-view-page .pdf-action{font-size:10px;padding:6px 7px}
+  .pdf-view-page .compact-sync{
+    position:static;
+    width:100%;
+    min-height:0;
+    margin:0 auto 6px;
+    padding:0 2px;
+    display:flex;
+    justify-content:flex-end;
+    pointer-events:auto;
+  }
+  .pdf-view-page .compact-sync .follow-button,
+  .pdf-view-page .compact-sync .follow-status{
+    width:auto;
+    max-width:100%;
+  }
+  .pdf-view-page .toolbar{
+    top:64px;
+  }
 }

@@ -22,6 +22,9 @@ const adminPanel = document.getElementById("adminPanel");
 const adminStatus = document.getElementById("adminStatus");
 const adminUserList = document.getElementById("adminUserList");
 const adminLessonList = document.getElementById("adminLessonList");
+const adminRegistrationList = document.getElementById("adminRegistrationList");
+const registrationBadge = document.getElementById("registrationBadge");
+const adminRegistrationsCount = document.getElementById("adminRegistrationsCount");
 const createUserForm = document.getElementById("createUserForm");
 const createLessonForm = document.getElementById("createLessonForm");
 const newLessonTeachers = document.getElementById("newLessonTeachers");
@@ -30,12 +33,21 @@ const adminNavButtons = [...document.querySelectorAll("[data-admin-view]")];
 const adminSections = [...document.querySelectorAll("[data-admin-section]")];
 const adminUsersCount = document.getElementById("adminUsersCount");
 const adminLessonsCount = document.getElementById("adminLessonsCount");
+const userStateButtons = [...document.querySelectorAll("[data-user-state]")];
+const lessonStateButtons = [...document.querySelectorAll("[data-lesson-state]")];
+const activeUsersCount = document.getElementById("activeUsersCount");
+const inactiveUsersCount = document.getElementById("inactiveUsersCount");
+const activeLessonsCount = document.getElementById("activeLessonsCount");
+const inactiveLessonsCount = document.getElementById("inactiveLessonsCount");
 
 let currentUser = null;
 let managedUsers = [];
 let managedLessons = [];
+let pendingRegistrations = [];
 let teacherMaterials = [];
 let teacherView = "active";
+let adminUserState = "active";
+let adminLessonState = "active";
 
 document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
 dialog.addEventListener("click", (event) => {
@@ -61,6 +73,22 @@ function showAdminView(view) {
 
 for (const button of adminNavButtons) {
   button.addEventListener("click", () => showAdminView(button.dataset.adminView));
+}
+
+for (const button of userStateButtons) {
+  button.addEventListener("click", () => {
+    adminUserState = button.dataset.userState === "inactive" ? "inactive" : "active";
+    for (const tab of userStateButtons) tab.classList.toggle("active", tab === button);
+    renderAdminUsers();
+  });
+}
+
+for (const button of lessonStateButtons) {
+  button.addEventListener("click", () => {
+    adminLessonState = button.dataset.lessonState === "inactive" ? "inactive" : "active";
+    for (const tab of lessonStateButtons) tab.classList.toggle("active", tab === button);
+    renderAdminLessons();
+  });
 }
 
 function setAdminStatus(message, type = "") {
@@ -436,9 +464,101 @@ function renderAdminMemberChoices() {
   fillMemberPicker(newLessonStudents, "student");
 }
 
+function renderAdminRegistrations() {
+  if (!adminRegistrationList) return;
+  adminRegistrationList.innerHTML = "";
+
+  if (!pendingRegistrations.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = "Новых заявок нет.";
+    adminRegistrationList.append(empty);
+    return;
+  }
+
+  for (const registration of pendingRegistrations) {
+    const card = document.createElement("article");
+    card.className = "registration-card";
+
+    const header = document.createElement("div");
+    header.className = "registration-card-header";
+    const title = document.createElement("div");
+    const name = document.createElement("strong");
+    name.textContent = registration.displayName || registration.username;
+    const login = document.createElement("span");
+    login.textContent = `@${registration.username}`;
+    title.append(name, login);
+
+    const submitted = document.createElement("small");
+    submitted.textContent = registration.registrationSubmittedAt
+      ? new Date(registration.registrationSubmittedAt).toLocaleString()
+      : "";
+    header.append(title, submitted);
+
+    const details = document.createElement("dl");
+    details.className = "registration-details";
+    const items = [
+      ["Email", registration.email || "—"],
+      ["Дата рождения", registration.birthDate || "—"],
+      ["Телефон", registration.phone || "—"],
+      ["Предметы", registration.subjects || "—"],
+      ["О себе", registration.bio || "—"],
+    ];
+    for (const [label, value] of items) {
+      const dt = document.createElement("dt");
+      dt.textContent = label;
+      const dd = document.createElement("dd");
+      dd.textContent = value;
+      details.append(dt, dd);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "admin-row-actions";
+    const approve = document.createElement("button");
+    approve.type = "button";
+    approve.textContent = "Одобрить";
+    approve.addEventListener("click", async () => {
+      try {
+        await apiJson(`/api/admin/registrations/${encodeURIComponent(registration.id)}/approve`, { method: "POST" });
+        setAdminStatus("Регистрация одобрена", "success");
+        await loadAdminData();
+      } catch (error) {
+        setAdminStatus(`Ошибка: ${error.message}`, "error");
+      }
+    });
+
+    const reject = document.createElement("button");
+    reject.type = "button";
+    reject.className = "danger";
+    reject.textContent = "Отклонить";
+    reject.addEventListener("click", async () => {
+      if (!confirm(`Отклонить регистрацию ${registration.displayName || registration.username}?`)) return;
+      try {
+        await apiJson(`/api/admin/registrations/${encodeURIComponent(registration.id)}/reject`, { method: "POST" });
+        setAdminStatus("Регистрация отклонена", "success");
+        await loadAdminData();
+      } catch (error) {
+        setAdminStatus(`Ошибка: ${error.message}`, "error");
+      }
+    });
+
+    actions.append(approve, reject);
+    card.append(header, details, actions);
+    adminRegistrationList.append(card);
+  }
+}
+
 function renderAdminUsers() {
   adminUserList.innerHTML = "";
-  for (const user of managedUsers) {
+  const visibleUsers = managedUsers.filter((user) => adminUserState === "active" ? user.active : !user.active);
+  if (!visibleUsers.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = adminUserState === "active" ? "Активных пользователей нет." : "Деактивированных пользователей нет.";
+    adminUserList.append(empty);
+    return;
+  }
+  for (const user of visibleUsers) {
     const row = document.createElement("div");
     row.className = `admin-row ${user.active ? "" : "is-inactive"}`;
 
@@ -502,7 +622,15 @@ function memberPicker(role, selected) {
 
 function renderAdminLessons() {
   adminLessonList.innerHTML = "";
-  for (const lesson of managedLessons) {
+  const visibleLessons = managedLessons.filter((lesson) => adminLessonState === "active" ? lesson.active : !lesson.active);
+  if (!visibleLessons.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = adminLessonState === "active" ? "Активных уроков нет." : "Деактивированных уроков нет.";
+    adminLessonList.append(empty);
+    return;
+  }
+  for (const lesson of visibleLessons) {
     const row = document.createElement("div");
     row.className = `admin-lesson-row ${lesson.active ? "" : "is-inactive"}`;
 
@@ -575,14 +703,30 @@ function renderAdminLessons() {
 }
 
 async function loadAdminData() {
-  const [usersPayload, lessonsPayload] = await Promise.all([
+  const [registrationsPayload, usersPayload, lessonsPayload] = await Promise.all([
+    apiJson("/api/admin/registrations"),
     apiJson("/api/admin/users"),
     apiJson("/api/admin/lessons"),
   ]);
+  pendingRegistrations = registrationsPayload.registrations || [];
   managedUsers = usersPayload.users || [];
   managedLessons = lessonsPayload.lessons || [];
-  if (adminUsersCount) adminUsersCount.textContent = String(managedUsers.length);
-  if (adminLessonsCount) adminLessonsCount.textContent = String(managedLessons.length);
+  if (adminRegistrationsCount) adminRegistrationsCount.textContent = String(pendingRegistrations.length);
+  if (registrationBadge) {
+    registrationBadge.textContent = String(pendingRegistrations.length);
+    registrationBadge.hidden = pendingRegistrations.length === 0;
+  }
+  const activeUsers = managedUsers.filter((user) => user.active).length;
+  const inactiveUsers = managedUsers.length - activeUsers;
+  const activeLessons = managedLessons.filter((lesson) => lesson.active).length;
+  const inactiveLessons = managedLessons.length - activeLessons;
+  if (adminUsersCount) adminUsersCount.textContent = String(activeUsers);
+  if (adminLessonsCount) adminLessonsCount.textContent = String(activeLessons);
+  if (activeUsersCount) activeUsersCount.textContent = String(activeUsers);
+  if (inactiveUsersCount) inactiveUsersCount.textContent = String(inactiveUsers);
+  if (activeLessonsCount) activeLessonsCount.textContent = String(activeLessons);
+  if (inactiveLessonsCount) inactiveLessonsCount.textContent = String(inactiveLessons);
+  renderAdminRegistrations();
   renderAdminMemberChoices();
   renderAdminUsers();
   renderAdminLessons();

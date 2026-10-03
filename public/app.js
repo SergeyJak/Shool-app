@@ -19,7 +19,10 @@ const isObserver = role === "observer";
 const lessonId = new URLSearchParams(location.search).get("lesson") || "default";
 const lessonParam = encodeURIComponent(lessonId);
 const color = role === "teacher" ? "#e53935" : "#1565c0";
-const socket = io({ auth: { role, lessonId } });
+const realtimeClientId =
+  sessionStorage.getItem("school:realtimeClientId") || crypto.randomUUID();
+sessionStorage.setItem("school:realtimeClientId", realtimeClientId);
+const socket = io({ auth: { role, lessonId, clientId: realtimeClientId } });
 
 const statusEl = document.getElementById("status");
 const lessonTitleEl = document.getElementById("lessonTitle");
@@ -134,6 +137,7 @@ let textEditor = null;
 let textFontSize = Number(textSizeSelect?.value) || 18;
 let previewStrokes = new Map();
 let teacherFollowEnabled = false;
+let teacherFollowControlling = false;
 let teacherFollowPage = 1;
 let previewFlushTimer = null;
 let previewSentPointCount = 0;
@@ -293,8 +297,9 @@ socket.on("perf:preview:seen", ({ metricId } = {}) => {
   updatePerfStats();
 });
 
-socket.on("teacher:follow:state", async ({ enabled, page } = {}) => {
+socket.on("teacher:follow:state", async ({ enabled, page, controlling } = {}) => {
   teacherFollowEnabled = Boolean(enabled);
+  teacherFollowControlling = Boolean(controlling);
   if (Number.isInteger(Number(page)) && Number(page) > 0) {
     teacherFollowPage = Number(page);
   }
@@ -338,7 +343,7 @@ async function goToPage(nextPage, { forcedByTeacher = false } = {}) {
   pageNumber = clamped;
   await renderPage();
 
-  if (role === "teacher" && teacherFollowEnabled) {
+  if (role === "teacher" && teacherFollowEnabled && teacherFollowControlling) {
     socket.emit("teacher:page", { page: pageNumber });
   }
 }
@@ -387,7 +392,7 @@ if (followBtn) {
   followBtn.addEventListener("click", () => {
     followBtn.classList.add("pending");
 
-    if (teacherFollowEnabled) {
+    if (teacherFollowEnabled && teacherFollowControlling) {
       socket.emit("teacher:follow:stop", {}, (result) => {
         followBtn.classList.remove("pending");
         if (!result?.ok) {
@@ -498,12 +503,16 @@ if (!isObserver) {
 
 function updateFollowControls() {
   if (followBtn) {
-    followBtn.classList.toggle("active", teacherFollowEnabled);
-    followBtn.textContent = teacherFollowEnabled
-      ? "🔗 Страницы связаны"
-      : "🔗 Вести ученика";
+    followBtn.classList.toggle("active", teacherFollowEnabled && teacherFollowControlling);
+    followBtn.classList.toggle("takeover", teacherFollowEnabled && !teacherFollowControlling);
+    followBtn.textContent =
+      teacherFollowEnabled && teacherFollowControlling
+        ? "🔗 Страницы связаны"
+        : teacherFollowEnabled
+          ? "↔ Перехватить ведение"
+          : "🔗 Вести ученика";
     followBtn.disabled = false;
-    followBtn.setAttribute("aria-pressed", String(teacherFollowEnabled));
+    followBtn.setAttribute("aria-pressed", String(teacherFollowEnabled && teacherFollowControlling));
   }
 
   if (followStatus) {

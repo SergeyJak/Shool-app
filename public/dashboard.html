@@ -146,19 +146,36 @@
 
       <nav class="admin-nav" aria-label="Разделы админки">
         <button type="button" class="admin-nav-btn active" data-admin-view="overview">Обзор</button>
+        <button type="button" class="admin-nav-btn" data-admin-view="registrations">Регистрации <span id="registrationBadge" class="admin-badge" hidden>0</span></button>
         <button type="button" class="admin-nav-btn" data-admin-view="users">Пользователи</button>
         <button type="button" class="admin-nav-btn" data-admin-view="lessons">Уроки</button>
       </nav>
 
       <section class="admin-view" data-admin-section="overview">
         <div class="admin-summary-grid">
+          <article class="admin-summary-card"><span>Новые регистрации</span><strong id="adminRegistrationsCount">0</strong></article>
           <article class="admin-summary-card"><span>Пользователи</span><strong id="adminUsersCount">0</strong></article>
           <article class="admin-summary-card"><span>Уроки</span><strong id="adminLessonsCount">0</strong></article>
         </div>
         <p class="admin-overview-note">Выберите раздел сверху, чтобы управлять пользователями или уроками.</p>
       </section>
 
-      <section class="admin-view" data-admin-section="users" hidden>
+            <section class="admin-view" data-admin-section="registrations" hidden>
+        <div class="admin-lists">
+          <section>
+            <div class="admin-section-title">
+              <div>
+                <span class="admin-eyebrow">Новые преподаватели</span>
+                <h3>Заявки на регистрацию</h3>
+              </div>
+              <span class="admin-overview-note">Проверяйте данные перед активацией аккаунта.</span>
+            </div>
+            <div id="adminRegistrationList" class="admin-list registration-list"></div>
+          </section>
+        </div>
+      </section>
+
+<section class="admin-view" data-admin-section="users" hidden>
         <div class="admin-grid single-column">
           <form id="createUserForm" class="admin-card">
             <h3>Новый пользователь</h3>
@@ -169,7 +186,16 @@
             <button type="submit">Создать пользователя</button>
           </form>
         </div>
-        <div class="admin-lists"><section><h3>Пользователи</h3><div id="adminUserList" class="admin-list"></div></section></div>
+        <div class="admin-lists"><section>
+          <div class="admin-section-title">
+            <h3>Пользователи</h3>
+            <nav class="admin-subtabs" aria-label="Фильтр пользователей">
+              <button type="button" class="admin-subtab active" data-user-state="active">Активные <span id="activeUsersCount">0</span></button>
+              <button type="button" class="admin-subtab" data-user-state="inactive">Деактивированные <span id="inactiveUsersCount">0</span></button>
+            </nav>
+          </div>
+          <div id="adminUserList" class="admin-list"></div>
+        </section></div>
       </section>
 
       <section class="admin-view" data-admin-section="lessons" hidden>
@@ -182,7 +208,16 @@
             <button type="submit">Создать урок</button>
           </form>
         </div>
-        <div class="admin-lists"><section><h3>Все уроки</h3><div id="adminLessonList" class="admin-list"></div></section></div>
+        <div class="admin-lists"><section>
+          <div class="admin-section-title">
+            <h3>Уроки</h3>
+            <nav class="admin-subtabs" aria-label="Фильтр уроков">
+              <button type="button" class="admin-subtab active" data-lesson-state="active">Активные <span id="activeLessonsCount">0</span></button>
+              <button type="button" class="admin-subtab" data-lesson-state="inactive">Деактивированные <span id="inactiveLessonsCount">0</span></button>
+            </nav>
+          </div>
+          <div id="adminLessonList" class="admin-list"></div>
+        </section></div>
       </section>
     </section>
   </main>
@@ -202,6 +237,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261002-dashboard1"></script>
+  <script src="/cabinet.js?v=20261003-registrations2"></script>
 </body>
 </html>

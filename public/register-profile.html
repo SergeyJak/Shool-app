@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>School App · Профиль преподавателя</title>
+  <link rel="stylesheet" href="/join.css?v=20261003-register2" />
+</head>
+<body>
+  <main class="join-shell profile-shell">
+    <section class="join-card" aria-labelledby="profileTitle">
+      <div class="join-mark">🦉</div>
+      <span class="eyebrow">School App · Шаг 2 из 2</span>
+      <h1 id="profileTitle">Профиль преподавателя</h1>
+      <p>Эти данные помогут администратору проверить регистрацию. Email и дата рождения обязательны.</p>
+
+      <form id="profileForm">
+        <div class="form-grid">
+          <label>
+            <span>Имя *</span>
+            <input id="firstName" name="firstName" maxlength="80" autocomplete="given-name" required />
+          </label>
+          <label>
+            <span>Фамилия</span>
+            <input id="lastName" name="lastName" maxlength="80" autocomplete="family-name" />
+          </label>
+        </div>
+        <label>
+          <span>Email *</span>
+          <input id="email" name="email" type="email" maxlength="254" autocomplete="email" required />
+        </label>
+        <label>
+          <span>Дата рождения *</span>
+          <input id="birthDate" name="birthDate" type="date" autocomplete="bday" required />
+        </label>
+        <label>
+          <span>Телефон</span>
+          <input id="phone" name="phone" maxlength="40" autocomplete="tel" />
+        </label>
+        <label>
+          <span>Предметы / направление</span>
+          <input id="subjects" name="subjects" maxlength="240" placeholder="Например: английский, математика" />
+        </label>
+        <label>
+          <span>О себе</span>
+          <textarea id="bio" name="bio" maxlength="1000" rows="4" placeholder="Коротко об опыте и формате занятий"></textarea>
+        </label>
+        <div id="profileError" class="error" hidden></div>
+        <button id="profileBtn" type="submit">Отправить на проверку</button>
+      </form>
+    </section>
+  </main>
+  <script src="/register-profile.js?v=20261003-1"></script>
+</body>
+</html>
