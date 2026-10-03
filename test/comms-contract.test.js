@@ -98,3 +98,15 @@ test("lesson client exposes ICE diagnostics and retries remote playback", () => 
   assert.match(server, /socket\.on\("rtc:debug"/);
   assert.match(server, /stun:stun\.cloudflare\.com:3478/);
 });
+
+
+test("WebRTC config generates short-lived Cloudflare TURN credentials on the backend", () => {
+  const server = read("server.js");
+  assert.match(server, /CLOUDFLARE_TURN_KEY_ID/);
+  assert.match(server, /CLOUDFLARE_TURN_API_TOKEN/);
+  assert.match(server, /credentials\/generate-ice-servers/);
+  assert.match(server, /Authorization: `Bearer \$\{CLOUDFLARE_TURN_API_TOKEN\}`/);
+  assert.match(server, /body: JSON\.stringify\(\{ ttl: CLOUDFLARE_TURN_TTL_SECONDS \}\)/);
+  assert.match(server, /source: "cloudflare-turn"/);
+  assert.match(server, /source: "static-fallback"/);
+});
