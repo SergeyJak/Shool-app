@@ -247,9 +247,29 @@ function annotationLessonFilter(lessonId) {
 
 function followForLesson(lessonId) {
   if (!teacherFollowByLesson.has(lessonId)) {
-    teacherFollowByLesson.set(lessonId, createFollowState());
+    teacherFollowByLesson.set(
+      lessonId,
+      createFollowState({
+        disconnectGraceMs: 8000,
+        onExpired: (state) => {
+          io.to(lessonRoom(lessonId)).emit("teacher:follow:state", state);
+        },
+      })
+    );
   }
   return teacherFollowByLesson.get(lessonId);
+}
+
+function realtimeClientId(value) {
+  const clientId = String(value || "").trim();
+  return /^[a-zA-Z0-9_-]{8,120}$/.test(clientId) ? clientId : null;
+}
+
+function followControllerKey(socket) {
+  if (socket.data.role !== "teacher") return null;
+  const clientId = realtimeClientId(socket.handshake.auth?.clientId);
+  if (!clientId) return null;
+  return `${socket.data.user._id}:${clientId}`;
 }
 
 app.use(attachUser);
@@ -1513,9 +1533,12 @@ io.on("connection", (socket) => {
   const lessonId = socket.data.lessonId;
   const room = lessonRoom(lessonId);
   const teacherFollow = followForLesson(lessonId);
+  const controllerKey = role === "teacher" ? followControllerKey(socket) : null;
+  socket.data.followControllerKey = controllerKey;
   socket.join(room);
 
-  socket.emit("teacher:follow:state", teacherFollow.snapshot());
+  if (controllerKey) teacherFollow.reconnect(controllerKey);
+  socket.emit("teacher:follow:state", teacherFollow.snapshot(controllerKey));
   if (teacherPageByLesson.has(lessonId)) {
     socket.emit("teacher:monitor:page", { page: teacherPageByLesson.get(lessonId) });
   }
@@ -1531,12 +1554,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("teacher:follow:start", ({ page } = {}, ack) => {
-    if (role !== "teacher" || !teacherFollow.start(page)) {
+    if (role !== "teacher" || !controllerKey || !teacherFollow.start(page, controllerKey)) {
       return ack?.({ ok: false });
     }
 
-    const state = teacherFollow.snapshot();
-    io.to(room).emit("teacher:follow:state", state);
+    io.to(room).emit("teacher:follow:state", teacherFollow.snapshot());
+    const state = teacherFollow.snapshot(controllerKey);
+    socket.emit("teacher:follow:state", state);
     ack?.({ ok: true, ...state });
   });
 
@@ -1548,7 +1572,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("teacher:page", ({ page } = {}) => {
-    if (role !== "teacher" || !teacherFollow.move(page)) return;
+    if (role !== "teacher" || !controllerKey || !teacherFollow.move(page, controllerKey)) return;
     const currentPage = teacherFollow.snapshot().page;
     teacherPageByLesson.set(lessonId, currentPage);
     io.to(room).emit("teacher:page", { page: currentPage });
@@ -1556,17 +1580,17 @@ io.on("connection", (socket) => {
   });
 
   socket.on("teacher:follow:stop", (_payload, ack) => {
-    if (role !== "teacher") return ack?.({ ok: false });
-    teacherFollow.stop();
+    if (role !== "teacher" || !controllerKey || !teacherFollow.stop(controllerKey)) {
+      return ack?.({ ok: false, error: "FOLLOW_NOT_CONTROLLER" });
+    }
     const state = teacherFollow.snapshot();
     io.to(room).emit("teacher:follow:state", state);
     ack?.({ ok: true, ...state });
   });
 
   socket.on("disconnect", () => {
-    if (role !== "teacher" || !teacherFollow.snapshot().enabled) return;
-    teacherFollow.stop();
-    io.to(room).emit("teacher:follow:state", teacherFollow.snapshot());
+    if (role !== "teacher" || !controllerKey) return;
+    teacherFollow.disconnect(controllerKey);
   });
 
   socket.on("stroke:preview", (stroke) => {
