@@ -115,6 +115,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const messagesEl = panel.querySelector(".lesson-comms-messages");
   const chatForm = panel.querySelector(".lesson-comms-form");
   const chatInput = chatForm.querySelector("textarea");
+  const chatSubmitButton = chatForm.querySelector('button[type="submit"]');
 
   function syncChatViewportHeight() {
     const viewportHeight = window.visualViewport?.height || window.innerHeight;
@@ -835,13 +836,15 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   chatForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const text = chatInput.value.trim();
-    if (!text) return;
-    chatInput.disabled = true;
+    if (!text || chatSubmitButton?.disabled) return;
+
+    if (chatSubmitButton) chatSubmitButton.disabled = true;
+
     socket.emit("chat:send", { text }, (result) => {
-      chatInput.disabled = false;
+      if (chatSubmitButton) chatSubmitButton.disabled = false;
+
       if (result?.ok) {
         chatInput.value = "";
-        chatInput.focus();
       } else {
         showSnackbar?.({
           title: "Чат",
