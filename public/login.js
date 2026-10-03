@@ -23,6 +23,7 @@ form.addEventListener("submit", async (event) => {
         ACCOUNT_PENDING: "Регистрация ожидает подтверждения администратора.",
         ACCOUNT_REJECTED: "Регистрация отклонена администратором.",
         ACCOUNT_INACTIVE: "Аккаунт отключён администратором.",
+        TOO_MANY_ATTEMPTS: "Слишком много попыток входа. Подождите немного и попробуйте снова.",
       };
       errorEl.textContent = messages[data.error] || "Не удалось войти. Попробуйте ещё раз.";
       errorEl.hidden = false;
