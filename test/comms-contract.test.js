@@ -418,3 +418,26 @@ test("repeated WebRTC calls are isolated by call id and clean old quality monito
   assert.match(realtime, /const callId/);
   assert.match(realtime, /return \{ callId, targetId/);
 });
+
+
+test("accepting installs the call id before signaling can race the ack", () => {
+  const client = read("public/lesson-comms.mjs");
+  const server = read("server.js");
+
+  const acceptStart = client.indexOf('acceptButton.addEventListener("click"');
+  const declineStart = client.indexOf('declineButton.addEventListener("click"', acceptStart);
+  const acceptBlock = client.slice(acceptStart, declineStart);
+
+  assert.match(
+    acceptBlock,
+    /activeCallId = callId[\s\S]{0,300}acquireLocalMedia\(\)[\s\S]{0,500}socket\.emit\("rtc:accept"/
+  );
+  assert.match(
+    acceptBlock,
+    /if \(!result\?\.ok\)[\s\S]{0,160}activeCallId = null/
+  );
+  assert.match(
+    server,
+    /socket\.on\("disconnect"[\s\S]{0,320}rtc:cancelled"[\s\S]{0,120}callId: call\.callId/
+  );
+});
