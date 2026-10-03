@@ -1839,6 +1839,17 @@ io.on("connection", (socket) => {
     const existing = rtc2SessionForLesson(lessonId);
     if (
       existing &&
+      existing.callId !== callId &&
+      Date.now() - existing.updatedAt < 60_000
+    ) {
+      return ack?.({
+        ok: false,
+        error: existing.accepted ? "CALL_IN_PROGRESS" : "CALL_RINGING",
+      });
+    }
+
+    if (
+      existing &&
       existing.callId === callId &&
       existing.callerClientId === callerClientId &&
       !existing.accepted
@@ -1946,6 +1957,10 @@ io.on("connection", (socket) => {
     if (!target) return ack?.({ ok: false, error: "PEER_OFFLINE" });
 
     session.updatedAt = Date.now();
+    const signalKind = signal.description?.type || (signal.candidate ? "candidate" : "unknown");
+    console.info(
+      `RTC2 signal lesson=${lessonId} kind=${signalKind} fromRole=${role} fromClient=${clientId.slice(0, 8)} targetClient=${targetClientId.slice(0, 8)} targetRole=${target.data.role}`
+    );
     target.emit("rtc2:signal", {
       callId: signal.callId,
       fromClientId: clientId,
