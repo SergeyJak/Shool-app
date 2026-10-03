@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video4/);
+    assert.match(read(file), /app\.js\?v=20261003-video5/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -123,4 +123,15 @@ test("video call can collapse to opponent-only mini window and restore on click"
   assert.match(css, /mini-video \.lesson-comms-local/);
   assert.match(css, /mini-video \.lesson-comms-controls/);
   assert.match(css, /left: 16px/);
+});
+
+
+test("Cloudflare TURN preview forces relay-only transport and logs selected ICE pair", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+  assert.match(server, /iceTransportPolicy: "relay"/);
+  assert.match(server, /iceTransportPolicy: "all"/);
+  assert.match(client, /iceTransportPolicy: iceConfig\.iceTransportPolicy/);
+  assert.match(client, /event: "selected-pair"/);
+  assert.match(client, /candidateType/);
 });
