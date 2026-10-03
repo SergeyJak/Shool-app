@@ -551,3 +551,15 @@ test("RTC v2 mobile media profile stays within measured relay bandwidth", () => 
   assert.match(client, /maxBitrate = 280_000/);
   assert.match(client, /maxFramerate = 15/);
 });
+
+
+test("RTC v2 connect watchdog does not rebuild an ICE-connected route", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /\["connected", "completed"\]\.includes\(peerConnection\.iceConnectionState\)/);
+  assert.match(client, /event: "connect-watchdog-grace-v2"/);
+  const watchdogStart = client.indexOf("connectWatchdogTimer = setTimeout");
+  const watchdogEnd = client.indexOf("}, 12000)", watchdogStart);
+  const watchdog = client.slice(watchdogStart, watchdogEnd);
+  assert.match(watchdog, /iceConnectionState/);
+  assert.match(watchdog, /return;/);
+});

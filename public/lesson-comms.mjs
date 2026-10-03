@@ -558,6 +558,13 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     connectWatchdogTimer = setTimeout(() => {
       connectWatchdogTimer = null;
       if (!peerConnection || peerConnection.connectionState === "connected") return;
+      if (["connected", "completed"].includes(peerConnection.iceConnectionState)) {
+        emitRtcDebug({
+          event: "connect-watchdog-grace-v2",
+          state: `connection=${peerConnection.connectionState};ice=${peerConnection.iceConnectionState}`,
+        });
+        return;
+      }
       emitRtcDebug({
         event: "connect-timeout-v2",
         state: `connection=${peerConnection.connectionState};ice=${peerConnection.iceConnectionState}`,
