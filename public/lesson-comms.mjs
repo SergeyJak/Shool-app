@@ -181,6 +181,60 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     };
   }
 
+  function startRtcQualityMonitor(pc) {
+    let previousPacketsLost = 0;
+    let previousPacketsReceived = 0;
+    const timer = setInterval(async () => {
+      if (pc !== peerConnection || pc.connectionState === "closed") {
+        clearInterval(timer);
+        return;
+      }
+      try {
+        const stats = await pc.getStats();
+        let availableOutgoingBitrate = null;
+        let jitter = null;
+        let packetsLost = null;
+        let packetsReceived = null;
+        let framesDropped = null;
+        let framesDecoded = null;
+
+        stats.forEach((report) => {
+          if (report.type === "candidate-pair" && (report.selected || report.nominated) && report.state === "succeeded") {
+            if (Number.isFinite(report.availableOutgoingBitrate)) {
+              availableOutgoingBitrate = Math.round(report.availableOutgoingBitrate);
+            }
+          }
+          if (report.type === "inbound-rtp" && report.kind === "video") {
+            if (Number.isFinite(report.jitter)) jitter = Number(report.jitter.toFixed(4));
+            if (Number.isFinite(report.packetsLost)) packetsLost = report.packetsLost;
+            if (Number.isFinite(report.packetsReceived)) packetsReceived = report.packetsReceived;
+            if (Number.isFinite(report.framesDropped)) framesDropped = report.framesDropped;
+            if (Number.isFinite(report.framesDecoded)) framesDecoded = report.framesDecoded;
+          }
+        });
+
+        const lostDelta = packetsLost == null ? null : Math.max(0, packetsLost - previousPacketsLost);
+        const receivedDelta = packetsReceived == null ? null : Math.max(0, packetsReceived - previousPacketsReceived);
+        if (packetsLost != null) previousPacketsLost = packetsLost;
+        if (packetsReceived != null) previousPacketsReceived = packetsReceived;
+
+        socket.emit("rtc:debug", {
+          event: "quality",
+          state: JSON.stringify({
+            availableOutgoingBitrate,
+            jitter,
+            lostDelta,
+            receivedDelta,
+            framesDropped,
+            framesDecoded,
+          }).slice(0, 300),
+        });
+      } catch {
+        // Stats are best-effort and must never affect the call.
+      }
+    }, 5000);
+  }
+
   async function ensurePeer(peerId) {
     if (peerConnection && activePeerId === peerId) return peerConnection;
     if (peerConnection) peerConnection.close();
@@ -200,6 +254,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       state: `${iceConfig.source}:${iceConfig.iceTransportPolicy}`,
     });
     peerConnection = pc;
+    startRtcQualityMonitor(pc);
 
     for (const track of localStream?.getTracks() || []) {
       const sender = pc.addTrack(track, localStream);
@@ -207,7 +262,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         const params = sender.getParameters();
         params.encodings = params.encodings?.length ? params.encodings : [{}];
         params.encodings[0].maxBitrate = 900_000;
-        params.encodings[0].maxFramerate = 24;
+        params.encodings[0].maxFramerate = 20;
         sender.setParameters(params).catch(() => {});
       }
       if (track.kind === "audio") {
@@ -251,7 +306,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           params.degradationPreference = "maintain-framerate";
           params.encodings = params.encodings?.length ? params.encodings : [{}];
           params.encodings[0].maxBitrate = 900_000;
-          params.encodings[0].maxFramerate = 24;
+          params.encodings[0].maxFramerate = 20;
           videoSender.setParameters(params).catch(() => {});
         }
         pc.getStats()
@@ -401,9 +456,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           autoGainControl: true,
         },
         video: {
-          width: { ideal: 960, max: 1280 },
-          height: { ideal: 540, max: 720 },
-          frameRate: { ideal: 24, max: 30 },
+          width: { ideal: 640, max: 960 },
+          height: { ideal: 360, max: 540 },
+          frameRate: { ideal: 20, max: 24 },
           facingMode: "user",
         },
       });
