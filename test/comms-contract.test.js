@@ -563,3 +563,23 @@ test("RTC v2 connect watchdog does not rebuild an ICE-connected route", () => {
   assert.match(watchdog, /iceConnectionState/);
   assert.match(watchdog, /return;/);
 });
+
+
+test("RTC v2 does not rebuild a healthy peer on browser effectiveType changes", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /function|const rtc2NetworkChange/);
+  assert.match(client, /!\["disconnected", "failed"\]\.includes\(peerConnection\.connectionState\)/);
+  const start = client.indexOf("const rtc2NetworkChange");
+  const end = client.indexOf("const rtc2Online", start);
+  const block = client.slice(start, end);
+  assert.match(block, /return;/);
+  assert.match(block, /scheduleRtc2Resume\("network-change"\)/);
+});
+
+test("RTC v2 only resumes on online when the peer is not already connected", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /const rtc2Online = \(\) =>/);
+  assert.match(client, /peerConnection\.connectionState !== "connected"/);
+  assert.match(client, /scheduleRtc2Resume\("network-online"\)/);
+  assert.match(client, /event: "network-offline-v2"/);
+});
