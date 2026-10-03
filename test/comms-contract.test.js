@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video7/);
+    assert.match(read(file), /app\.js\?v=20261003-video8/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -141,7 +141,7 @@ test("video capture and sender bitrate are tuned for lesson calls", () => {
   assert.match(client, /width: \{ ideal: 640, max: 960 \}/);
   assert.match(client, /height: \{ ideal: 360, max: 540 \}/);
   assert.match(client, /frameRate: \{ ideal: 20, max: 24 \}/);
-  assert.match(client, /maxBitrate = 500000/);
+  assert.match(client, /maxBitrate = 500_000/);
   assert.match(client, /maxFramerate = 20/);
   assert.match(client, /degradationPreference = "maintain-framerate"/);
 });
