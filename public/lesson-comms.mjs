@@ -123,6 +123,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     else showView("chat");
   });
   closeButton.addEventListener("click", closePanel);
+  remoteVideo.addEventListener("click", () => {
+    remoteVideo.play().catch(() => {});
+  });
 
   function setCallState(text) {
     callState.textContent = text;
@@ -182,6 +185,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       } else if (!remoteStream.getTracks().includes(track)) {
         remoteStream.addTrack(track);
       }
+      remoteVideo.play().catch((error) => {
+        console.warn("Remote video autoplay was blocked", error);
+        setCallState("Связь есть. Нажмите на окно видео для запуска.");
+      });
       setCallState("Соединение установлено");
     });
 
@@ -189,10 +196,45 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       if (pc !== peerConnection) return;
       if (pc.connectionState === "connected") setCallState("Соединение установлено");
       if (pc.connectionState === "connecting") setCallState("Соединяем…");
-      if (["failed", "disconnected"].includes(pc.connectionState)) {
+      if (pc.connectionState === "failed") {
+        setCallState("Не удалось проложить медиаканал. Нужен TURN.");
+      } else if (pc.connectionState === "disconnected") {
         setCallState("Связь прервалась. Пытаемся переподключиться…");
       }
       if (pc.connectionState === "closed") setCallState("Звонок завершён");
+      socket.emit("rtc:debug", {
+        event: "connectionstate",
+        state: pc.connectionState,
+      });
+    });
+
+    pc.addEventListener("iceconnectionstatechange", () => {
+      if (pc !== peerConnection) return;
+      const state = pc.iceConnectionState;
+      if (state === "checking") setCallState("Проверяем сетевой маршрут…");
+      if (state === "connected" || state === "completed") setCallState("Соединение установлено");
+      if (state === "failed") setCallState("ICE failed: прямой маршрут не найден. Нужен TURN.");
+      socket.emit("rtc:debug", {
+        event: "iceconnectionstate",
+        state,
+      });
+    });
+
+    pc.addEventListener("icecandidateerror", (event) => {
+      console.warn("ICE candidate error", event);
+      socket.emit("rtc:debug", {
+        event: "icecandidateerror",
+        errorCode: event.errorCode || null,
+        errorText: String(event.errorText || "").slice(0, 300),
+        url: String(event.url || "").slice(0, 300),
+      });
+    });
+
+    pc.addEventListener("icegatheringstatechange", () => {
+      socket.emit("rtc:debug", {
+        event: "icegatheringstate",
+        state: pc.iceGatheringState,
+      });
     });
 
     return pc;
