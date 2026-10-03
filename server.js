@@ -293,37 +293,6 @@ function staticWebrtcIceServers() {
   return servers;
 }
 
-function trimCloudflareTurnIceServers(servers) {
-  if (!Array.isArray(servers)) return [];
-  return servers
-    .map((server) => {
-      const originalUrls = Array.isArray(server?.urls)
-        ? server.urls
-        : server?.urls
-          ? [server.urls]
-          : [];
-      const urls = originalUrls.map((url) => String(url || "").trim()).filter(Boolean);
-
-      const udpTurn = urls.filter(
-        (url) => /^turn:/i.test(url) && /[?&]transport=udp(?:&|$)/i.test(url)
-      );
-      const tls443 = urls.find((url) => /^turns:.*:443(?:[/?]|$)/i.test(url));
-      const selected = [...udpTurn, ...(tls443 ? [tls443] : [])];
-
-      // If Cloudflare changes the response shape, keep one original TURN URL
-      // instead of accidentally returning no relay fallback at all.
-      const fallback = urls.find((url) => /^turns?:/i.test(url));
-      const finalUrls = selected.length ? selected : fallback ? [fallback] : [];
-
-      if (!finalUrls.length) return null;
-      return {
-        ...server,
-        urls: Array.isArray(server?.urls) ? finalUrls : finalUrls[0],
-      };
-    })
-    .filter(Boolean);
-}
-
 async function cloudflareTurnIceServers() {
   if (!CLOUDFLARE_TURN_KEY_ID || !CLOUDFLARE_TURN_API_TOKEN) return null;
   const now = Date.now();
@@ -355,11 +324,8 @@ async function cloudflareTurnIceServers() {
     const payload = await response.json();
     if (!Array.isArray(payload.iceServers)) return null;
 
-    const iceServers = trimCloudflareTurnIceServers(payload.iceServers);
-    if (!iceServers.length) return null;
-
     cloudflareTurnCache = {
-      iceServers,
+      iceServers: payload.iceServers,
       expiresAt: Date.now() + CLOUDFLARE_TURN_CACHE_MS,
     };
     return cloudflareTurnCache.iceServers;
