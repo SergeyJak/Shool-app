@@ -497,3 +497,20 @@ test("RTC v2 cache bust is active on both lesson pages", () => {
   assert.match(read("public/teacher.html"), /app\.js\?v=20261003-rtc2/);
   assert.match(read("public/student.html"), /app\.js\?v=20261003-rtc2/);
 });
+
+
+test("RTC v2 always targets the newest socket for a stable client id", () => {
+  const server = read("server.js");
+  assert.match(server, /socket\.data\.connectedAt = Date\.now\(\)/);
+  assert.match(server, /function rtc2SocketForClient\(lessonId, clientId\)/);
+  assert.match(server, /peer\.data\.connectedAt/);
+  assert.match(server, /newest\.data\.connectedAt/);
+});
+
+test("RTC v2 deduplicates lesson recipients by stable client id", () => {
+  const server = read("server.js");
+  assert.match(server, /function rtc2UniquePeersForLesson\(lessonId, excludeClientId = null\)/);
+  assert.match(server, /const peersByClientId = new Map\(\)/);
+  assert.match(server, /const recipientPeers = rtc2UniquePeersForLesson\(lessonId, callerClientId\)/);
+  assert.match(server, /const recipients = recipientPeers\.length/);
+});
