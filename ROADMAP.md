@@ -171,13 +171,25 @@ Session: 2026-10-01
 - [ ] уведомления внутри кабинета
 - [ ] экспорт результата урока или задания в PDF
 
+## Phase 8 — Связь внутри занятия
+
+- [x] signaling WebRTC через существующий Socket.IO room урока
+- [x] 1:1 аудио/видео teacher ↔ student
+- [x] включение / выключение микрофона и камеры
+- [x] корректное завершение звонка и reconnect
+- [x] realtime-чат внутри lessonId
+- [x] история чата в MongoDB
+- [x] STUN-конфигурация и готовность к TURN через env
+- [ ] настроить production TURN и проверить NAT / мобильные сети
+- [ ] выбор камеры / микрофона / динамика
+- [ ] демонстрация экрана
+- [ ] индикатор качества соединения
+- [ ] групповой звонок при реальной потребности
+
 ## Пока сознательно НЕ добавляем
 
 Чтобы не превратить проект в перегруженный SaaS раньше времени:
 
-- [ ] встроенный чат
-- [ ] голосовые звонки
-- [ ] видеозвонки
 - [ ] платежи
 - [ ] сложное расписание
 - [ ] мобильные native-приложения
@@ -193,3 +205,13 @@ Session: 2026-10-01
 5. PDF, страницы, аннотации и follow-state полностью изолированы по lesson/session.
 6. После перезапуска Railway все данные остаются в MongoDB.
 7. Добавление новых пользователей не требует изменений в коде или ручного создания отдельных страниц.
+
+
+### Phase 8 validation note
+- [x] Cross-network / inter-city 1:1 video calls validated through Cloudflare TURN.
+- [x] Stable production profile fixed at 640×360, 20 fps, 500 kbps video, 48 kbps audio.
+- [x] TURN relay forced for reliability; TLS/TCP 443 preferred when Cloudflare credentials provide it.
+- [x] RTC quality telemetry added for jitter, packet loss, bandwidth and selected candidate pair.
+- [ ] Device selector.
+- [ ] Screen sharing.
+- [ ] Connection quality indicator in UI.

@@ -15,6 +15,7 @@ const {
 } = require("./lib/annotation-utils");
 const { createFollowState } = require("./lib/follow-state");
 const { createMemoryRateLimiter } = require("./lib/rate-limit");
+const { normalizeChatMessage, normalizeRtcSignal } = require("./lib/realtime-comms");
 const { parseSingleByteRange } = require("./lib/http-range");
 const {
   normalizeUsername,
@@ -56,6 +57,22 @@ const AUTH_SECRET =
   crypto.createHash("sha256").update(`school-app:${MONGODB_URI}`).digest("hex");
 const ADMIN_TELEGRAM_BOT_TOKEN = String(process.env.ADMIN_TELEGRAM_BOT_TOKEN || "").trim();
 const ADMIN_TELEGRAM_CHAT_ID = String(process.env.ADMIN_TELEGRAM_CHAT_ID || "").trim();
+const WEBRTC_STUN_URLS = String(
+  process.env.WEBRTC_STUN_URLS ||
+    "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302,stun:stun.cloudflare.com:3478"
+)
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const WEBRTC_TURN_URL = String(process.env.WEBRTC_TURN_URL || "").trim();
+const WEBRTC_TURN_USERNAME = String(process.env.WEBRTC_TURN_USERNAME || "").trim();
+const WEBRTC_TURN_CREDENTIAL = String(process.env.WEBRTC_TURN_CREDENTIAL || "").trim();
+const CLOUDFLARE_TURN_KEY_ID = String(process.env.CLOUDFLARE_TURN_KEY_ID || "").trim();
+const CLOUDFLARE_TURN_API_TOKEN = String(process.env.CLOUDFLARE_TURN_API_TOKEN || "").trim();
+const CLOUDFLARE_TURN_TTL_SECONDS = Math.max(
+  600,
+  Math.min(86400, Number(process.env.CLOUDFLARE_TURN_TTL_SECONDS || 14400))
+);
 
 const app = express();
 app.disable("x-powered-by");
@@ -79,8 +96,10 @@ let users;
 let lessons;
 let materials;
 let homeworkSubmissions;
+let lessonMessages;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
+const rtcCallsByLesson = new Map();
 
 const loginIpLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
 const loginCredentialLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
@@ -251,6 +270,90 @@ async function validateLessonMembers(teacherIds, studentIds) {
 
 function lessonRoom(lessonId) {
   return `lesson:${lessonId}`;
+}
+
+function staticWebrtcIceServers() {
+  const servers = [];
+  if (WEBRTC_STUN_URLS.length) servers.push({ urls: WEBRTC_STUN_URLS });
+  if (WEBRTC_TURN_URL) {
+    const turn = { urls: WEBRTC_TURN_URL };
+    if (WEBRTC_TURN_USERNAME) turn.username = WEBRTC_TURN_USERNAME;
+    if (WEBRTC_TURN_CREDENTIAL) turn.credential = WEBRTC_TURN_CREDENTIAL;
+    servers.push(turn);
+  }
+  return servers;
+}
+
+async function cloudflareTurnIceServers() {
+  if (!CLOUDFLARE_TURN_KEY_ID || !CLOUDFLARE_TURN_API_TOKEN) return null;
+  const endpoint =
+    `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(CLOUDFLARE_TURN_KEY_ID)}/credentials/generate-ice-servers`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${CLOUDFLARE_TURN_API_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ttl: CLOUDFLARE_TURN_TTL_SECONDS }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Cloudflare TURN credential request failed: ${response.status} ${body.slice(0, 200)}`
+    );
+  }
+
+  const payload = await response.json();
+  if (!Array.isArray(payload.iceServers)) return null;
+
+  const tlsOnly = payload.iceServers
+    .map((server) => {
+      const urls = Array.isArray(server.urls) ? server.urls : [server.urls].filter(Boolean);
+      const filteredUrls = urls.filter(
+        (url) => typeof url === "string" && /^turns:.*:443\?transport=tcp$/i.test(url)
+      );
+      if (!filteredUrls.length) return null;
+      return {
+        ...server,
+        urls: filteredUrls,
+      };
+    })
+    .filter(Boolean);
+
+  return tlsOnly.length ? tlsOnly : payload.iceServers;
+}
+
+function publicChatMessage(row) {
+  return {
+    id: row._id,
+    lessonId: row.lessonId,
+    userId: row.userId,
+    displayName: row.displayName,
+    role: row.role,
+    text: row.text,
+    createdAt: row.createdAt,
+  };
+}
+
+function rtcPeer(socket) {
+  return {
+    id: socket.id,
+    role: socket.data.role,
+    displayName: socket.data.user?.displayName || socket.data.user?.username || socket.data.role,
+  };
+}
+
+function activeRtcCall(lessonId) {
+  const call = rtcCallsByLesson.get(lessonId);
+  if (!call) return null;
+  const caller = io.sockets.sockets.get(call.callerId);
+  if (!caller || caller.data.lessonId !== lessonId) {
+    rtcCallsByLesson.delete(lessonId);
+    return null;
+  }
+  return { ...call, caller };
 }
 
 async function lessonForUser(user, lessonId) {
@@ -1494,6 +1597,27 @@ app.get("/api/performance", requireApiRole("admin"), async (req, res, next) => {
 });
 
 
+app.get("/api/webrtc/config", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  try {
+    const cloudflareIceServers = await cloudflareTurnIceServers();
+    if (cloudflareIceServers?.length) {
+      return res.json({
+        iceServers: cloudflareIceServers,
+        source: "cloudflare-turn",
+        iceTransportPolicy: "relay",
+      });
+    }
+  } catch (error) {
+    console.error("Cloudflare TURN config failed", error);
+  }
+  res.json({
+    iceServers: staticWebrtcIceServers(),
+    source: "static-fallback",
+    iceTransportPolicy: "all",
+  });
+});
+
 app.get("/api/annotations/:page", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
   try {
     const page = Number(req.params.page);
@@ -1603,6 +1727,188 @@ io.on("connection", (socket) => {
   socket.data.followControllerKey = controllerKey;
   socket.join(room);
 
+  const waitingCall = activeRtcCall(lessonId);
+  if (waitingCall && waitingCall.callerId !== socket.id && role !== "observer") {
+    socket.emit("rtc:incoming-call", {
+      from: waitingCall.callerId,
+      caller: rtcPeer(waitingCall.caller),
+    });
+  }
+
+  socket.on("rtc:call", async (_payload, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    socket.data.rtcReady = true;
+    rtcCallsByLesson.set(lessonId, {
+      callerId: socket.id,
+      createdAt: Date.now(),
+    });
+
+    try {
+      const roomSockets = await io.in(room).fetchSockets();
+      const recipients = roomSockets
+        .filter((peer) => peer.id !== socket.id && peer.data.role !== "observer")
+        .map(rtcPeer);
+
+      socket.to(room).emit("rtc:incoming-call", {
+        from: socket.id,
+        caller: rtcPeer(socket),
+      });
+      console.info(`RTC call requested lesson=${lessonId} role=${role} recipients=${recipients.length}`);
+      ack?.({ ok: true, recipients });
+    } catch (error) {
+      console.error("RTC call request failed", error);
+      ack?.({ ok: false, error: "RTC_CALL_FAILED" });
+    }
+  });
+
+  socket.on("rtc:accept", ({ callerId } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const call = activeRtcCall(lessonId);
+    if (!call || call.callerId !== callerId) {
+      return ack?.({ ok: false, error: "CALL_NOT_FOUND" });
+    }
+
+    socket.data.rtcReady = true;
+    rtcCallsByLesson.delete(lessonId);
+    console.info(`RTC call accepted lesson=${lessonId} callerRole=${call.caller.data.role} peerRole=${role}`);
+    call.caller.emit("rtc:accepted", {
+      peer: rtcPeer(socket),
+    });
+    ack?.({ ok: true, caller: rtcPeer(call.caller) });
+  });
+
+  socket.on("rtc:decline", ({ callerId } = {}) => {
+    const call = activeRtcCall(lessonId);
+    if (!call || call.callerId !== callerId) return;
+    rtcCallsByLesson.delete(lessonId);
+    call.caller.emit("rtc:declined", { by: rtcPeer(socket) });
+  });
+
+  socket.on("rtc:cancel", () => {
+    const call = activeRtcCall(lessonId);
+    if (!call || call.callerId !== socket.id) return;
+    rtcCallsByLesson.delete(lessonId);
+    socket.to(room).emit("rtc:cancelled", { from: socket.id });
+  });
+
+  socket.on("rtc:ready", async (_payload, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    socket.data.rtcReady = true;
+    try {
+      const roomSockets = await io.in(room).fetchSockets();
+      const peers = roomSockets
+        .filter((peer) =>
+          peer.id !== socket.id &&
+          peer.data.rtcReady === true &&
+          peer.data.role !== "observer"
+        )
+        .map(rtcPeer);
+      socket.to(room).emit("rtc:peer-ready", rtcPeer(socket));
+      ack?.({ ok: true, peers });
+    } catch (error) {
+      console.error("RTC presence failed", error);
+      ack?.({ ok: false, error: "RTC_PRESENCE_FAILED" });
+    }
+  });
+
+  socket.on("rtc:debug", (payload = {}) => {
+    if (role === "observer") return;
+    const event = String(payload.event || "").slice(0, 80);
+    const state = String(payload.state || "").slice(0, 80);
+    const errorCode = Number.isFinite(Number(payload.errorCode)) ? Number(payload.errorCode) : null;
+    const errorText = String(payload.errorText || "").slice(0, 300);
+    const url = String(payload.url || "").slice(0, 300);
+    console.info(
+      `RTC debug lesson=${lessonId} role=${role} event=${event} state=${state} errorCode=${errorCode ?? ""} errorText=${errorText} url=${url}`
+    );
+  });
+
+  socket.on("rtc:signal", (payload, ack) => {
+    if (role === "observer" || socket.data.rtcReady !== true) {
+      return ack?.({ ok: false, error: "READ_ONLY" });
+    }
+    const signal = normalizeRtcSignal(payload);
+    if (!signal) return ack?.({ ok: false, error: "INVALID_SIGNAL" });
+
+    const target = io.sockets.sockets.get(signal.targetId);
+    if (
+      !target ||
+      target.data.lessonId !== lessonId ||
+      target.data.rtcReady !== true ||
+      target.data.role === "observer"
+    ) {
+      return ack?.({ ok: false, error: "PEER_UNAVAILABLE" });
+    }
+
+    target.emit("rtc:signal", {
+      from: socket.id,
+      fromRole: role,
+      description: signal.description,
+      candidate: signal.candidate,
+    });
+    ack?.({ ok: true });
+  });
+
+  socket.on("rtc:leave", () => {
+    const call = activeRtcCall(lessonId);
+    if (call?.callerId === socket.id) rtcCallsByLesson.delete(lessonId);
+    if (socket.data.rtcReady !== true) return;
+    socket.data.rtcReady = false;
+    socket.to(room).emit("rtc:peer-left", { id: socket.id });
+  });
+
+  socket.on("chat:history", async (_payload, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    try {
+      const rows = await lessonMessages
+        .find({ lessonId })
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray();
+      ack?.({
+        ok: true,
+        currentUserId: socket.data.user._id,
+        messages: rows.reverse().map(publicChatMessage),
+      });
+    } catch (error) {
+      console.error("Chat history failed", error);
+      ack?.({ ok: false, error: "CHAT_HISTORY_FAILED" });
+    }
+  });
+
+  socket.on("chat:send", async ({ text } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const normalizedText = normalizeChatMessage(text);
+    if (!normalizedText) return ack?.({ ok: false, error: "INVALID_MESSAGE" });
+
+    const nowMs = Date.now();
+    if (nowMs - Number(socket.data.lastChatAt || 0) < 300) {
+      return ack?.({ ok: false, error: "TOO_FAST" });
+    }
+    socket.data.lastChatAt = nowMs;
+
+    try {
+      const row = {
+        _id: crypto.randomUUID(),
+        lessonId,
+        userId: socket.data.user._id,
+        displayName:
+          socket.data.user.displayName ||
+          socket.data.user.username ||
+          (role === "teacher" ? "Учитель" : "Ученик"),
+        role,
+        text: normalizedText,
+        createdAt: new Date(),
+      };
+      await lessonMessages.insertOne(row);
+      io.to(room).emit("chat:message", publicChatMessage(row));
+      ack?.({ ok: true, id: row._id });
+    } catch (error) {
+      console.error("Chat send failed", error);
+      ack?.({ ok: false, error: "CHAT_SAVE_FAILED" });
+    }
+  });
+
   if (controllerKey) teacherFollow.reconnect(controllerKey);
   socket.emit("teacher:follow:state", teacherFollow.snapshot(controllerKey));
   if (teacherPageByLesson.has(lessonId)) {
@@ -1655,6 +1961,14 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    const call = activeRtcCall(lessonId);
+    if (call?.callerId === socket.id) {
+      rtcCallsByLesson.delete(lessonId);
+      socket.to(room).emit("rtc:cancelled", { from: socket.id });
+    }
+    if (socket.data.rtcReady === true) {
+      socket.to(room).emit("rtc:peer-left", { id: socket.id });
+    }
     if (role !== "teacher" || !controllerKey) return;
     teacherFollow.disconnect(controllerKey);
   });
@@ -1884,6 +2198,7 @@ async function start() {
   lessons = db.collection(collectionName("lessons"));
   materials = db.collection(collectionName("materials"));
   homeworkSubmissions = db.collection(collectionName("homework_submissions"));
+  lessonMessages = db.collection(collectionName("lesson_messages"));
 
   if (DATA_NAMESPACE && await users.countDocuments({}) === 0) {
     const sourceUsers = await db.collection("users").find({}).toArray();
@@ -1907,6 +2222,7 @@ async function start() {
   await materials.createIndex({ ownerId: 1, createdAt: -1 });
   await homeworkSubmissions.createIndex({ lessonId: 1, submittedAt: -1 });
   await homeworkSubmissions.createIndex({ lessonId: 1, participantKey: 1 }, { unique: true });
+  await lessonMessages.createIndex({ lessonId: 1, createdAt: -1 });
 
   async function ensureUser({ username, displayName, role, passwordSalt, passwordHash, lessonIds = [] }) {
     const id = normalizeUsername(username);
