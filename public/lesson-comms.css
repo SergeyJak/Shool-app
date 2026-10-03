@@ -570,3 +570,61 @@
     font-size: 27px;
   }
 }
+
+
+/* Explicit window actions: minimize and close are not call controls */
+.lesson-comms-window-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.lesson-comms-window-actions .lesson-comms-minimize,
+.lesson-comms-window-actions .lesson-comms-close {
+  width: auto;
+  min-width: 82px;
+  height: 38px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid #d7e0e8;
+  border-radius: 11px;
+  background: #fff;
+  color: #465665;
+  font-size: 12px;
+  font-weight: 700;
+}
+.lesson-comms-window-actions .lesson-comms-close {
+  min-width: 76px;
+}
+.lesson-comms-window-actions button:hover {
+  background: #eef4f8;
+}
+@media (max-width: 600px) {
+  .lesson-comms-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .lesson-comms-brand {
+    flex: 1 1 100%;
+  }
+  .lesson-comms-window-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+  .lesson-comms-window-actions .lesson-comms-minimize,
+  .lesson-comms-window-actions .lesson-comms-close {
+    min-width: 0;
+    flex: 0 1 auto;
+    height: 40px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  .lesson-comms-window-actions .lesson-comms-minimize span,
+  .lesson-comms-window-actions .lesson-comms-close span {
+    display: inline;
+  }
+}
