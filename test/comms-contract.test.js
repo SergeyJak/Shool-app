@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-callid1/);
+    assert.match(read(file), /app\.js\?v=20261003-handover1/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -449,7 +449,36 @@ test("WebRTC protocol changes are cache-busted on lesson pages", () => {
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
 
-  assert.match(app, /lesson-comms\.mjs\?v=20261003-callid1/);
-  assert.match(teacher, /app\.js\?v=20261003-callid1/);
-  assert.match(student, /app\.js\?v=20261003-callid1/);
+  assert.match(app, /lesson-comms\.mjs\?v=20261003-handover1/);
+  assert.match(teacher, /app\.js\?v=20261003-handover1/);
+  assert.match(student, /app\.js\?v=20261003-handover1/);
+});
+
+
+test("failed WebRTC peers are never reused across call generations", () => {
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(client, /let peerCallId = null/);
+  assert.match(
+    client,
+    /activePeerId === peerId[\s\S]{0,160}peerCallId === activeCallId[\s\S]{0,180}!\["failed", "closed"\]\.includes/
+  );
+  assert.match(client, /peerCallId = connectionCallId/);
+  assert.match(client, /peerCallId = null/);
+});
+
+test("network handover can trigger bounded ICE restart recovery", () => {
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(client, /let iceRestartAttempts = 0/);
+  assert.match(client, /iceRestartAttempts >= 2/);
+  assert.match(client, /createOffer\(activePeerId, \{ iceRestart: true \}\)/);
+  assert.match(client, /createOffer\(iceRestart \? \{ iceRestart: true \} : undefined\)/);
+  assert.match(client, /event: "ice-restart"/);
+});
+
+test("network handover WebRTC fix is cache-busted on lesson pages", () => {
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-handover1/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-handover1/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-handover1/);
 });
