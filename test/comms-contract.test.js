@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video8/);
+    assert.match(read(file), /app\.js\?v=20261003-video9/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -170,4 +170,26 @@ test("selected ICE pair diagnostics include relay transport protocol", () => {
   const client = read("public/lesson-comms.mjs");
   assert.match(client, /relayProtocol/);
   assert.match(client, /event: "selected-pair"/);
+});
+
+
+test("incoming call ringtone is soft, repeating and stops with call state", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /new AudioContextClass\(\)/);
+  assert.match(client, /oscillator\.type = "sine"/);
+  assert.match(client, /window\.setInterval\(playRingtoneBubble, 2400\)/);
+  assert.match(client, /function stopRingtone\(\)/);
+  assert.match(client, /function resetIncomingCall\(\)[\s\S]{0,120}stopRingtone\(\)/);
+  assert.match(client, /rtc:incoming-call[\s\S]{0,500}startRingtone\(\)/);
+});
+
+test("lesson video call uses friendly child-oriented visual treatment", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+  assert.match(client, /lesson-comms-mascot/);
+  assert.match(client, /Вы на занятии вместе/);
+  assert.match(client, /К вам звонят/);
+  assert.match(css, /lesson-comms-brand/);
+  assert.match(css, /linear-gradient/);
+  assert.match(css, /lesson-comms-controls button\.primary/);
 });
