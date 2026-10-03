@@ -126,21 +126,15 @@ test("RTC quality monitor reports bandwidth jitter and packet loss without affec
 });
 
 
-test("Cloudflare TURN prefers UDP and keeps one TLS 443 fallback", () => {
+test("Cloudflare TURN keeps transport fallbacks without relay-only ICE", () => {
   const server = read("server.js");
-  assert.match(server, /function trimCloudflareTurnIceServers\(servers\)/);
-  assert.match(server, /transport=udp/);
-  assert.match(server, /\^turns:\.\*:443/);
-  assert.match(server, /const iceServers = trimCloudflareTurnIceServers\(payload\.iceServers\)/);
-  assert.match(server, /cloudflareTurnCache = \{[\s\S]{0,140}iceServers,/);
+  assert.match(server, /cloudflareTurnCache = \{[\s\S]{0,180}iceServers: payload\.iceServers/);
+  assert.match(server, /return cloudflareTurnCache\.iceServers/);
+  assert.doesNotMatch(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
+  assert.doesNotMatch(server, /\^turns:\.\*:443\\\?transport=tcp\$\/i/);
   assert.match(server, /source: "hybrid-stun-cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
 });
 
-test("Cloudflare TURN trimming keeps a relay fallback if provider URL shape changes", () => {
-  const server = read("server.js");
-  assert.match(server, /const fallback = urls\.find\(\(url\) => \/\^turns\?:\/i\.test\(url\)\)/);
-  assert.match(server, /selected\.length \? selected : fallback \? \[fallback\] : \[\]/);
-});
 
 test("selected ICE pair diagnostics include relay transport protocol", () => {
   const client = read("public/lesson-comms.mjs");
