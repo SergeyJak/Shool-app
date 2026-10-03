@@ -126,6 +126,7 @@ let pageNumber = 1;
 let zoom = 1;
 let pinchStartDistance = null;
 let pinchStartZoom = 1;
+let pinchGesture = null;
 let handPanLastTouch = null;
 let zoomRenderTimer = null;
 let tool = "hand";
@@ -1328,6 +1329,44 @@ function touchDistance(touches) {
   return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 }
 
+function touchCenter(touches) {
+  const [a, b] = touches;
+  return {
+    x: (a.clientX + b.clientX) / 2,
+    y: (a.clientY + b.clientY) / 2,
+  };
+}
+
+async function finishPinchGesture() {
+  if (!pinchGesture) return;
+
+  const gesture = pinchGesture;
+  pinchGesture = null;
+  pinchStartDistance = null;
+
+  const shell = document.getElementById("pageShell");
+  if (!shell) return;
+
+  const targetCenter = gesture.lastCenter;
+  const anchorX = gesture.anchorX;
+  const anchorY = gesture.anchorY;
+
+  shell.style.transform = "";
+  shell.style.transformOrigin = "";
+  shell.style.willChange = "";
+
+  if (pdfDoc) {
+    await renderPage();
+  }
+
+  const rect = shell.getBoundingClientRect();
+  const anchorScreenX = rect.left + rect.width * anchorX;
+  const anchorScreenY = rect.top + rect.height * anchorY;
+
+  stage.scrollLeft += anchorScreenX - targetCenter.x;
+  window.scrollBy(0, anchorScreenY - targetCenter.y);
+}
+
 stage.addEventListener("touchstart", (event) => {
   if (tool !== "hand") return;
 
@@ -1342,6 +1381,22 @@ stage.addEventListener("touchstart", (event) => {
     handPanLastTouch = null;
     pinchStartDistance = touchDistance(event.touches);
     pinchStartZoom = zoom;
+
+    const shell = document.getElementById("pageShell");
+    const center = touchCenter(event.touches);
+    const rect = shell?.getBoundingClientRect();
+    if (shell && rect?.width && rect?.height) {
+      const originX = Math.max(0, Math.min(rect.width, center.x - rect.left));
+      const originY = Math.max(0, Math.min(rect.height, center.y - rect.top));
+      pinchGesture = {
+        startCenter: center,
+        lastCenter: center,
+        anchorX: originX / rect.width,
+        anchorY: originY / rect.height,
+      };
+      shell.style.transformOrigin = `${originX}px ${originY}px`;
+      shell.style.willChange = "transform";
+    }
   }
 }, { passive: true });
 
@@ -1361,18 +1416,33 @@ stage.addEventListener("touchmove", (event) => {
     return;
   }
 
-  if (event.touches.length !== 2 || !pinchStartDistance) return;
+  if (event.touches.length !== 2 || !pinchStartDistance || !pinchGesture) return;
 
   event.preventDefault();
   const nextDistance = touchDistance(event.touches);
+  const center = touchCenter(event.touches);
   const factor = nextDistance / pinchStartDistance;
   const nextZoom = clampZoom(pinchStartZoom * factor);
+  const scale = nextZoom / pinchStartZoom;
+  const translateX = center.x - pinchGesture.startCenter.x;
+  const translateY = center.y - pinchGesture.startCenter.y;
+  const shell = document.getElementById("pageShell");
 
-  if (Math.abs(nextZoom - zoom) < 0.03) return;
-  setZoom(nextZoom);
+  pinchGesture.lastCenter = center;
+  zoom = nextZoom;
+  updateZoomControls();
+
+  if (shell) {
+    shell.style.transform =
+      `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+  }
 }, { passive: false });
 
 stage.addEventListener("touchend", (event) => {
+  if (event.touches.length < 2 && pinchGesture) {
+    finishPinchGesture().catch(() => {});
+  }
+
   if (event.touches.length === 1) {
     const touch = event.touches[0];
     handPanLastTouch = { x: touch.clientX, y: touch.clientY };
@@ -1387,6 +1457,7 @@ stage.addEventListener("touchend", (event) => {
 
 stage.addEventListener("touchcancel", () => {
   handPanLastTouch = null;
+  if (pinchGesture) finishPinchGesture().catch(() => {});
   pinchStartDistance = null;
 }, { passive: true });
 
