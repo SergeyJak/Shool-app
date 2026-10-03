@@ -72,7 +72,18 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video1/);
+    assert.match(read(file), /app\.js\?v=20261003-video2/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
+});
+
+
+test("incoming call has a prominent ringing indicator and explicit actions", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+  assert.match(client, /lesson-comms-incoming/);
+  assert.match(client, /Ответить/);
+  assert.match(client, /Отклонить/);
+  assert.match(client, /videoButton\.classList\.add\("ringing"\)/);
+  assert.match(css, /lesson-comms-video-button\.ringing/);
 });
