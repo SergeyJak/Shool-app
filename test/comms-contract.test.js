@@ -379,3 +379,15 @@ test("send button does not steal focus from the chat input on touch devices", ()
   assert.match(client, /document\.activeElement === chatInput/);
   assert.match(client, /event\.preventDefault\(\)/);
 });
+
+
+test("mobile chat hides its launcher so the composer stays usable", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /launcher\.classList\.toggle\("chat-open", !isVideo\)/);
+  assert.match(client, /launcher\.classList\.remove\("chat-open"\)/);
+  assert.match(css, /lesson-comms-launcher\.chat-open[\s\S]{0,100}display: none/);
+  assert.match(css, /--lesson-viewport-height/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
+});
