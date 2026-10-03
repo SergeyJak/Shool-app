@@ -391,3 +391,26 @@ test("mobile chat hides its launcher so the composer stays usable", () => {
   assert.match(css, /--lesson-viewport-height/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
 });
+
+
+test("repeated WebRTC calls are isolated by call id and clean old quality monitors", () => {
+  const client = read("public/lesson-comms.mjs");
+  const server = read("server.js");
+  const realtime = read("lib/realtime-comms.js");
+
+  assert.match(client, /let activeCallId = null/);
+  assert.match(client, /activeCallId = crypto\.randomUUID\(\)/);
+  assert.match(client, /socket\.emit\("rtc:call", \{ callId: activeCallId \}/);
+  assert.match(client, /payload\.callId !== activeCallId/);
+  assert.match(client, /callId !== activeCallId/);
+  assert.match(client, /let rtcQualityTimer = null/);
+  assert.match(client, /clearInterval\(rtcQualityTimer\)/);
+
+  assert.match(server, /function normalizeRtcCallId/);
+  assert.match(server, /rtcCallId/);
+  assert.match(server, /signal\.callId/);
+  assert.match(server, /rtc:ended", \{ from: socket\.id, callId \}/);
+
+  assert.match(realtime, /const callId/);
+  assert.match(realtime, /return \{ callId, targetId/);
+});
