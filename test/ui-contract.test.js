@@ -583,6 +583,23 @@ test("mobile admin navigation stays inside viewport with four sections", () => {
   assert.match(css, /\.landing-side-button\s*\{[\s\S]*display:\s*none/);
 });
 
+test("deactivated admin users and lessons are hidden behind dedicated subtabs", () => {
+  const dashboard = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+
+  assert.match(dashboard, /data-user-state="active"/);
+  assert.match(dashboard, /data-user-state="inactive"/);
+  assert.match(dashboard, /data-lesson-state="active"/);
+  assert.match(dashboard, /data-lesson-state="inactive"/);
+  assert.match(dashboard, /Деактивированные/);
+  assert.match(cabinet, /adminUserState === "active" \? user\.active : !user\.active/);
+  assert.match(cabinet, /adminLessonState === "active" \? lesson\.active : !lesson\.active/);
+  assert.match(cabinet, /activeUsersCount/);
+  assert.match(cabinet, /inactiveUsersCount/);
+  assert.match(cabinet, /activeLessonsCount/);
+  assert.match(cabinet, /inactiveLessonsCount/);
+});
+
 test("admin management UI is responsive", () => {
   const css = read("public/landing.css");
   assert.match(css, /\.admin-panel/);
