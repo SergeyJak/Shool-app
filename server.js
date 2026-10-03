@@ -310,9 +310,9 @@ async function cloudflareTurnIceServers() {
   const payload = await response.json();
   if (!Array.isArray(payload.iceServers)) return null;
 
-  // Keep every Cloudflare TURN transport. Some mobile/tablet networks cannot
-  // establish TURN over TLS/TCP 443 even though UDP or plain TCP relay works.
-  // iceTransportPolicy remains "relay", so media still stays on TURN.
+  // Keep every Cloudflare TURN transport. The API response is combined with
+  // our independent STUN servers so mobile networks are not dependent on
+  // Cloudflare STUN reachability for server-reflexive candidates.
   return payload.iceServers;
 }
 
@@ -1601,9 +1601,12 @@ app.get("/api/webrtc/config", requireApiRole("teacher", "student"), requireLesso
   try {
     const cloudflareIceServers = await cloudflareTurnIceServers();
     if (cloudflareIceServers?.length) {
+      const iceServers = [];
+      if (WEBRTC_STUN_URLS.length) iceServers.push({ urls: WEBRTC_STUN_URLS });
+      iceServers.push(...cloudflareIceServers);
       return res.json({
-        iceServers: cloudflareIceServers,
-        source: "cloudflare-turn",
+        iceServers,
+        source: "hybrid-stun-cloudflare-turn",
         iceTransportPolicy: "all",
       });
     }

@@ -108,7 +108,7 @@ test("WebRTC config generates short-lived Cloudflare TURN credentials on the bac
   assert.match(server, /credentials\/generate-ice-servers/);
   assert.match(server, /Authorization: `Bearer \$\{CLOUDFLARE_TURN_API_TOKEN\}`/);
   assert.match(server, /body: JSON\.stringify\(\{ ttl: CLOUDFLARE_TURN_TTL_SECONDS \}\)/);
-  assert.match(server, /source: "cloudflare-turn"/);
+  assert.match(server, /source: "hybrid-stun-cloudflare-turn"/);
   assert.match(server, /source: "static-fallback"/);
 });
 
@@ -131,7 +131,7 @@ test("video call can collapse to opponent-only mini window and restore on click"
 test("Cloudflare TURN remains available while direct ICE fallback is allowed", () => {
   const server = read("server.js");
   const client = read("public/lesson-comms.mjs");
-  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
+  assert.match(server, /source: "hybrid-stun-cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
   assert.match(client, /iceTransportPolicy: iceConfig\.iceTransportPolicy/);
   assert.match(client, /event: "selected-pair"/);
   assert.match(client, /candidateType/);
@@ -165,7 +165,7 @@ test("Cloudflare TURN keeps transport fallbacks without relay-only ICE", () => {
   assert.match(server, /return payload\.iceServers/);
   assert.doesNotMatch(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
   assert.doesNotMatch(server, /\^turns:\.\*:443\\\?transport=tcp\$\/i/);
-  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
+  assert.match(server, /source: "hybrid-stun-cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
 });
 
 
@@ -481,4 +481,14 @@ test("network handover WebRTC fix is cache-busted on lesson pages", () => {
   assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-handover1/);
   assert.match(read("public/teacher.html"), /app\.js\?v=20261003-handover1/);
   assert.match(read("public/student.html"), /app\.js\?v=20261003-handover1/);
+});
+
+
+test("hybrid ICE config keeps independent STUN alongside Cloudflare TURN", () => {
+  const server = read("server.js");
+
+  assert.match(server, /if \(WEBRTC_STUN_URLS\.length\) iceServers\.push\(\{ urls: WEBRTC_STUN_URLS \}\)/);
+  assert.match(server, /iceServers\.push\(\.\.\.cloudflareIceServers\)/);
+  assert.match(server, /source: "hybrid-stun-cloudflare-turn"/);
+  assert.match(server, /iceTransportPolicy: "all"/);
 });
