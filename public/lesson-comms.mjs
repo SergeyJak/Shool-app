@@ -11,6 +11,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let currentView = null;
   let unread = 0;
   let currentUserId = null;
+  let pendingCallerId = null;
+  let outgoingCall = false;
+  let callAccepted = false;
 
   const launcher = document.createElement("div");
   launcher.className = "lesson-comms-launcher";
@@ -28,13 +31,23 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       <button class="lesson-comms-close" type="button" aria-label="Закрыть">×</button>
     </div>
     <div class="lesson-comms-view lesson-comms-video">
+      <div class="lesson-comms-incoming" hidden>
+        <div>
+          <strong class="lesson-comms-incoming-title">Входящий звонок</strong>
+          <span class="lesson-comms-incoming-name">Участник звонит…</span>
+        </div>
+        <div class="lesson-comms-incoming-actions">
+          <button class="lesson-comms-accept" type="button">Ответить</button>
+          <button class="lesson-comms-decline danger" type="button">Отклонить</button>
+        </div>
+      </div>
       <div class="lesson-comms-video-stage">
         <video class="lesson-comms-remote" autoplay playsinline></video>
         <video class="lesson-comms-local" autoplay playsinline muted></video>
         <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
       </div>
       <div class="lesson-comms-controls">
-        <button class="lesson-comms-start" type="button">Начать</button>
+        <button class="lesson-comms-start" type="button">Позвонить</button>
         <button class="lesson-comms-mic" type="button" disabled>🎙 Микрофон</button>
         <button class="lesson-comms-camera" type="button" disabled>📷 Камера</button>
         <button class="lesson-comms-hangup danger" type="button" disabled>Завершить</button>
@@ -60,6 +73,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const localVideo = panel.querySelector(".lesson-comms-local");
   const remoteVideo = panel.querySelector(".lesson-comms-remote");
   const callState = panel.querySelector(".lesson-comms-call-state");
+  const incomingBox = panel.querySelector(".lesson-comms-incoming");
+  const incomingName = panel.querySelector(".lesson-comms-incoming-name");
+  const acceptButton = panel.querySelector(".lesson-comms-accept");
+  const declineButton = panel.querySelector(".lesson-comms-decline");
   const startButton = panel.querySelector(".lesson-comms-start");
   const micButton = panel.querySelector(".lesson-comms-mic");
   const cameraButton = panel.querySelector(".lesson-comms-camera");
@@ -182,7 +199,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   async function createOffer(peerId) {
-    if (!localStream || role !== "teacher") return;
+    if (!localStream || !peerId) return;
     const pc = await ensurePeer(peerId);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -190,7 +207,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       targetId: peerId,
       description: pc.localDescription,
     });
-    setCallState("Ждём подключения ученика…");
+    setCallState("Соединяем…");
   }
 
   async function flushPendingCandidates() {
@@ -235,22 +252,23 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     socket.emit("rtc:ready", {}, async (result) => {
       if (!result?.ok) return;
       const peer = (result.peers || []).find((item) => item.role !== role) || result.peers?.[0];
-      if (peer && role === "teacher") {
-        try {
-          await createOffer(peer.id);
-        } catch (error) {
-          console.error("WebRTC offer failed", error);
-          setCallState("Не удалось начать видеосвязь.");
-        }
-      } else if (!peer) {
-        setCallState("Ждём второго участника…");
+      if (!peer) {
+        setCallState("Ждём переподключения второго участника…");
+        return;
+      }
+      const shouldOffer = role === "teacher" || String(socket.id) < String(peer.id);
+      if (!shouldOffer) return;
+      try {
+        await createOffer(peer.id);
+      } catch (error) {
+        console.error("WebRTC reconnect offer failed", error);
+        setCallState("Не удалось восстановить видеосвязь.");
       }
     });
   }
 
-  async function startCall() {
-    if (callStarted) return;
-    callStarted = true;
+  async function acquireLocalMedia() {
+    if (localStream) return true;
     setCallState("Запрашиваем доступ к камере и микрофону…");
     try {
       localStream = await navigator.mediaDevices.getUserMedia({
@@ -259,9 +277,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       });
       localVideo.srcObject = localStream;
       await localVideo.play().catch(() => {});
+      callStarted = true;
       updateMediaButtons();
-      setCallState("Ждём второго участника…");
-      announceReady();
+      return true;
     } catch (error) {
       callStarted = false;
       setCallState("Камера или микрофон недоступны.");
@@ -271,7 +289,32 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         type: "error",
       });
       updateMediaButtons();
+      return false;
     }
+  }
+
+  async function startCall() {
+    if (outgoingCall || callAccepted) return;
+    if (!(await acquireLocalMedia())) return;
+
+    pendingCallerId = null;
+    incomingBox.hidden = true;
+    outgoingCall = true;
+    callAccepted = false;
+    startButton.textContent = "Звоним…";
+    setCallState("Звоним второму участнику…");
+
+    socket.emit("rtc:call", {}, (result) => {
+      if (!result?.ok) {
+        outgoingCall = false;
+        startButton.textContent = "Позвонить";
+        setCallState("Не удалось начать звонок.");
+        return;
+      }
+      if (!(result.recipients || []).length) {
+        setCallState("Звонок начат. Ждём второго участника…");
+      }
+    });
   }
 
   function closePeer() {
@@ -283,19 +326,64 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     remoteVideo.srcObject = null;
   }
 
+  function resetIncomingCall() {
+    pendingCallerId = null;
+    incomingBox.hidden = true;
+    videoButton.classList.remove("ringing");
+    videoButton.textContent = "🎥 Связь";
+  }
+
   function stopCall({ notify = true } = {}) {
-    if (notify && socket.connected) socket.emit("rtc:leave");
+    if (notify && socket.connected) {
+      if (outgoingCall && !callAccepted) socket.emit("rtc:cancel");
+      else socket.emit("rtc:leave");
+    }
     closePeer();
     for (const track of localStream?.getTracks() || []) track.stop();
     localStream = null;
     localVideo.srcObject = null;
     callStarted = false;
+    outgoingCall = false;
+    callAccepted = false;
+    resetIncomingCall();
+    startButton.textContent = "Позвонить";
     updateMediaButtons();
-    setCallState("Нажмите «Начать», чтобы подключить камеру и микрофон.");
+    setCallState("Нажмите «Позвонить», чтобы начать видеосвязь.");
   }
 
   startButton.addEventListener("click", startCall);
   hangupButton.addEventListener("click", () => stopCall());
+
+  acceptButton.addEventListener("click", async () => {
+    const callerId = pendingCallerId;
+    if (!callerId) return;
+    acceptButton.disabled = true;
+    if (!(await acquireLocalMedia())) {
+      acceptButton.disabled = false;
+      return;
+    }
+
+    socket.emit("rtc:accept", { callerId }, (result) => {
+      acceptButton.disabled = false;
+      if (!result?.ok) {
+        resetIncomingCall();
+        setCallState("Звонок уже завершён.");
+        return;
+      }
+      callAccepted = true;
+      outgoingCall = false;
+      activePeerId = callerId;
+      resetIncomingCall();
+      startButton.textContent = "Подключено";
+      setCallState("Соединяем…");
+    });
+  });
+
+  declineButton.addEventListener("click", () => {
+    if (pendingCallerId) socket.emit("rtc:decline", { callerId: pendingCallerId });
+    resetIncomingCall();
+    closePanel();
+  });
 
   micButton.addEventListener("click", () => {
     const track = localStream?.getAudioTracks()[0];
@@ -311,16 +399,52 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     updateMediaButtons();
   });
 
+  socket.on("rtc:incoming-call", ({ from, caller } = {}) => {
+    if (!from || localStream || outgoingCall || callAccepted) return;
+    pendingCallerId = from;
+    incomingName.textContent = `${caller?.displayName || "Участник"} звонит…`;
+    incomingBox.hidden = false;
+    videoButton.classList.add("ringing");
+    videoButton.textContent = "📞 Входящий";
+    showView("video");
+    setCallState("Входящий видеозвонок");
+  });
+
+  socket.on("rtc:accepted", async ({ peer } = {}) => {
+    if (!outgoingCall || !localStream || !peer?.id) return;
+    outgoingCall = false;
+    callAccepted = true;
+    startButton.textContent = "Подключено";
+    setCallState("Соединяем…");
+    try {
+      await createOffer(peer.id);
+    } catch (error) {
+      console.error("WebRTC offer failed", error);
+      setCallState("Не удалось установить видеосвязь.");
+    }
+  });
+
+  socket.on("rtc:declined", () => {
+    outgoingCall = false;
+    callAccepted = false;
+    startButton.textContent = "Позвонить";
+    setCallState("Звонок отклонён.");
+  });
+
+  socket.on("rtc:cancelled", ({ from } = {}) => {
+    if (from && pendingCallerId && from !== pendingCallerId) return;
+    resetIncomingCall();
+    setCallState("Входящий звонок завершён.");
+  });
+
   socket.on("rtc:peer-ready", async (peer) => {
-    if (!localStream || !peer?.id || peer.role === role) return;
-    if (role === "teacher") {
-      try {
-        await createOffer(peer.id);
-      } catch (error) {
-        console.error("WebRTC offer failed", error);
-      }
-    } else {
-      setCallState("Учитель подключается…");
+    if (!localStream || !callAccepted || !peer?.id || peer.role === role) return;
+    const shouldOffer = role === "teacher" || String(socket.id) < String(peer.id);
+    if (!shouldOffer) return;
+    try {
+      await createOffer(peer.id);
+    } catch (error) {
+      console.error("WebRTC reconnect offer failed", error);
     }
   });
 
@@ -331,11 +455,15 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   socket.on("rtc:peer-left", ({ id } = {}) => {
     if (id !== activePeerId) return;
     closePeer();
-    if (localStream) setCallState("Второй участник отключился. Ждём переподключения…");
+    if (localStream) {
+      callAccepted = true;
+      setCallState("Второй участник отключился. Ждём переподключения…");
+    }
   });
 
   socket.on("connect", () => {
-    if (localStream) announceReady();
+    if (localStream && callAccepted) announceReady();
+    else if (outgoingCall) startCall();
   });
 
   function appendMessage(message) {
