@@ -1358,3 +1358,12 @@ window.addEventListener("resize", () => {
 });
 
 loadDocument();
+
+
+import("./lesson-comms.mjs?v=20261003-1")
+  .then(({ initLessonComms }) => {
+    initLessonComms({ socket, role, lessonId, showSnackbar });
+  })
+  .catch((error) => {
+    console.error("Lesson communications failed to load", error);
+  });
