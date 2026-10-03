@@ -168,13 +168,17 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     cameraButton.textContent = video?.enabled ? "📷 Камера" : "🚫 Камера";
   }
 
-  async function getIceServers() {
+  async function getIceConfig() {
     const response = await fetch(`/api/webrtc/config?lesson=${encodeURIComponent(lessonId)}`, {
       cache: "no-store",
     });
     if (!response.ok) throw new Error("ICE_CONFIG_FAILED");
     const payload = await response.json();
-    return Array.isArray(payload.iceServers) ? payload.iceServers : [];
+    return {
+      iceServers: Array.isArray(payload.iceServers) ? payload.iceServers : [],
+      iceTransportPolicy: payload.iceTransportPolicy === "relay" ? "relay" : "all",
+      source: String(payload.source || "unknown"),
+    };
   }
 
   async function ensurePeer(peerId) {
@@ -186,8 +190,15 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     remoteStream = new MediaStream();
     remoteVideo.srcObject = remoteStream;
 
-    const iceServers = await getIceServers();
-    const pc = new RTCPeerConnection({ iceServers });
+    const iceConfig = await getIceConfig();
+    const pc = new RTCPeerConnection({
+      iceServers: iceConfig.iceServers,
+      iceTransportPolicy: iceConfig.iceTransportPolicy,
+    });
+    socket.emit("rtc:debug", {
+      event: "iceconfig",
+      state: `${iceConfig.source}:${iceConfig.iceTransportPolicy}`,
+    });
     peerConnection = pc;
 
     for (const track of localStream?.getTracks() || []) {
@@ -219,7 +230,30 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
     pc.addEventListener("connectionstatechange", () => {
       if (pc !== peerConnection) return;
-      if (pc.connectionState === "connected") setCallState("Соединение установлено");
+      if (pc.connectionState === "connected") {
+        setCallState("Соединение установлено");
+        pc.getStats()
+          .then((stats) => {
+            let pair = null;
+            stats.forEach((report) => {
+              if (
+                report.type === "candidate-pair" &&
+                (report.selected || report.nominated) &&
+                report.state === "succeeded"
+              ) {
+                pair = report;
+              }
+            });
+            if (!pair) return;
+            const local = stats.get(pair.localCandidateId);
+            const remote = stats.get(pair.remoteCandidateId);
+            socket.emit("rtc:debug", {
+              event: "selected-pair",
+              state: `local=${local?.candidateType || "?"}/${local?.protocol || "?"};remote=${remote?.candidateType || "?"}/${remote?.protocol || "?"}`,
+            });
+          })
+          .catch(() => {});
+      }
       if (pc.connectionState === "connecting") setCallState("Соединяем…");
       if (pc.connectionState === "failed") {
         setCallState("Не удалось проложить медиаканал. Нужен TURN.");
