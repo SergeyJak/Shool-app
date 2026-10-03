@@ -34,6 +34,11 @@ const {
 } = require("./lib/auth");
 const { resolveIdentityFromCookies } = require("./lib/session-context");
 const { canAccessLesson } = require("./lib/lesson-access");
+const {
+  normalizeManagedUsername,
+  validateRegistrationCredentials,
+  normalizeRegistrationProfile,
+} = require("./lib/registration");
 
 const PORT = Number(process.env.PORT || 3000);
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -142,25 +147,7 @@ function newInviteToken() {
   return crypto.randomBytes(24).toString("base64url");
 }
 
-function normalizeManagedUsername(value) {
-  const username = normalizeUsername(value);
-  return /^[\p{L}\p{N}._-]{3,50}$/u.test(username) ? username : null;
-}
 
-function normalizeEmail(value) {
-  const email = String(value || "").trim().toLowerCase();
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254 ? email : null;
-}
-
-function normalizeBirthDate(value) {
-  const raw = String(value || "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
-  const date = new Date(`${raw}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return null;
-  if (date.toISOString().slice(0, 10) !== raw) return null;
-  if (date > new Date()) return null;
-  return raw;
-}
 
 async function registrationUserFromRequest(req) {
   const token = parseCookies(req.headers.cookie || "")[REGISTRATION_COOKIE];
@@ -269,17 +256,9 @@ app.use(attachUser);
 
 app.post("/api/auth/register", async (req, res, next) => {
   try {
-    const username = normalizeManagedUsername(req.body?.username);
-    const password = String(req.body?.password || "");
-    const passwordConfirm = String(req.body?.passwordConfirm || "");
-
-    if (!username) return res.status(400).json({ error: "INVALID_USERNAME" });
-    if (password.length < 8 || password.length > 128) {
-      return res.status(400).json({ error: "INVALID_PASSWORD" });
-    }
-    if (password !== passwordConfirm) {
-      return res.status(400).json({ error: "PASSWORD_MISMATCH" });
-    }
+    const credentials = validateRegistrationCredentials(req.body || {});
+    if (!credentials.ok) return res.status(400).json({ error: credentials.error });
+    const { username, password } = credentials;
     if (await users.findOne({ _id: username })) {
       return res.status(409).json({ error: "USER_EXISTS" });
     }
@@ -334,32 +313,19 @@ app.post("/api/auth/register/profile", async (req, res, next) => {
       return res.status(409).json({ error: "REGISTRATION_CLOSED" });
     }
 
-    const firstName = String(req.body?.firstName || "").trim().slice(0, 80);
-    const lastName = String(req.body?.lastName || "").trim().slice(0, 80);
-    const email = normalizeEmail(req.body?.email);
-    const birthDate = normalizeBirthDate(req.body?.birthDate);
-    const phone = String(req.body?.phone || "").trim().slice(0, 40);
-    const subjects = String(req.body?.subjects || "").trim().slice(0, 240);
-    const bio = String(req.body?.bio || "").trim().slice(0, 1000);
-
-    if (!firstName) return res.status(400).json({ error: "FIRST_NAME_REQUIRED" });
-    if (!email) return res.status(400).json({ error: "INVALID_EMAIL" });
-    if (!birthDate) return res.status(400).json({ error: "INVALID_BIRTH_DATE" });
+    const normalized = normalizeRegistrationProfile(req.body || {});
+    if (!normalized.ok) return res.status(400).json({ error: normalized.error });
+    const profile = normalized.profile;
+    if (await users.findOne({ email: profile.email, _id: { $ne: user._id } })) {
+      return res.status(409).json({ error: "EMAIL_EXISTS" });
+    }
 
     const now = new Date();
-    const displayName = [firstName, lastName].filter(Boolean).join(" ");
     await users.updateOne(
       { _id: user._id },
       {
         $set: {
-          firstName,
-          lastName,
-          displayName,
-          email,
-          birthDate,
-          phone,
-          subjects,
-          bio,
+          ...profile,
           profileComplete: true,
           approvalStatus: "pending",
           registrationSubmittedAt: now,
@@ -1843,7 +1809,7 @@ async function start() {
 
   await users.createIndex({ role: 1, active: 1 });
   await users.createIndex({ approvalStatus: 1, registrationSubmittedAt: -1 });
-  await users.createIndex({ email: 1 }, { sparse: true });
+  await users.createIndex({ email: 1 }, { unique: true, sparse: true });
   await lessons.createIndex({ teacherIds: 1 });
   await lessons.createIndex({ studentIds: 1 });
   await lessons.createIndex({ ownerId: 1, updatedAt: -1 });
