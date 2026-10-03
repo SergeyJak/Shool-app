@@ -24,6 +24,30 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let iceRestartTimer = null;
   let iceRestartAttempts = 0;
 
+  function rtcNetworkSnapshot() {
+    const connection =
+      navigator.connection ||
+      navigator.mozConnection ||
+      navigator.webkitConnection ||
+      null;
+    return {
+      type: connection?.type || null,
+      effectiveType: connection?.effectiveType || null,
+      downlink: Number.isFinite(Number(connection?.downlink)) ? Number(connection.downlink) : null,
+      rtt: Number.isFinite(Number(connection?.rtt)) ? Number(connection.rtt) : null,
+      saveData: Boolean(connection?.saveData),
+      online: navigator.onLine,
+    };
+  }
+
+  function emitRtcDebug(payload = {}) {
+    socket.emit("rtc:debug", {
+      ...payload,
+      network: rtcNetworkSnapshot(),
+    });
+  }
+
+
   const launcher = document.createElement("div");
   launcher.className = "lesson-comms-launcher";
   launcher.innerHTML = `
@@ -358,7 +382,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         if (packetsLost != null) previousPacketsLost = packetsLost;
         if (packetsReceived != null) previousPacketsReceived = packetsReceived;
 
-        socket.emit("rtc:debug", {
+        emitRtcDebug({
           event: "quality",
           state: JSON.stringify({
             availableOutgoingBitrate,
@@ -402,7 +426,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       iceServers: iceConfig.iceServers,
       iceTransportPolicy: iceConfig.iceTransportPolicy,
     });
-    socket.emit("rtc:debug", {
+    emitRtcDebug({
       event: "iceconfig",
       state: `${iceConfig.source}:${iceConfig.iceTransportPolicy}`,
     });
@@ -477,7 +501,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
         try {
           if (attempt === 1) {
-            socket.emit("rtc:debug", {
+            emitRtcDebug({
               event: "ice-restart",
               state: `attempt=1;connection=${pc.connectionState}`,
             });
@@ -499,7 +523,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
             return;
           }
 
-          socket.emit("rtc:debug", {
+          emitRtcDebug({
             event: "peer-rebuild",
             state: `attempt=2;connection=${pc.connectionState}`,
           });
@@ -562,7 +586,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
             if (!pair) return;
             const local = stats.get(pair.localCandidateId);
             const remote = stats.get(pair.remoteCandidateId);
-            socket.emit("rtc:debug", {
+            emitRtcDebug({
               event: "selected-pair",
               state: `local=${local?.candidateType || "?"}/${local?.protocol || "?"}/${local?.relayProtocol || "?"};remote=${remote?.candidateType || "?"}/${remote?.protocol || "?"}/${remote?.relayProtocol || "?"}`,
             });
@@ -578,7 +602,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         scheduleIceRestart();
       }
       if (pc.connectionState === "closed") setCallState("Звонок завершён");
-      socket.emit("rtc:debug", {
+      emitRtcDebug({
         event: "connectionstate",
         state: pc.connectionState,
       });
@@ -590,7 +614,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       if (state === "checking") setCallState("Проверяем сетевой маршрут…");
       if (state === "connected" || state === "completed") setCallState("Соединение установлено");
       if (state === "failed") setCallState("ICE failed: прямой маршрут не найден. Нужен TURN.");
-      socket.emit("rtc:debug", {
+      emitRtcDebug({
         event: "iceconnectionstate",
         state,
       });
@@ -598,7 +622,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
     pc.addEventListener("icecandidateerror", (event) => {
       console.warn("ICE candidate error", event);
-      socket.emit("rtc:debug", {
+      emitRtcDebug({
         event: "icecandidateerror",
         errorCode: event.errorCode || null,
         errorText: String(event.errorText || "").slice(0, 300),
@@ -607,7 +631,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     });
 
     pc.addEventListener("icegatheringstatechange", () => {
-      socket.emit("rtc:debug", {
+      emitRtcDebug({
         event: "icegatheringstate",
         state: pc.iceGatheringState,
       });
@@ -710,7 +734,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       const audioTrack = localStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = true;
-        socket.emit("rtc:debug", {
+        emitRtcDebug({
           event: "local-audio",
           state: `readyState=${audioTrack.readyState};enabled=${audioTrack.enabled};muted=${audioTrack.muted}`,
         });
@@ -869,6 +893,24 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   });
 
   window.addEventListener("pagehide", stopRingtone);
+
+  const connection =
+    navigator.connection ||
+    navigator.mozConnection ||
+    navigator.webkitConnection ||
+    null;
+
+  const reportNetworkChange = () => {
+    if (!localStream || !activeCallId) return;
+    emitRtcDebug({
+      event: "network-change",
+      state: `online=${navigator.onLine};effectiveType=${rtcNetworkSnapshot().effectiveType || "unknown"}`,
+    });
+  };
+
+  connection?.addEventListener?.("change", reportNetworkChange);
+  window.addEventListener("online", reportNetworkChange);
+  window.addEventListener("offline", reportNetworkChange);
 
   socket.on("rtc:incoming-call", ({ from, caller, callId } = {}) => {
     if (!from || !callId || localStream || outgoingCall || callAccepted) return;
