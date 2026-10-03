@@ -5,10 +5,12 @@ const {
   hashPassword,
   verifyPassword,
   createSessionToken,
+  createGuestToken,
   parseSessionToken,
   parseCookies,
   sessionCookie,
 } = require("../lib/auth");
+const { resolveIdentityFromCookies } = require("../lib/session-context");
 
 test("normalizes usernames case-insensitively", () => {
   assert.equal(normalizeUsername("  Darya "), "darya");
@@ -39,4 +41,53 @@ test("session cookie is HttpOnly and SameSite strict", () => {
   assert.match(value, /SameSite=Strict/);
   assert.match(value, /Secure/);
   assert.equal(parseCookies("a=1; school_session=abc").school_session, "abc");
+});
+
+
+test("authenticated session wins over a matching guest lesson cookie", async () => {
+  const secret = "test-secret";
+  const teacher = {
+    _id: "teacher1",
+    username: "teacher1",
+    displayName: "Teacher",
+    role: "teacher",
+    active: true,
+  };
+  const session = createSessionToken(teacher, secret, 60);
+  const guest = createGuestToken({
+    lessonId: "lesson_a",
+    name: "Guest student",
+    guestId: "guest1",
+  }, secret, 60);
+
+  const identity = await resolveIdentityFromCookies({
+    cookieHeader: `school_session=${encodeURIComponent(session)}; school_guest=${encodeURIComponent(guest)}`,
+    preferredLessonId: "lesson_a",
+    secret,
+    findActiveUserById: async (id) => id === teacher._id ? teacher : null,
+  });
+
+  assert.equal(identity._id, "teacher1");
+  assert.equal(identity.role, "teacher");
+  assert.equal(identity.guest, undefined);
+});
+
+test("matching guest lesson cookie is still used when no account session exists", async () => {
+  const secret = "test-secret";
+  const guest = createGuestToken({
+    lessonId: "lesson_a",
+    name: "Guest student",
+    guestId: "guest1",
+  }, secret, 60);
+
+  const identity = await resolveIdentityFromCookies({
+    cookieHeader: `school_guest=${encodeURIComponent(guest)}`,
+    preferredLessonId: "lesson_a",
+    secret,
+    findActiveUserById: async () => null,
+  });
+
+  assert.equal(identity.role, "student");
+  assert.equal(identity.guest, true);
+  assert.equal(identity.lessonId, "lesson_a");
 });
