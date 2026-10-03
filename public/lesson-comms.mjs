@@ -606,6 +606,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           targetClientId: payload.fromClientId,
           description: pc.localDescription,
         });
+        emitRtcDebug({
+          event: "answer-v2",
+          state: `sent=${Boolean(result?.ok)};target=${payload.fromClientId.slice(0, 8)}`,
+        });
         if (!result?.ok) throw new Error(result?.error || "RTC2_SIGNAL_FAILED");
         canSendLocalCandidates = true;
         await flushLocalCandidates();
@@ -615,6 +619,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       }
 
       if (payload.description?.type === "answer") {
+        emitRtcDebug({
+          event: "answer-received-v2",
+          state: `from=${payload.fromClientId.slice(0, 8)};peerMatch=${Boolean(peerConnection && peerClientId === payload.fromClientId)}`,
+        });
         if (!peerConnection || peerClientId !== payload.fromClientId) return;
         await peerConnection.setRemoteDescription(payload.description);
         await flushRemoteCandidates(peerConnection);
@@ -727,7 +735,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       if (!result?.ok) {
         outgoingCall = false;
         startButton.textContent = "Позвонить";
-        setCallState("Не удалось начать звонок.");
+        setCallState(
+          ["CALL_RINGING", "CALL_IN_PROGRESS"].includes(result.error)
+            ? "У второго участника уже есть активный вызов."
+            : "Не удалось начать звонок."
+        );
         updateMediaButtons();
       } else if (!result.recipients) {
         setCallState("Звонок начат. Ждём второго участника…");
