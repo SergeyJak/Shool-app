@@ -101,6 +101,7 @@ let lessonMessages;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 const rtcCallsByLesson = new Map();
+const rtc2CallsByLesson = new Map();
 const rtcDisconnectedPeers = new Map();
 const RTC_DISCONNECTED_PEER_TTL_MS = 60_000;
 
@@ -375,6 +376,38 @@ function findReplacementRtcPeer(staleTargetId, callId) {
     }
   }
   return null;
+}
+
+function rtc2SocketForClient(lessonId, clientId) {
+  if (!clientId) return null;
+  for (const peer of io.sockets.sockets.values()) {
+    if (
+      peer.data.lessonId === lessonId &&
+      peer.data.role !== "observer" &&
+      realtimeClientId(peer.handshake.auth?.clientId) === clientId
+    ) {
+      return peer;
+    }
+  }
+  return null;
+}
+
+function rtc2SessionForLesson(lessonId) {
+  const session = rtc2CallsByLesson.get(lessonId);
+  if (!session) return null;
+  if (Date.now() - session.updatedAt > 2 * 60 * 60 * 1000) {
+    rtc2CallsByLesson.delete(lessonId);
+    return null;
+  }
+  return session;
+}
+
+function rtc2Peer(socket) {
+  return {
+    clientId: realtimeClientId(socket.handshake.auth?.clientId),
+    role: socket.data.role,
+    displayName: socket.data.user?.displayName || socket.data.user?.username || socket.data.role,
+  };
 }
 
 function normalizeRtcCallId(value) {
@@ -1778,6 +1811,191 @@ io.on("connection", (socket) => {
     });
   }
 
+  socket.on("rtc2:call", async ({ callId: rawCallId } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const callId = normalizeRtcCallId(rawCallId);
+    const callerClientId = realtimeClientId(socket.handshake.auth?.clientId);
+    if (!callId || !callerClientId) return ack?.({ ok: false, error: "INVALID_CALL" });
+
+    const existing = rtc2SessionForLesson(lessonId);
+    if (
+      existing &&
+      existing.callId === callId &&
+      existing.callerClientId === callerClientId &&
+      !existing.accepted
+    ) {
+      existing.updatedAt = Date.now();
+    } else {
+      rtc2CallsByLesson.set(lessonId, {
+        callId,
+        callerClientId,
+        calleeClientId: null,
+        accepted: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+
+    const caller = rtc2Peer(socket);
+    let recipients = 0;
+    for (const peer of io.sockets.sockets.values()) {
+      if (
+        peer.id !== socket.id &&
+        peer.data.lessonId === lessonId &&
+        peer.data.role !== "observer"
+      ) {
+        recipients += 1;
+        peer.emit("rtc2:incoming-call", { callId, caller });
+      }
+    }
+    console.info(`RTC2 call requested lesson=${lessonId} role=${role} recipients=${recipients}`);
+    ack?.({ ok: true, recipients });
+  });
+
+  socket.on("rtc2:accept", ({ callId: rawCallId, callerClientId } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const callId = normalizeRtcCallId(rawCallId);
+    const calleeClientId = realtimeClientId(socket.handshake.auth?.clientId);
+    const normalizedCallerClientId = realtimeClientId(callerClientId);
+    const session = rtc2SessionForLesson(lessonId);
+    if (
+      !callId ||
+      !calleeClientId ||
+      !normalizedCallerClientId ||
+      !session ||
+      session.callId !== callId ||
+      session.callerClientId !== normalizedCallerClientId ||
+      session.accepted
+    ) {
+      return ack?.({ ok: false, error: "CALL_NOT_FOUND" });
+    }
+
+    session.calleeClientId = calleeClientId;
+    session.accepted = true;
+    session.updatedAt = Date.now();
+
+    const callerSocket = rtc2SocketForClient(lessonId, session.callerClientId);
+    if (!callerSocket) {
+      rtc2CallsByLesson.delete(lessonId);
+      return ack?.({ ok: false, error: "CALLER_OFFLINE" });
+    }
+
+    callerSocket.emit("rtc2:accepted", {
+      callId,
+      peer: rtc2Peer(socket),
+    });
+    console.info(`RTC2 call accepted lesson=${lessonId} callerRole=${callerSocket.data.role} peerRole=${role}`);
+    ack?.({ ok: true, callId, caller: rtc2Peer(callerSocket) });
+  });
+
+  socket.on("rtc2:decline", ({ callId: rawCallId, callerClientId } = {}) => {
+    const callId = normalizeRtcCallId(rawCallId);
+    const session = rtc2SessionForLesson(lessonId);
+    const normalizedCallerClientId = realtimeClientId(callerClientId);
+    if (!callId || !session || session.callId !== callId || session.callerClientId !== normalizedCallerClientId) return;
+    rtc2CallsByLesson.delete(lessonId);
+    rtc2SocketForClient(lessonId, session.callerClientId)?.emit("rtc2:declined", { callId });
+  });
+
+  socket.on("rtc2:cancel", ({ callId: rawCallId } = {}) => {
+    const callId = normalizeRtcCallId(rawCallId);
+    const clientId = realtimeClientId(socket.handshake.auth?.clientId);
+    const session = rtc2SessionForLesson(lessonId);
+    if (!callId || !clientId || !session || session.callId !== callId || session.callerClientId !== clientId) return;
+    rtc2CallsByLesson.delete(lessonId);
+    for (const peer of io.sockets.sockets.values()) {
+      if (peer.id !== socket.id && peer.data.lessonId === lessonId && peer.data.role !== "observer") {
+        peer.emit("rtc2:cancelled", { callId, callerClientId: clientId });
+      }
+    }
+  });
+
+  socket.on("rtc2:signal", (payload = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const clientId = realtimeClientId(socket.handshake.auth?.clientId);
+    const targetClientId = realtimeClientId(payload.targetClientId);
+    const signal = normalizeRtcSignal({ ...payload, targetId: targetClientId });
+    const session = rtc2SessionForLesson(lessonId);
+
+    if (!clientId || !targetClientId || !signal || !session || !session.accepted || session.callId !== signal.callId) {
+      return ack?.({ ok: false, error: "INVALID_SIGNAL" });
+    }
+
+    const callerToCallee =
+      clientId === session.callerClientId &&
+      targetClientId === session.calleeClientId;
+    const calleeToCaller =
+      clientId === session.calleeClientId &&
+      targetClientId === session.callerClientId;
+    if (!callerToCallee && !calleeToCaller) {
+      return ack?.({ ok: false, error: "PEER_MISMATCH" });
+    }
+
+    const target = rtc2SocketForClient(lessonId, targetClientId);
+    if (!target) return ack?.({ ok: false, error: "PEER_OFFLINE" });
+
+    session.updatedAt = Date.now();
+    target.emit("rtc2:signal", {
+      callId: signal.callId,
+      fromClientId: clientId,
+      description: signal.description,
+      candidate: signal.candidate,
+    });
+    ack?.({ ok: true });
+  });
+
+  socket.on("rtc2:resume", ({ callId: rawCallId } = {}, ack) => {
+    const callId = normalizeRtcCallId(rawCallId);
+    const clientId = realtimeClientId(socket.handshake.auth?.clientId);
+    const session = rtc2SessionForLesson(lessonId);
+    if (!callId || !clientId || !session || !session.accepted || session.callId !== callId) {
+      return ack?.({ ok: false, error: "CALL_NOT_FOUND" });
+    }
+
+    let peerClientId = null;
+    let offerer = false;
+    if (clientId === session.callerClientId) {
+      peerClientId = session.calleeClientId;
+      offerer = true;
+    } else if (clientId === session.calleeClientId) {
+      peerClientId = session.callerClientId;
+    } else {
+      return ack?.({ ok: false, error: "NOT_PARTICIPANT" });
+    }
+
+    session.updatedAt = Date.now();
+    const peerSocket = rtc2SocketForClient(lessonId, peerClientId);
+    if (peerSocket) {
+      peerSocket.emit("rtc2:restart", {
+        callId,
+        peerClientId: clientId,
+        offerer: peerClientId === session.callerClientId,
+      });
+    }
+    ack?.({
+      ok: true,
+      peerClientId,
+      peerOnline: Boolean(peerSocket),
+      offerer,
+    });
+  });
+
+  socket.on("rtc2:leave", ({ callId: rawCallId } = {}) => {
+    const callId = normalizeRtcCallId(rawCallId);
+    const clientId = realtimeClientId(socket.handshake.auth?.clientId);
+    const session = rtc2SessionForLesson(lessonId);
+    if (!callId || !clientId || !session || session.callId !== callId) return;
+    if (![session.callerClientId, session.calleeClientId].includes(clientId)) return;
+
+    const peerClientId =
+      clientId === session.callerClientId ? session.calleeClientId : session.callerClientId;
+    rtc2CallsByLesson.delete(lessonId);
+    rtc2SocketForClient(lessonId, peerClientId)?.emit("rtc2:ended", {
+      callId,
+      fromClientId: clientId,
+    });
+  });
+
   socket.on("rtc:call", async ({ callId: rawCallId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const callId = normalizeRtcCallId(rawCallId);
@@ -1873,6 +2091,7 @@ io.on("connection", (socket) => {
   socket.on("rtc:debug", (payload = {}) => {
     if (role === "observer") return;
     const event = String(payload.event || "").slice(0, 80);
+    const diagnosticCallId = normalizeRtcCallId(payload.callId) || socket.data.rtcCallId || null;
     const state = String(payload.state || "").slice(0, 2000);
     const errorCode = Number.isFinite(Number(payload.errorCode)) ? Number(payload.errorCode) : null;
     const errorText = String(payload.errorText || "").slice(0, 300);
@@ -1899,7 +2118,7 @@ io.on("connection", (socket) => {
     const now = new Date();
     rtcDiagnostics?.insertOne({
       lessonId,
-      callId: socket.data.rtcCallId || null,
+      callId: diagnosticCallId,
       role,
       userId: String(socket.data.user?._id || ""),
       clientId: realtimeClientId(socket.handshake.auth?.clientId),
