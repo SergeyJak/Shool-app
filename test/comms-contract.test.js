@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video6/);
+    assert.match(read(file), /app\.js\?v=20261003-video7/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -139,21 +139,32 @@ test("Cloudflare TURN stays available as fallback and selected ICE pair is logge
 
 test("video capture and sender bitrate are tuned for lesson calls", () => {
   const client = read("public/lesson-comms.mjs");
-  assert.match(client, /width: \{ ideal: 960, max: 1280 \}/);
-  assert.match(client, /height: \{ ideal: 540, max: 720 \}/);
-  assert.match(client, /frameRate: \{ ideal: 24, max: 30 \}/);
+  assert.match(client, /width: \\{ ideal: 640, max: 960 \\}/);
+  assert.match(client, /height: \\{ ideal: 360, max: 540 \\}/);
+  assert.match(client, /frameRate: \\{ ideal: 20, max: 24 \\}/);
   assert.match(client, /maxBitrate = 900_000/);
-  assert.match(client, /maxFramerate = 24/);
+  assert.match(client, /maxFramerate = 20/);
   assert.match(client, /degradationPreference = "maintain-framerate"/);
 });
 
 
 test("video capture and sender bitrate are tuned for lesson calls", () => {
   const client = read("public/lesson-comms.mjs");
-  assert.match(client, /width: \{ ideal: 960, max: 1280 \}/);
-  assert.match(client, /height: \{ ideal: 540, max: 720 \}/);
-  assert.match(client, /frameRate: \{ ideal: 24, max: 30 \}/);
-  assert.match(client, /maxBitrate = 900000/);
-  assert.match(client, /maxFramerate = 24/);
+  assert.match(client, /width: \\{ ideal: 640, max: 960 \\}/);
+  assert.match(client, /height: \\{ ideal: 360, max: 540 \\}/);
+  assert.match(client, /frameRate: \\{ ideal: 20, max: 24 \\}/);
+  assert.match(client, /maxBitrate = 500000/);
+  assert.match(client, /maxFramerate = 20/);
   assert.match(client, /degradationPreference = "maintain-framerate"/);
+});
+
+
+test("RTC quality monitor reports bandwidth jitter and packet loss without affecting calls", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /startRtcQualityMonitor/);
+  assert.match(client, /availableOutgoingBitrate/);
+  assert.match(client, /report\.jitter/);
+  assert.match(client, /report\.packetsLost/);
+  assert.match(client, /event: "quality"/);
+  assert.match(client, /5000/);
 });
