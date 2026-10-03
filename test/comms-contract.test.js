@@ -62,7 +62,8 @@ test("lesson client uses explicit incoming call acceptance before negotiation", 
 test("server routes call request accept decline and cancel only inside lesson room", () => {
   const server = read("server.js");
   assert.match(server, /socket\.on\("rtc:call"/);
-  assert.match(server, /socket\.to\(room\)\.emit\("rtc:incoming-call"/);
+  assert.match(server, /const roomSockets = await io\.in\(room\)\.fetchSockets\(\)/);
+  assert.match(server, /for \(const peer of recipientSockets\)[\s\S]{0,220}peer\.emit\("rtc:incoming-call"/);
   assert.match(server, /socket\.on\("rtc:accept"/);
   assert.match(server, /call\.caller\.emit\("rtc:accepted"/);
   assert.match(server, /socket\.on\("rtc:decline"/);
