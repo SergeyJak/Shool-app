@@ -628,3 +628,40 @@
     display: inline;
   }
 }
+
+
+/* Mobile chat behaves as a bottom sheet and does not trap page scrolling */
+@media (max-width: 600px) {
+  .lesson-comms-panel:has(.lesson-comms-chat:not([hidden])) {
+    top: auto;
+    bottom: 10px;
+    max-height: min(58dvh, 520px);
+    overflow: visible;
+  }
+
+  .lesson-comms-chat {
+    min-height: 0;
+    max-height: min(46dvh, 420px);
+    grid-template-rows: minmax(120px, 1fr) auto;
+    overflow: visible;
+  }
+
+  .lesson-comms-messages {
+    max-height: min(34dvh, 300px);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  .lesson-comms-form {
+    position: sticky;
+    bottom: 0;
+    background: rgba(255,255,255,.985);
+  }
+}
+
+@media (max-width: 600px) {
+  .lesson-comms-panel {
+    max-height: min(680px, calc(var(--lesson-viewport-height, 100dvh) - 20px));
+  }
+}
