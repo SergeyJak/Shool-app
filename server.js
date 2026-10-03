@@ -1689,6 +1689,7 @@ io.on("connection", (socket) => {
         from: socket.id,
         caller: rtcPeer(socket),
       });
+      console.info(`RTC call requested lesson=${lessonId} role=${role} recipients=${recipients.length}`);
       ack?.({ ok: true, recipients });
     } catch (error) {
       console.error("RTC call request failed", error);
@@ -1705,6 +1706,7 @@ io.on("connection", (socket) => {
 
     socket.data.rtcReady = true;
     rtcCallsByLesson.delete(lessonId);
+    console.info(`RTC call accepted lesson=${lessonId} callerRole=${call.caller.data.role} peerRole=${role}`);
     call.caller.emit("rtc:accepted", {
       peer: rtcPeer(socket),
     });
