@@ -20,8 +20,8 @@ if (!chrome) throw new Error("Headless Chrome/Chromium is required for layout re
 const viewports = [
   { name: "phone portrait", width: 412, height: 915, expectStaticSync: true },
   { name: "tablet portrait", width: 800, height: 1200, expectStaticSync: true },
-  { name: "desktop 1366", width: 1366, height: 768, expectStaticSync: false },
-  { name: "desktop 1920", width: 1920, height: 1080, expectStaticSync: false },
+  { name: "desktop 1366", width: 1366, height: 768, expectStaticSync: true },
+  { name: "desktop 1920", width: 1920, height: 1080, expectStaticSync: true },
 ];
 
 function rectData(rect) {
