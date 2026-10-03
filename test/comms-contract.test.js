@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-handover1/);
+    assert.match(read(file), /app\.js\?v=20261003-recovery2/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -449,9 +449,9 @@ test("WebRTC protocol changes are cache-busted on lesson pages", () => {
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
 
-  assert.match(app, /lesson-comms\.mjs\?v=20261003-handover1/);
-  assert.match(teacher, /app\.js\?v=20261003-handover1/);
-  assert.match(student, /app\.js\?v=20261003-handover1/);
+  assert.match(app, /lesson-comms\.mjs\?v=20261003-recovery2/);
+  assert.match(teacher, /app\.js\?v=20261003-recovery2/);
+  assert.match(student, /app\.js\?v=20261003-recovery2/);
 });
 
 
@@ -472,15 +472,15 @@ test("network handover can trigger bounded ICE restart recovery", () => {
 
   assert.match(client, /let iceRestartAttempts = 0/);
   assert.match(client, /iceRestartAttempts >= 2/);
-  assert.match(client, /createOffer\(activePeerId, \{ iceRestart: true \}\)/);
+  assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
   assert.match(client, /createOffer\(iceRestart \? \{ iceRestart: true \} : undefined\)/);
   assert.match(client, /event: "ice-restart"/);
 });
 
 test("network handover WebRTC fix is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-handover1/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-handover1/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-handover1/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery2/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery2/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery2/);
 });
 
 
@@ -514,4 +514,62 @@ test("RTC stale target rebinding is bounded by call id and expiry", () => {
   assert.match(server, /RTC_DISCONNECTED_PEER_TTL_MS = 60_000/);
   assert.match(server, /if \(stale\.expiresAt < Date\.now\(\)\)/);
   assert.match(server, /if \(stale\.callId !== callId\) return null/);
+});
+
+
+test("failed media routes escalate from ICE restart to a fresh peer connection", () => {
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(client, /event: "ice-restart"/);
+  assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
+  assert.match(client, /setTimeout\(\(\) => \{[\s\S]{0,500}scheduleIceRestart\(\);[\s\S]{0,100}\}, 5000\)/);
+  assert.match(client, /event: "peer-rebuild"/);
+  assert.match(client, /peerConnection = null/);
+  assert.match(client, /peerCallId = null/);
+  assert.match(client, /pc\.close\(\)/);
+  assert.match(client, /await createOffer\(peerId\)/);
+});
+
+test("route recovery keeps local media and active call intact", () => {
+  const client = read("public/lesson-comms.mjs");
+  const rebuildStart = client.indexOf('event: "peer-rebuild"');
+  const rebuildEnd = client.indexOf("await createOffer(peerId)", rebuildStart);
+  const rebuild = client.slice(rebuildStart, rebuildEnd);
+
+  assert.doesNotMatch(rebuild, /track\.stop\(/);
+  assert.doesNotMatch(rebuild, /localStream = null/);
+  assert.doesNotMatch(rebuild, /activeCallId = null/);
+});
+
+test("peer rebuild recovery is cache-busted on lesson pages", () => {
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery2/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery2/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery2/);
+});
+
+
+test("RTC diagnostics are persisted with TTL and call correlation", () => {
+  const server = read("server.js");
+
+  assert.match(server, /rtcDiagnostics = db\.collection\(collectionName\("rtc_diagnostics"\)\)/);
+  assert.match(server, /rtcDiagnostics\.createIndex\(\{ lessonId: 1, createdAt: -1 \}\)/);
+  assert.match(server, /rtcDiagnostics\.createIndex\(\{ callId: 1, createdAt: 1 \}\)/);
+  assert.match(server, /rtcDiagnostics\.createIndex\(\{ expiresAt: 1 \}, \{ expireAfterSeconds: 0 \}\)/);
+  assert.match(server, /rtcDiagnostics\?\.insertOne\(\{/);
+  assert.match(server, /callId: socket\.data\.rtcCallId \|\| null/);
+  assert.match(server, /expiresAt: new Date\(now\.getTime\(\) \+ 14 \* 24 \* 60 \* 60 \* 1000\)/);
+});
+
+test("RTC diagnostics include network context without SDP or candidate bodies", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(client, /function rtcNetworkSnapshot\(\)/);
+  assert.match(client, /function emitRtcDebug\(payload = \{\}\)/);
+  assert.match(client, /event: "network-change"/);
+  assert.match(server, /effectiveType:/);
+  assert.match(server, /downlink:/);
+  assert.match(server, /rtt:/);
+  assert.doesNotMatch(server, /rtcDiagnostics\?\.insertOne\([\s\S]{0,900}\bsdp\b/);
+  assert.doesNotMatch(server, /rtcDiagnostics\?\.insertOne\([\s\S]{0,900}\bcandidate\b/);
 });

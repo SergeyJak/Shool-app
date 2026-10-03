@@ -92,6 +92,7 @@ let bucket;
 let annotations;
 let settings;
 let performanceLogs;
+let rtcDiagnostics;
 let users;
 let lessons;
 let materials;
@@ -1872,13 +1873,48 @@ io.on("connection", (socket) => {
   socket.on("rtc:debug", (payload = {}) => {
     if (role === "observer") return;
     const event = String(payload.event || "").slice(0, 80);
-    const state = String(payload.state || "").slice(0, 80);
+    const state = String(payload.state || "").slice(0, 2000);
     const errorCode = Number.isFinite(Number(payload.errorCode)) ? Number(payload.errorCode) : null;
     const errorText = String(payload.errorText || "").slice(0, 300);
     const url = String(payload.url || "").slice(0, 300);
+    const network = payload.network && typeof payload.network === "object"
+      ? {
+          type: String(payload.network.type || "").slice(0, 30) || null,
+          effectiveType: String(payload.network.effectiveType || "").slice(0, 30) || null,
+          downlink: Number.isFinite(Number(payload.network.downlink))
+            ? Number(payload.network.downlink)
+            : null,
+          rtt: Number.isFinite(Number(payload.network.rtt))
+            ? Number(payload.network.rtt)
+            : null,
+          saveData: Boolean(payload.network.saveData),
+          online: payload.network.online !== false,
+        }
+      : null;
+
     console.info(
-      `RTC debug lesson=${lessonId} role=${role} event=${event} state=${state} errorCode=${errorCode ?? ""} errorText=${errorText} url=${url}`
+      `RTC debug lesson=${lessonId} role=${role} event=${event} state=${state.slice(0, 80)} errorCode=${errorCode ?? ""} errorText=${errorText} url=${url}`
     );
+
+    const now = new Date();
+    rtcDiagnostics?.insertOne({
+      lessonId,
+      callId: socket.data.rtcCallId || null,
+      role,
+      userId: String(socket.data.user?._id || ""),
+      clientId: realtimeClientId(socket.handshake.auth?.clientId),
+      socketId: socket.id,
+      event,
+      state,
+      errorCode,
+      errorText: errorText || null,
+      url: url || null,
+      network,
+      createdAt: now,
+      expiresAt: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+    }).catch((error) => {
+      console.warn("RTC diagnostic write failed", error);
+    });
   });
 
   socket.on("rtc:signal", (payload, ack) => {
@@ -2293,6 +2329,7 @@ async function start() {
   annotations = db.collection(collectionName("annotations"));
   settings = db.collection(collectionName("settings"));
   performanceLogs = db.collection(collectionName("performance_logs"));
+  rtcDiagnostics = db.collection(collectionName("rtc_diagnostics"));
   users = db.collection(collectionName("users"));
   lessons = db.collection(collectionName("lessons"));
   materials = db.collection(collectionName("materials"));
@@ -2322,6 +2359,9 @@ async function start() {
   await homeworkSubmissions.createIndex({ lessonId: 1, submittedAt: -1 });
   await homeworkSubmissions.createIndex({ lessonId: 1, participantKey: 1 }, { unique: true });
   await lessonMessages.createIndex({ lessonId: 1, createdAt: -1 });
+  await rtcDiagnostics.createIndex({ lessonId: 1, createdAt: -1 });
+  await rtcDiagnostics.createIndex({ callId: 1, createdAt: 1 });
+  await rtcDiagnostics.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
   async function ensureUser({ username, displayName, role, passwordSalt, passwordHash, lessonIds = [] }) {
     const id = normalizeUsername(username);
