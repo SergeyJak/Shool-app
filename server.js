@@ -92,6 +92,7 @@ let homeworkSubmissions;
 let lessonMessages;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
+const rtcCallsByLesson = new Map();
 
 const loginIpLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
 const loginCredentialLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
@@ -294,6 +295,17 @@ function rtcPeer(socket) {
     role: socket.data.role,
     displayName: socket.data.user?.displayName || socket.data.user?.username || socket.data.role,
   };
+}
+
+function activeRtcCall(lessonId) {
+  const call = rtcCallsByLesson.get(lessonId);
+  if (!call) return null;
+  const caller = io.sockets.sockets.get(call.callerId);
+  if (!caller || caller.data.lessonId !== lessonId) {
+    rtcCallsByLesson.delete(lessonId);
+    return null;
+  }
+  return { ...call, caller };
 }
 
 async function lessonForUser(user, lessonId) {
@@ -1651,6 +1663,68 @@ io.on("connection", (socket) => {
   socket.data.followControllerKey = controllerKey;
   socket.join(room);
 
+  const waitingCall = activeRtcCall(lessonId);
+  if (waitingCall && waitingCall.callerId !== socket.id && role !== "observer") {
+    socket.emit("rtc:incoming-call", {
+      from: waitingCall.callerId,
+      caller: rtcPeer(waitingCall.caller),
+    });
+  }
+
+  socket.on("rtc:call", async (_payload, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    socket.data.rtcReady = true;
+    rtcCallsByLesson.set(lessonId, {
+      callerId: socket.id,
+      createdAt: Date.now(),
+    });
+
+    try {
+      const roomSockets = await io.in(room).fetchSockets();
+      const recipients = roomSockets
+        .filter((peer) => peer.id !== socket.id && peer.data.role !== "observer")
+        .map(rtcPeer);
+
+      socket.to(room).emit("rtc:incoming-call", {
+        from: socket.id,
+        caller: rtcPeer(socket),
+      });
+      ack?.({ ok: true, recipients });
+    } catch (error) {
+      console.error("RTC call request failed", error);
+      ack?.({ ok: false, error: "RTC_CALL_FAILED" });
+    }
+  });
+
+  socket.on("rtc:accept", ({ callerId } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const call = activeRtcCall(lessonId);
+    if (!call || call.callerId !== callerId) {
+      return ack?.({ ok: false, error: "CALL_NOT_FOUND" });
+    }
+
+    socket.data.rtcReady = true;
+    rtcCallsByLesson.delete(lessonId);
+    call.caller.emit("rtc:accepted", {
+      peer: rtcPeer(socket),
+    });
+    ack?.({ ok: true, caller: rtcPeer(call.caller) });
+  });
+
+  socket.on("rtc:decline", ({ callerId } = {}) => {
+    const call = activeRtcCall(lessonId);
+    if (!call || call.callerId !== callerId) return;
+    rtcCallsByLesson.delete(lessonId);
+    call.caller.emit("rtc:declined", { by: rtcPeer(socket) });
+  });
+
+  socket.on("rtc:cancel", () => {
+    const call = activeRtcCall(lessonId);
+    if (!call || call.callerId !== socket.id) return;
+    rtcCallsByLesson.delete(lessonId);
+    socket.to(room).emit("rtc:cancelled", { from: socket.id });
+  });
+
   socket.on("rtc:ready", async (_payload, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     socket.data.rtcReady = true;
@@ -1698,6 +1772,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("rtc:leave", () => {
+    const call = activeRtcCall(lessonId);
+    if (call?.callerId === socket.id) rtcCallsByLesson.delete(lessonId);
     if (socket.data.rtcReady !== true) return;
     socket.data.rtcReady = false;
     socket.to(room).emit("rtc:peer-left", { id: socket.id });
@@ -1807,6 +1883,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    const call = activeRtcCall(lessonId);
+    if (call?.callerId === socket.id) {
+      rtcCallsByLesson.delete(lessonId);
+      socket.to(room).emit("rtc:cancelled", { from: socket.id });
+    }
     if (socket.data.rtcReady === true) {
       socket.to(room).emit("rtc:peer-left", { id: socket.id });
     }
