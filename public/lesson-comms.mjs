@@ -22,6 +22,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let rtcQualityTimer = null;
   let peerCallId = null;
   let iceRestartTimer = null;
+  let recoveryWatchdogTimer = null;
   let iceRestartAttempts = 0;
 
   function rtcNetworkSnapshot() {
@@ -475,14 +476,70 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       setCallState("Соединение установлено");
     });
 
+    const rebuildPeerAfterRouteFailure = async (peerId) => {
+      if (
+        connectionCallId !== activeCallId ||
+        pc !== peerConnection ||
+        !peerId ||
+        ["connected", "closed"].includes(pc.connectionState)
+      ) return;
+
+      emitRtcDebug({
+        event: "peer-rebuild",
+        state: `connection=${pc.connectionState};ice=${pc.iceConnectionState}`,
+      });
+
+      if (rtcQualityTimer) {
+        clearInterval(rtcQualityTimer);
+        rtcQualityTimer = null;
+      }
+      if (iceRestartTimer) {
+        clearTimeout(iceRestartTimer);
+        iceRestartTimer = null;
+      }
+      if (recoveryWatchdogTimer) {
+        clearTimeout(recoveryWatchdogTimer);
+        recoveryWatchdogTimer = null;
+      }
+
+      if (peerConnection === pc) {
+        peerConnection = null;
+        peerCallId = null;
+        activePeerId = null;
+        pendingCandidates = [];
+        remoteStream = null;
+        remoteVideo.srcObject = null;
+      }
+      pc.close();
+
+      try {
+        await createOffer(peerId);
+      } catch (error) {
+        console.warn("WebRTC peer rebuild failed", error);
+      }
+    };
+
+    const armRecoveryWatchdog = (peerId) => {
+      if (recoveryWatchdogTimer) clearTimeout(recoveryWatchdogTimer);
+      recoveryWatchdogTimer = setTimeout(() => {
+        recoveryWatchdogTimer = null;
+        if (
+          connectionCallId !== activeCallId ||
+          pc !== peerConnection ||
+          ["connected", "closed"].includes(pc.connectionState)
+        ) return;
+
+        emitRtcDebug({
+          event: "recovery-timeout",
+          state: `connection=${pc.connectionState};ice=${pc.iceConnectionState}`,
+        });
+        rebuildPeerAfterRouteFailure(peerId);
+      }, 5000);
+    };
+
     const scheduleIceRestart = () => {
       if (iceRestartTimer || connectionCallId !== activeCallId || pc !== peerConnection) return;
-      if (iceRestartAttempts >= 2) return;
-
-      const delay =
-        iceRestartAttempts === 0
-          ? (pc.connectionState === "failed" ? 250 : 1500)
-          : 250;
+      if (iceRestartAttempts >= 1) return;
 
       iceRestartTimer = setTimeout(async () => {
         iceRestartTimer = null;
@@ -497,64 +554,21 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         if (!shouldOffer || !peerId) return;
 
         iceRestartAttempts += 1;
-        const attempt = iceRestartAttempts;
+        emitRtcDebug({
+          event: "ice-restart",
+          state: `attempt=1;connection=${pc.connectionState}`,
+        });
+
+        // Arm the watchdog before starting offer creation. Some browsers can
+        // spend a long time inside setLocalDescription while gathering ICE.
+        armRecoveryWatchdog(peerId);
 
         try {
-          if (attempt === 1) {
-            emitRtcDebug({
-              event: "ice-restart",
-              state: `attempt=1;connection=${pc.connectionState}`,
-            });
-            await createOffer(peerId, { iceRestart: true });
-
-            // A restart can finish gathering without ever producing a usable
-            // candidate pair. If the route is still dead a few seconds later,
-            // escalate to a fresh RTCPeerConnection.
-            iceRestartTimer = setTimeout(() => {
-              iceRestartTimer = null;
-              if (
-                connectionCallId === activeCallId &&
-                pc === peerConnection &&
-                !["connected", "closed"].includes(pc.connectionState)
-              ) {
-                emitRtcDebug({
-                  event: "recovery-timeout",
-                  state: `connection=${pc.connectionState};ice=${pc.iceConnectionState}`,
-                });
-                scheduleIceRestart();
-              }
-            }, 5000);
-            return;
-          }
-
-          emitRtcDebug({
-            event: "peer-rebuild",
-            state: `attempt=2;connection=${pc.connectionState}`,
-          });
-
-          if (rtcQualityTimer) {
-            clearInterval(rtcQualityTimer);
-            rtcQualityTimer = null;
-          }
-
-          // Detach the dead peer without touching the local camera/microphone
-          // or the active call. ensurePeer() will fetch a fresh ICE config and
-          // construct a brand-new RTCPeerConnection for the same callId.
-          if (peerConnection === pc) {
-            peerConnection = null;
-            peerCallId = null;
-            activePeerId = null;
-            pendingCandidates = [];
-            remoteStream = null;
-            remoteVideo.srcObject = null;
-          }
-          pc.close();
-
-          await createOffer(peerId);
+          await createOffer(peerId, { iceRestart: true });
         } catch (error) {
-          console.warn("WebRTC route recovery failed", error);
+          console.warn("ICE restart failed", error);
         }
-      }, delay);
+      }, pc.connectionState === "failed" ? 250 : 1500);
     };
 
     pc.addEventListener("connectionstatechange", () => {
@@ -563,6 +577,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         if (iceRestartTimer) {
           clearTimeout(iceRestartTimer);
           iceRestartTimer = null;
+        }
+        if (recoveryWatchdogTimer) {
+          clearTimeout(recoveryWatchdogTimer);
+          recoveryWatchdogTimer = null;
         }
         iceRestartAttempts = 0;
         setCallState("Соединение установлено");
@@ -794,6 +812,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     if (iceRestartTimer) {
       clearTimeout(iceRestartTimer);
       iceRestartTimer = null;
+    }
+    if (recoveryWatchdogTimer) {
+      clearTimeout(recoveryWatchdogTimer);
+      recoveryWatchdogTimer = null;
     }
     iceRestartAttempts = 0;
     peerConnection?.close();
