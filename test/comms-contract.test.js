@@ -622,3 +622,22 @@ test("RTC v2 records answer creation and local-description timing", () => {
   assert.match(client, /event: "answer-local-set-v2"/);
   assert.match(client, /const answerStartedAt = performance\.now\(\)/);
 });
+
+
+test("RTC v2 gives transient disconnected state a grace period before rebuilding", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /reason === "connection-disconnected" \? 5000 : 1200/);
+  assert.match(client, /event: "recovery-scheduled-v2"/);
+  assert.match(client, /event: "recovery-skipped-v2"/);
+  assert.match(client, /peerConnection\.connectionState === "connected"/);
+  assert.match(client, /\["connected", "completed"\]\.includes\(peerConnection\.iceConnectionState\)/);
+});
+
+test("RTC v2 cancels pending recovery when the peer reconnects", () => {
+  const client = read("public/lesson-comms.mjs");
+  const connected = client.indexOf('if (pc.connectionState === "connected")');
+  const block = client.slice(connected, connected + 900);
+  assert.match(block, /if \(reconnectTimer\)/);
+  assert.match(block, /clearTimeout\(reconnectTimer\)/);
+  assert.match(block, /event: "recovery-cancelled-v2"/);
+});

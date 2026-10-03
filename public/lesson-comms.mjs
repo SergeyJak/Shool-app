@@ -570,6 +570,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           clearTimeout(connectWatchdogTimer);
           connectWatchdogTimer = null;
         }
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+          emitRtcDebug({
+            event: "recovery-cancelled-v2",
+            state: "peer-reconnected-before-resume",
+          });
+        }
         rebuilding = false;
         setCallState("Соединение установлено");
         startRtcQualityMonitor(pc);
@@ -733,10 +741,35 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   function scheduleRtc2Resume(reason) {
     if (reconnectTimer || !activeCallId || !callAccepted) return;
+
+    const disconnectedGraceMs =
+      reason === "connection-disconnected" ? 5000 : 1200;
+
+    emitRtcDebug({
+      event: "recovery-scheduled-v2",
+      state: `reason=${reason};delayMs=${disconnectedGraceMs}`,
+    });
+
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
+
+      if (
+        reason === "connection-disconnected" &&
+        peerConnection &&
+        (
+          peerConnection.connectionState === "connected" ||
+          ["connected", "completed"].includes(peerConnection.iceConnectionState)
+        )
+      ) {
+        emitRtcDebug({
+          event: "recovery-skipped-v2",
+          state: `reason=${reason};connection=${peerConnection.connectionState};ice=${peerConnection.iceConnectionState}`,
+        });
+        return;
+      }
+
       resumeRtc2Session(reason);
-    }, 1200);
+    }, disconnectedGraceMs);
   }
 
   function resumeRtc2Session(reason = "resume") {
