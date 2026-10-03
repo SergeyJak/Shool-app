@@ -25,6 +25,59 @@
 .lesson-comms-chat-button {
   position: relative;
 }
+
+.lesson-comms-video-button.ringing {
+  background: #fff4df;
+  color: #7a4c00;
+  border-color: #efc36d;
+  animation: lesson-call-pulse 1.15s ease-in-out infinite;
+}
+@keyframes lesson-call-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 8px 26px rgba(23,32,42,.16); }
+  50% { transform: scale(1.045); box-shadow: 0 10px 34px rgba(239,168,50,.34); }
+}
+.lesson-comms-incoming {
+  margin-bottom: 10px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid #efd08f;
+  border-radius: 14px;
+  background: #fff8e9;
+}
+.lesson-comms-incoming[hidden] { display: none !important; }
+.lesson-comms-incoming > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+.lesson-comms-incoming-title {
+  color: #6f4700;
+  font-size: 15px;
+}
+.lesson-comms-incoming-name {
+  color: #5f6670;
+  font-size: 13px;
+}
+.lesson-comms-incoming-actions {
+  display: flex;
+  gap: 8px;
+}
+.lesson-comms-incoming-actions button {
+  flex: 1;
+  min-height: 42px;
+}
+.lesson-comms-accept {
+  border-color: #91c6a2;
+  background: #edf9f0;
+  color: #176b35;
+  font-weight: 700;
+}
+.lesson-comms-decline {
+  border-color: #e2a3a3;
+  background: #fff5f5;
+  color: #a42525;
+}
+
 .lesson-comms-unread {
   position: absolute;
   top: -7px;
