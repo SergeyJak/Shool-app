@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video5/);
+    assert.match(read(file), /app\.js\?v=20261003-video6/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -126,12 +126,23 @@ test("video call can collapse to opponent-only mini window and restore on click"
 });
 
 
-test("Cloudflare TURN preview forces relay-only transport and logs selected ICE pair", () => {
+test("Cloudflare TURN stays available as fallback and selected ICE pair is logged", () => {
   const server = read("server.js");
   const client = read("public/lesson-comms.mjs");
-  assert.match(server, /iceTransportPolicy: "relay"/);
-  assert.match(server, /iceTransportPolicy: "all"/);
+  assert.doesNotMatch(server, /source: "cloudflare-turn",[\s\S]{0,100}iceTransportPolicy: "relay"/);
+  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,100}iceTransportPolicy: "all"/);
   assert.match(client, /iceTransportPolicy: iceConfig\.iceTransportPolicy/);
   assert.match(client, /event: "selected-pair"/);
   assert.match(client, /candidateType/);
+});
+
+
+test("video capture and sender bitrate are tuned for lesson calls", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /width: \{ ideal: 960, max: 1280 \}/);
+  assert.match(client, /height: \{ ideal: 540, max: 720 \}/);
+  assert.match(client, /frameRate: \{ ideal: 24, max: 30 \}/);
+  assert.match(client, /maxBitrate = 900_000/);
+  assert.match(client, /maxFramerate = 24/);
+  assert.match(client, /degradationPreference = "maintain-framerate"/);
 });
