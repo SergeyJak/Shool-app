@@ -247,3 +247,11 @@ test("window actions clearly separate minimize close and hangup", () => {
   assert.match(client, /lesson-comms-hangup danger call-control/);
   assert.match(css, /lesson-comms-window-actions/);
 });
+
+
+test("incoming call hides the outgoing call action until the incoming state ends", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /const incomingCallPending = Boolean\(pendingCallerId\)/);
+  assert.match(client, /startButton\.hidden = callIsActive \|\| incomingCallPending/);
+  assert.match(client, /function resetIncomingCall\(\)[\s\S]{0,220}pendingCallerId = null/);
+});
