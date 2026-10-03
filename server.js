@@ -103,7 +103,10 @@ const teacherPageByLesson = new Map();
 const rtcCallsByLesson = new Map();
 const rtc2CallsByLesson = new Map();
 const rtcDisconnectedPeers = new Map();
+let cloudflareTurnCache = null;
+let cloudflareTurnFetchPromise = null;
 const RTC_DISCONNECTED_PEER_TTL_MS = 60_000;
+const CLOUDFLARE_TURN_CACHE_MS = 5 * 60 * 1000;
 
 const loginIpLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
 const loginCredentialLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
@@ -292,32 +295,47 @@ function staticWebrtcIceServers() {
 
 async function cloudflareTurnIceServers() {
   if (!CLOUDFLARE_TURN_KEY_ID || !CLOUDFLARE_TURN_API_TOKEN) return null;
-  const endpoint =
-    `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(CLOUDFLARE_TURN_KEY_ID)}/credentials/generate-ice-servers`;
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${CLOUDFLARE_TURN_API_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ ttl: CLOUDFLARE_TURN_TTL_SECONDS }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(
-      `Cloudflare TURN credential request failed: ${response.status} ${body.slice(0, 200)}`
-    );
+  const now = Date.now();
+  if (cloudflareTurnCache?.expiresAt > now) {
+    return cloudflareTurnCache.iceServers;
   }
+  if (cloudflareTurnFetchPromise) return cloudflareTurnFetchPromise;
 
-  const payload = await response.json();
-  if (!Array.isArray(payload.iceServers)) return null;
+  cloudflareTurnFetchPromise = (async () => {
+    const endpoint =
+      `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(CLOUDFLARE_TURN_KEY_ID)}/credentials/generate-ice-servers`;
 
-  // Keep every Cloudflare TURN transport. The API response is combined with
-  // our independent STUN servers so mobile networks are not dependent on
-  // Cloudflare STUN reachability for server-reflexive candidates.
-  return payload.iceServers;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CLOUDFLARE_TURN_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ttl: CLOUDFLARE_TURN_TTL_SECONDS }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(
+        `Cloudflare TURN credential request failed: ${response.status} ${body.slice(0, 200)}`
+      );
+    }
+
+    const payload = await response.json();
+    if (!Array.isArray(payload.iceServers)) return null;
+
+    cloudflareTurnCache = {
+      iceServers: payload.iceServers,
+      expiresAt: Date.now() + CLOUDFLARE_TURN_CACHE_MS,
+    };
+    return cloudflareTurnCache.iceServers;
+  })();
+
+  try {
+    return await cloudflareTurnFetchPromise;
+  } finally {
+    cloudflareTurnFetchPromise = null;
+  }
 }
 
 function publicChatMessage(row) {
