@@ -35,6 +35,7 @@ form.addEventListener("submit", async (event) => {
         FIRST_NAME_REQUIRED: "Введите имя.",
         INVALID_EMAIL: "Проверьте email.",
         INVALID_BIRTH_DATE: "Проверьте дату рождения.",
+        EMAIL_EXISTS: "Этот email уже используется другим аккаунтом.",
         REGISTRATION_REQUIRED: "Сессия регистрации истекла. Войдите снова.",
       };
       throw new Error(messages[payload.error] || "Не удалось сохранить профиль.");
