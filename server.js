@@ -15,6 +15,7 @@ const {
 } = require("./lib/annotation-utils");
 const { createFollowState } = require("./lib/follow-state");
 const { createMemoryRateLimiter } = require("./lib/rate-limit");
+const { normalizeChatMessage, normalizeRtcSignal } = require("./lib/realtime-comms");
 const { parseSingleByteRange } = require("./lib/http-range");
 const {
   normalizeUsername,
@@ -56,6 +57,15 @@ const AUTH_SECRET =
   crypto.createHash("sha256").update(`school-app:${MONGODB_URI}`).digest("hex");
 const ADMIN_TELEGRAM_BOT_TOKEN = String(process.env.ADMIN_TELEGRAM_BOT_TOKEN || "").trim();
 const ADMIN_TELEGRAM_CHAT_ID = String(process.env.ADMIN_TELEGRAM_CHAT_ID || "").trim();
+const WEBRTC_STUN_URLS = String(
+  process.env.WEBRTC_STUN_URLS || "stun:stun.l.google.com:19302"
+)
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const WEBRTC_TURN_URL = String(process.env.WEBRTC_TURN_URL || "").trim();
+const WEBRTC_TURN_USERNAME = String(process.env.WEBRTC_TURN_USERNAME || "").trim();
+const WEBRTC_TURN_CREDENTIAL = String(process.env.WEBRTC_TURN_CREDENTIAL || "").trim();
 
 const app = express();
 app.disable("x-powered-by");
@@ -79,6 +89,7 @@ let users;
 let lessons;
 let materials;
 let homeworkSubmissions;
+let lessonMessages;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 
@@ -251,6 +262,38 @@ async function validateLessonMembers(teacherIds, studentIds) {
 
 function lessonRoom(lessonId) {
   return `lesson:${lessonId}`;
+}
+
+function webrtcIceServers() {
+  const servers = [];
+  if (WEBRTC_STUN_URLS.length) servers.push({ urls: WEBRTC_STUN_URLS });
+  if (WEBRTC_TURN_URL) {
+    const turn = { urls: WEBRTC_TURN_URL };
+    if (WEBRTC_TURN_USERNAME) turn.username = WEBRTC_TURN_USERNAME;
+    if (WEBRTC_TURN_CREDENTIAL) turn.credential = WEBRTC_TURN_CREDENTIAL;
+    servers.push(turn);
+  }
+  return servers;
+}
+
+function publicChatMessage(row) {
+  return {
+    id: row._id,
+    lessonId: row.lessonId,
+    userId: row.userId,
+    displayName: row.displayName,
+    role: row.role,
+    text: row.text,
+    createdAt: row.createdAt,
+  };
+}
+
+function rtcPeer(socket) {
+  return {
+    id: socket.id,
+    role: socket.data.role,
+    displayName: socket.data.user?.displayName || socket.data.user?.username || socket.data.role,
+  };
 }
 
 async function lessonForUser(user, lessonId) {
@@ -1494,6 +1537,11 @@ app.get("/api/performance", requireApiRole("admin"), async (req, res, next) => {
 });
 
 
+app.get("/api/webrtc/config", requireApiRole("teacher", "student"), requireLessonAccess, (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ iceServers: webrtcIceServers() });
+});
+
 app.get("/api/annotations/:page", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
   try {
     const page = Number(req.params.page);
@@ -1603,6 +1651,110 @@ io.on("connection", (socket) => {
   socket.data.followControllerKey = controllerKey;
   socket.join(room);
 
+  socket.on("rtc:ready", async (_payload, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    socket.data.rtcReady = true;
+    try {
+      const roomSockets = await io.in(room).fetchSockets();
+      const peers = roomSockets
+        .filter((peer) =>
+          peer.id !== socket.id &&
+          peer.data.rtcReady === true &&
+          peer.data.role !== "observer"
+        )
+        .map(rtcPeer);
+      socket.to(room).emit("rtc:peer-ready", rtcPeer(socket));
+      ack?.({ ok: true, peers });
+    } catch (error) {
+      console.error("RTC presence failed", error);
+      ack?.({ ok: false, error: "RTC_PRESENCE_FAILED" });
+    }
+  });
+
+  socket.on("rtc:signal", (payload, ack) => {
+    if (role === "observer" || socket.data.rtcReady !== true) {
+      return ack?.({ ok: false, error: "READ_ONLY" });
+    }
+    const signal = normalizeRtcSignal(payload);
+    if (!signal) return ack?.({ ok: false, error: "INVALID_SIGNAL" });
+
+    const target = io.sockets.sockets.get(signal.targetId);
+    if (
+      !target ||
+      target.data.lessonId !== lessonId ||
+      target.data.rtcReady !== true ||
+      target.data.role === "observer"
+    ) {
+      return ack?.({ ok: false, error: "PEER_UNAVAILABLE" });
+    }
+
+    target.emit("rtc:signal", {
+      from: socket.id,
+      fromRole: role,
+      description: signal.description,
+      candidate: signal.candidate,
+    });
+    ack?.({ ok: true });
+  });
+
+  socket.on("rtc:leave", () => {
+    if (socket.data.rtcReady !== true) return;
+    socket.data.rtcReady = false;
+    socket.to(room).emit("rtc:peer-left", { id: socket.id });
+  });
+
+  socket.on("chat:history", async (_payload, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    try {
+      const rows = await lessonMessages
+        .find({ lessonId })
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray();
+      ack?.({
+        ok: true,
+        currentUserId: socket.data.user._id,
+        messages: rows.reverse().map(publicChatMessage),
+      });
+    } catch (error) {
+      console.error("Chat history failed", error);
+      ack?.({ ok: false, error: "CHAT_HISTORY_FAILED" });
+    }
+  });
+
+  socket.on("chat:send", async ({ text } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const normalizedText = normalizeChatMessage(text);
+    if (!normalizedText) return ack?.({ ok: false, error: "INVALID_MESSAGE" });
+
+    const nowMs = Date.now();
+    if (nowMs - Number(socket.data.lastChatAt || 0) < 300) {
+      return ack?.({ ok: false, error: "TOO_FAST" });
+    }
+    socket.data.lastChatAt = nowMs;
+
+    try {
+      const row = {
+        _id: crypto.randomUUID(),
+        lessonId,
+        userId: socket.data.user._id,
+        displayName:
+          socket.data.user.displayName ||
+          socket.data.user.username ||
+          (role === "teacher" ? "Учитель" : "Ученик"),
+        role,
+        text: normalizedText,
+        createdAt: new Date(),
+      };
+      await lessonMessages.insertOne(row);
+      io.to(room).emit("chat:message", publicChatMessage(row));
+      ack?.({ ok: true, id: row._id });
+    } catch (error) {
+      console.error("Chat send failed", error);
+      ack?.({ ok: false, error: "CHAT_SAVE_FAILED" });
+    }
+  });
+
   if (controllerKey) teacherFollow.reconnect(controllerKey);
   socket.emit("teacher:follow:state", teacherFollow.snapshot(controllerKey));
   if (teacherPageByLesson.has(lessonId)) {
@@ -1655,6 +1807,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    if (socket.data.rtcReady === true) {
+      socket.to(room).emit("rtc:peer-left", { id: socket.id });
+    }
     if (role !== "teacher" || !controllerKey) return;
     teacherFollow.disconnect(controllerKey);
   });
@@ -1884,6 +2039,7 @@ async function start() {
   lessons = db.collection(collectionName("lessons"));
   materials = db.collection(collectionName("materials"));
   homeworkSubmissions = db.collection(collectionName("homework_submissions"));
+  lessonMessages = db.collection(collectionName("lesson_messages"));
 
   if (DATA_NAMESPACE && await users.countDocuments({}) === 0) {
     const sourceUsers = await db.collection("users").find({}).toArray();
@@ -1907,6 +2063,7 @@ async function start() {
   await materials.createIndex({ ownerId: 1, createdAt: -1 });
   await homeworkSubmissions.createIndex({ lessonId: 1, submittedAt: -1 });
   await homeworkSubmissions.createIndex({ lessonId: 1, participantKey: 1 }, { unique: true });
+  await lessonMessages.createIndex({ lessonId: 1, createdAt: -1 });
 
   async function ensureUser({ username, displayName, role, passwordSalt, passwordHash, lessonIds = [] }) {
     const id = normalizeUsername(username);
