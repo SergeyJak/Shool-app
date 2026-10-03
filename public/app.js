@@ -361,6 +361,8 @@ pageInput.addEventListener("keydown", (event) => {
   }
 });
 
+setTool(tool);
+
 penBtn.addEventListener("click", () => setTool("pen"));
 eraserBtn.addEventListener("click", () => setTool("eraser"));
 handBtn.addEventListener("click", () => setTool("hand"));
