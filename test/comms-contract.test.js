@@ -45,14 +45,28 @@ test("ICE config is protected and supports TURN environment variables", () => {
   assert.match(server, /WEBRTC_TURN_CREDENTIAL/);
 });
 
-test("lesson client requests media only after explicit start and supports reconnect", () => {
+test("lesson client uses explicit incoming call acceptance before negotiation", () => {
   const client = read("public/lesson-comms.mjs");
   assert.match(client, /startButton\.addEventListener\("click", startCall\)/);
+  assert.match(client, /socket\.emit\("rtc:call"/);
+  assert.match(client, /socket\.on\("rtc:incoming-call"/);
+  assert.match(client, /acceptButton\.addEventListener\("click"/);
+  assert.match(client, /socket\.emit\("rtc:accept"/);
+  assert.match(client, /socket\.on\("rtc:accepted"/);
   assert.match(client, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(client, /new RTCPeerConnection/);
-  assert.match(client, /socket\.on\("connect"[\s\S]*announceReady/);
   assert.match(client, /socket\.on\("rtc:signal"/);
   assert.match(client, /socket\.on\("chat:message"/);
+});
+
+test("server routes call request accept decline and cancel only inside lesson room", () => {
+  const server = read("server.js");
+  assert.match(server, /socket\.on\("rtc:call"/);
+  assert.match(server, /socket\.to\(room\)\.emit\("rtc:incoming-call"/);
+  assert.match(server, /socket\.on\("rtc:accept"/);
+  assert.match(server, /call\.caller\.emit\("rtc:accepted"/);
+  assert.match(server, /socket\.on\("rtc:decline"/);
+  assert.match(server, /socket\.on\("rtc:cancel"/);
 });
 
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
