@@ -306,7 +306,23 @@ async function cloudflareTurnIceServers() {
   }
 
   const payload = await response.json();
-  return Array.isArray(payload.iceServers) ? payload.iceServers : null;
+  if (!Array.isArray(payload.iceServers)) return null;
+
+  const tlsOnly = payload.iceServers
+    .map((server) => {
+      const urls = Array.isArray(server.urls) ? server.urls : [server.urls].filter(Boolean);
+      const filteredUrls = urls.filter(
+        (url) => typeof url === "string" && /^turns:.*:443\?transport=tcp$/i.test(url)
+      );
+      if (!filteredUrls.length) return null;
+      return {
+        ...server,
+        urls: filteredUrls,
+      };
+    })
+    .filter(Boolean);
+
+  return tlsOnly.length ? tlsOnly : payload.iceServers;
 }
 
 function publicChatMessage(row) {
