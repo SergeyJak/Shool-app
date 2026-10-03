@@ -250,7 +250,7 @@ test("mobile teacher follow control has its own row and cannot overlay toolbar",
 
   assert.match(teacher, /class="lesson-sync-row compact-sync"/);
   assert.match(teacher, /id="followBtn"/);
-  assert.match(css, /@media \(max-width:699px\)[\s\S]*\.compact-sync\{[\s\S]*position:static/);
+  assert.match(css, /\.pdf-view-page \.compact-sync\{[\s\S]*position:static/);
   assert.match(css, /@media \(max-width:699px\)[\s\S]*\.compact-sync[\s\S]*justify-content:flex-end/);
   assert.match(css, /@media \(min-width:700px\) and \(max-width:1100px\) and \(orientation:portrait\)[\s\S]*\.compact-sync\{[\s\S]*position:static/);
 });
