@@ -263,8 +263,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     const audio = localStream?.getAudioTracks()[0];
     const video = localStream?.getVideoTracks()[0];
     const callIsActive = Boolean(localStream || outgoingCall || callAccepted);
+    const incomingCallPending = Boolean(pendingCallerId);
 
-    startButton.hidden = callIsActive;
+    startButton.hidden = callIsActive || incomingCallPending;
     for (const button of [micButton, cameraButton, hangupButton]) {
       button.hidden = !callIsActive;
     }
