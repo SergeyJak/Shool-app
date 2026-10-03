@@ -14,6 +14,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let pendingCallerId = null;
   let outgoingCall = false;
   let callAccepted = false;
+  let ringtoneTimer = null;
+  let ringtoneContext = null;
+  let ringtoneUnlocked = false;
 
   const launcher = document.createElement("div");
   launcher.className = "lesson-comms-launcher";
@@ -27,19 +30,25 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   panel.hidden = true;
   panel.innerHTML = `
     <div class="lesson-comms-head">
-      <strong class="lesson-comms-title">Связь</strong>
+      <div class="lesson-comms-brand">
+        <span class="lesson-comms-mascot" aria-hidden="true">🦉</span>
+        <span>
+          <strong class="lesson-comms-title">Связь</strong>
+          <small class="lesson-comms-subtitle">Вы на занятии вместе</small>
+        </span>
+      </div>
       <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видео" title="Свернуть видео">↙</button>
       <button class="lesson-comms-close" type="button" aria-label="Закрыть">×</button>
     </div>
     <div class="lesson-comms-view lesson-comms-video">
       <div class="lesson-comms-incoming" hidden>
         <div>
-          <strong class="lesson-comms-incoming-title">Входящий звонок</strong>
-          <span class="lesson-comms-incoming-name">Участник звонит…</span>
+          <strong class="lesson-comms-incoming-title">К вам звонят 👋</strong>
+          <span class="lesson-comms-incoming-name">Участник хочет присоединиться</span>
         </div>
         <div class="lesson-comms-incoming-actions">
-          <button class="lesson-comms-accept" type="button">Ответить</button>
-          <button class="lesson-comms-decline danger" type="button">Отклонить</button>
+          <button class="lesson-comms-accept" type="button">📹 Ответить</button>
+          <button class="lesson-comms-decline danger" type="button">Не сейчас</button>
         </div>
       </div>
       <div class="lesson-comms-video-stage">
@@ -48,10 +57,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
       </div>
       <div class="lesson-comms-controls">
-        <button class="lesson-comms-start" type="button">Позвонить</button>
+        <button class="lesson-comms-start primary" type="button">📞 Позвонить</button>
         <button class="lesson-comms-mic" type="button" disabled>🎙 Микрофон</button>
         <button class="lesson-comms-camera" type="button" disabled>📷 Камера</button>
-        <button class="lesson-comms-hangup danger" type="button" disabled>Завершить</button>
+        <button class="lesson-comms-hangup danger" type="button" disabled>☎ Завершить</button>
       </div>
     </div>
     <div class="lesson-comms-view lesson-comms-chat" hidden>
@@ -151,6 +160,79 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     }
     remoteVideo.play().catch(() => {});
   });
+
+  function ensureRingtoneContext() {
+    if (!ringtoneContext) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return null;
+      ringtoneContext = new AudioContextClass();
+    }
+    return ringtoneContext;
+  }
+
+  function unlockRingtone() {
+    const context = ensureRingtoneContext();
+    if (!context) return;
+    context.resume().then(() => {
+      ringtoneUnlocked = true;
+    }).catch(() => {});
+  }
+
+  function playRingtoneBubble() {
+    const context = ensureRingtoneContext();
+    if (!context || context.state !== "running") return;
+
+    const now = context.currentTime;
+    const master = context.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.055, now + 0.02);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
+    master.connect(context.destination);
+
+    [
+      { frequency: 520, start: 0, duration: 0.22 },
+      { frequency: 690, start: 0.28, duration: 0.26 },
+    ].forEach(({ frequency, start, duration }) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, now + start);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        frequency * 0.92,
+        now + start + duration
+      );
+      gain.gain.setValueAtTime(0.0001, now + start);
+      gain.gain.exponentialRampToValueAtTime(0.75, now + start + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
+      oscillator.connect(gain);
+      gain.connect(master);
+      oscillator.start(now + start);
+      oscillator.stop(now + start + duration + 0.03);
+    });
+  }
+
+  function startRingtone() {
+    stopRingtone();
+    const context = ensureRingtoneContext();
+    if (!context) return;
+    context.resume()
+      .then(() => {
+        ringtoneUnlocked = true;
+        playRingtoneBubble();
+        ringtoneTimer = window.setInterval(playRingtoneBubble, 2400);
+      })
+      .catch(() => {});
+  }
+
+  function stopRingtone() {
+    if (ringtoneTimer) {
+      window.clearInterval(ringtoneTimer);
+      ringtoneTimer = null;
+    }
+  }
+
+  document.addEventListener("pointerdown", unlockRingtone, { once: true, passive: true });
+  document.addEventListener("keydown", unlockRingtone, { once: true });
 
   function setCallState(text) {
     callState.textContent = text;
@@ -514,6 +596,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   function resetIncomingCall() {
+    stopRingtone();
     pendingCallerId = null;
     incomingBox.hidden = true;
     videoButton.classList.remove("ringing");
@@ -586,15 +669,18 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     updateMediaButtons();
   });
 
+  window.addEventListener("pagehide", stopRingtone);
+
   socket.on("rtc:incoming-call", ({ from, caller } = {}) => {
     if (!from || localStream || outgoingCall || callAccepted) return;
     pendingCallerId = from;
-    incomingName.textContent = `${caller?.displayName || "Участник"} звонит…`;
+    incomingName.textContent = `${caller?.displayName || "Участник"} хочет присоединиться`;
     incomingBox.hidden = false;
+    startRingtone();
     videoButton.classList.add("ringing");
     videoButton.textContent = "📞 Входящий";
     showView("video");
-    setCallState("Входящий видеозвонок");
+    setCallState("Можно ответить, когда будете готовы 🙂");
   });
 
   socket.on("rtc:accepted", async ({ peer } = {}) => {
