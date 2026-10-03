@@ -665,3 +665,32 @@
     max-height: min(680px, calc(var(--lesson-viewport-height, 100dvh) - 20px));
   }
 }
+
+
+/* On mobile the launcher must not cover the chat composer. */
+@media (max-width: 600px) {
+  .lesson-comms-launcher.chat-open {
+    display: none;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-chat:not([hidden])) {
+    bottom: max(8px, env(safe-area-inset-bottom));
+    max-height: min(
+      680px,
+      calc(var(--lesson-viewport-height, 100dvh) - 12px - env(safe-area-inset-bottom))
+    );
+  }
+
+  .lesson-comms-chat {
+    max-height: calc(var(--lesson-viewport-height, 100dvh) - 118px);
+  }
+
+  .lesson-comms-form {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 2;
+  }
+
+  .lesson-comms-form textarea {
+    min-width: 0;
+  }
+}
