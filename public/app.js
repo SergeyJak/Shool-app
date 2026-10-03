@@ -1360,7 +1360,7 @@ window.addEventListener("resize", () => {
 loadDocument();
 
 
-import("./lesson-comms.mjs?v=20261003-6")
+import("./lesson-comms.mjs?v=20261003-7")
   .then(({ initLessonComms }) => {
     initLessonComms({ socket, role, lessonId, showSnackbar });
   })
