@@ -833,6 +833,12 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     });
   }
 
+  chatSubmitButton?.addEventListener("pointerdown", (event) => {
+    if (document.activeElement === chatInput) {
+      event.preventDefault();
+    }
+  });
+
   chatForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const text = chatInput.value.trim();
