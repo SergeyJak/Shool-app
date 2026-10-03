@@ -644,3 +644,43 @@ test("initial-connect watchdog recovery is cache-busted on lesson pages", () => 
   assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
   assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
 });
+
+
+test("RTC v2 routes signaling by stable client id instead of socket id", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(server, /const rtc2CallsByLesson = new Map\(\)/);
+  assert.match(server, /function rtc2SocketForClient\(lessonId, clientId\)/);
+  assert.match(server, /socket\.on\("rtc2:signal"/);
+  assert.match(server, /targetClientId/);
+  assert.match(client, /socket\.emit\("rtc2:signal"/);
+  assert.match(client, /targetClientId/);
+  assert.doesNotMatch(client, /socket\.emit\("rtc:signal"/);
+});
+
+test("RTC v2 has one caller offerer and fresh peer per offer", () => {
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(client, /async function createFreshPeer\(targetClientId\)/);
+  assert.match(client, /destroyPeer\(\);[\s\S]{0,200}peerClientId = targetClientId/);
+  assert.match(client, /async function startOffer\(targetClientId/);
+  assert.match(client, /const pc = await createFreshPeer\(targetClientId\)/);
+  assert.match(client, /socket\.on\("rtc2:accepted"/);
+});
+
+test("RTC v2 reconnect resumes by stable call session", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(server, /socket\.on\("rtc2:resume"/);
+  assert.match(client, /function resumeRtc2Session/);
+  assert.match(client, /resumeRtc2Session\("socket-reconnect"\)/);
+  assert.match(client, /scheduleRtc2Resume\("network-change"\)/);
+});
+
+test("RTC v2 is cache-busted on lesson pages", () => {
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-rtc2/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-rtc2/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-rtc2/);
+});
