@@ -37,7 +37,16 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           <small class="lesson-comms-subtitle">Вы на занятии вместе</small>
         </span>
       </div>
-      <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видеозвонок">⌄ <span>Свернуть</span></button>
+      <div class="lesson-comms-window-actions">
+        <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видеозвонок">
+          <span aria-hidden="true">▁</span>
+          <span>Свернуть</span>
+        </button>
+        <button class="lesson-comms-close" type="button" aria-label="Закрыть окно видеозвонка">
+          <span aria-hidden="true">✕</span>
+          <span>Закрыть</span>
+        </button>
+      </div>
     </div>
     <div class="lesson-comms-view lesson-comms-video">
       <div class="lesson-comms-incoming" hidden>
@@ -88,6 +97,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const chatButton = launcher.querySelector(".lesson-comms-chat-button");
   const unreadEl = launcher.querySelector(".lesson-comms-unread");
   const minimizeButton = panel.querySelector(".lesson-comms-minimize");
+  const closeButton = panel.querySelector(".lesson-comms-close");
   const titleEl = panel.querySelector(".lesson-comms-title");
   const videoView = panel.querySelector(".lesson-comms-video");
   const chatView = panel.querySelector(".lesson-comms-chat");
@@ -162,6 +172,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   minimizeButton.addEventListener("click", minimizeVideo);
+  closeButton.addEventListener("click", closePanel);
   remoteVideo.addEventListener("click", () => {
     if (panel.classList.contains("mini-video")) {
       restoreVideo();
