@@ -492,3 +492,26 @@ test("hybrid ICE config keeps independent STUN alongside Cloudflare TURN", () =>
   assert.match(server, /source: "hybrid-stun-cloudflare-turn"/);
   assert.match(server, /iceTransportPolicy: "all"/);
 });
+
+
+test("RTC signaling can rebind a stale socket target to the same stable client", () => {
+  const server = read("server.js");
+
+  assert.match(server, /const rtcDisconnectedPeers = new Map\(\)/);
+  assert.match(server, /function rememberDisconnectedRtcPeer\(socket\)/);
+  assert.match(server, /realtimeClientId\(socket\.handshake\.auth\?\.clientId\)/);
+  assert.match(server, /function findReplacementRtcPeer\(staleTargetId, callId\)/);
+  assert.match(server, /String\(peer\.data\.user\?\._id \|\| ""\) === stale\.userId/);
+  assert.match(server, /realtimeClientId\(peer\.handshake\.auth\?\.clientId\) === stale\.clientId/);
+  assert.match(server, /RTC signal rebound/);
+  assert.match(server, /target\.data\.rtcReady = true/);
+  assert.match(server, /target\.data\.rtcCallId = signal\.callId/);
+});
+
+test("RTC stale target rebinding is bounded by call id and expiry", () => {
+  const server = read("server.js");
+
+  assert.match(server, /RTC_DISCONNECTED_PEER_TTL_MS = 60_000/);
+  assert.match(server, /if \(stale\.expiresAt < Date\.now\(\)\)/);
+  assert.match(server, /if \(stale\.callId !== callId\) return null/);
+});

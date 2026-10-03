@@ -100,6 +100,8 @@ let lessonMessages;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 const rtcCallsByLesson = new Map();
+const rtcDisconnectedPeers = new Map();
+const RTC_DISCONNECTED_PEER_TTL_MS = 60_000;
 
 const loginIpLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 30 });
 const loginCredentialLimiter = createMemoryRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
@@ -335,6 +337,43 @@ function rtcPeer(socket) {
     displayName: socket.data.user?.displayName || socket.data.user?.username || socket.data.role,
     callId: socket.data.rtcCallId || null,
   };
+}
+
+function rememberDisconnectedRtcPeer(socket) {
+  const clientId = realtimeClientId(socket.handshake.auth?.clientId);
+  const callId = socket.data.rtcCallId || null;
+  if (!clientId || !callId) return;
+  rtcDisconnectedPeers.set(socket.id, {
+    clientId,
+    lessonId: socket.data.lessonId,
+    role: socket.data.role,
+    userId: String(socket.data.user?._id || ""),
+    callId,
+    expiresAt: Date.now() + RTC_DISCONNECTED_PEER_TTL_MS,
+  });
+}
+
+function findReplacementRtcPeer(staleTargetId, callId) {
+  const stale = rtcDisconnectedPeers.get(staleTargetId);
+  if (!stale) return null;
+  if (stale.expiresAt < Date.now()) {
+    rtcDisconnectedPeers.delete(staleTargetId);
+    return null;
+  }
+  if (stale.callId !== callId) return null;
+
+  for (const peer of io.sockets.sockets.values()) {
+    if (
+      peer.id !== staleTargetId &&
+      peer.data.lessonId === stale.lessonId &&
+      peer.data.role === stale.role &&
+      String(peer.data.user?._id || "") === stale.userId &&
+      realtimeClientId(peer.handshake.auth?.clientId) === stale.clientId
+    ) {
+      return peer;
+    }
+  }
+  return null;
 }
 
 function normalizeRtcCallId(value) {
@@ -1852,7 +1891,28 @@ io.on("connection", (socket) => {
       return ack?.({ ok: false, error: "CALL_MISMATCH" });
     }
 
-    const target = io.sockets.sockets.get(signal.targetId);
+    let target = io.sockets.sockets.get(signal.targetId);
+    let rebound = false;
+    const targetUnavailable =
+      !target ||
+      target.data.lessonId !== lessonId ||
+      target.data.rtcReady !== true ||
+      target.data.rtcCallId !== signal.callId ||
+      target.data.role === "observer";
+
+    if (targetUnavailable) {
+      const replacement = findReplacementRtcPeer(signal.targetId, signal.callId);
+      if (replacement && replacement.data.lessonId === lessonId && replacement.data.role !== "observer") {
+        target = replacement;
+        target.data.rtcReady = true;
+        target.data.rtcCallId = signal.callId;
+        rebound = true;
+        console.info(
+          `RTC signal rebound lesson=${lessonId} role=${role} staleTarget=${signal.targetId} newTarget=${target.id}`
+        );
+      }
+    }
+
     if (
       !target ||
       target.data.lessonId !== lessonId ||
@@ -1860,6 +1920,9 @@ io.on("connection", (socket) => {
       target.data.rtcCallId !== signal.callId ||
       target.data.role === "observer"
     ) {
+      console.info(
+        `RTC signal unavailable lesson=${lessonId} role=${role} target=${signal.targetId} callId=${signal.callId}`
+      );
       return ack?.({ ok: false, error: "PEER_UNAVAILABLE" });
     }
 
@@ -1870,7 +1933,7 @@ io.on("connection", (socket) => {
       description: signal.description,
       candidate: signal.candidate,
     });
-    ack?.({ ok: true });
+    ack?.({ ok: true, rebound, targetId: target.id });
   });
 
   socket.on("rtc:leave", ({ callId: rawCallId } = {}) => {
@@ -1988,6 +2051,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    if (socket.data.rtcReady === true && socket.data.rtcCallId) {
+      rememberDisconnectedRtcPeer(socket);
+    }
     const call = activeRtcCall(lessonId);
     if (call?.callerId === socket.id) {
       rtcCallsByLesson.delete(lessonId);
