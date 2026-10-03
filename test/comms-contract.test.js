@@ -305,3 +305,18 @@ test("chat hides the video-only minimize action", () => {
   assert.match(client, /minimizeButton\.hidden = !isVideo/);
   assert.match(client, /titleEl\.textContent = isVideo \? "Видеосвязь" : "Чат занятия"/);
 });
+
+
+test("mobile hand mode lets the page scroll vertically while preserving pinch zoom", () => {
+  const app = read("public/app.js");
+  const pdfCss = read("public/pdf-view.css");
+  const styles = read("public/styles.css");
+
+  assert.match(app, /let tool = "hand"/);
+  assert.match(app, /setTool\(tool\)[\s\S]{0,120}penBtn\.addEventListener/);
+  assert.match(pdfCss, /#stage\.hand-mode[\s\S]{0,260}overflow-y: visible/);
+  assert.match(pdfCss, /overscroll-behavior-y: auto/);
+  assert.match(pdfCss, /touch-action: pan-y pinch-zoom/);
+  assert.match(styles, /#stage\.hand-mode[\s\S]{0,180}touch-action: pan-y pinch-zoom/);
+  assert.match(app, /event\.touches\.length !== 2/);
+});
