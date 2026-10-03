@@ -201,8 +201,12 @@ test("explicit hangup ends the call for both participants while disconnect stays
   const server = read("server.js");
   const client = read("public/lesson-comms.mjs");
 
-  assert.match(server, /socket\.on\("rtc:leave"[\s\S]{0,260}rtc:ended/);
-  assert.doesNotMatch(server, /socket\.on\("rtc:leave"[\s\S]{0,260}rtc:peer-left/);
+  const leaveStart = server.indexOf('socket.on("rtc:leave"');
+  const chatStart = server.indexOf('socket.on("chat:history"', leaveStart);
+  const leaveBlock = server.slice(leaveStart, chatStart);
+
+  assert.match(leaveBlock, /rtc:ended/);
+  assert.doesNotMatch(leaveBlock, /rtc:peer-left/);
   assert.match(server, /socket\.on\("disconnect"[\s\S]{0,500}rtc:peer-left/);
 
   assert.match(client, /socket\.on\("rtc:ended"/);
@@ -390,4 +394,50 @@ test("mobile chat hides its launcher so the composer stays usable", () => {
   assert.match(css, /lesson-comms-launcher\.chat-open[\s\S]{0,100}display: none/);
   assert.match(css, /--lesson-viewport-height/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
+});
+
+
+test("repeated WebRTC calls are isolated by call id and clean old quality monitors", () => {
+  const client = read("public/lesson-comms.mjs");
+  const server = read("server.js");
+  const realtime = read("lib/realtime-comms.js");
+
+  assert.match(client, /let activeCallId = null/);
+  assert.match(client, /activeCallId = crypto\.randomUUID\(\)/);
+  assert.match(client, /socket\.emit\("rtc:call", \{ callId: activeCallId \}/);
+  assert.match(client, /payload\.callId !== activeCallId/);
+  assert.match(client, /callId !== activeCallId/);
+  assert.match(client, /let rtcQualityTimer = null/);
+  assert.match(client, /clearInterval\(rtcQualityTimer\)/);
+
+  assert.match(server, /function normalizeRtcCallId/);
+  assert.match(server, /rtcCallId/);
+  assert.match(server, /signal\.callId/);
+  assert.match(server, /rtc:ended", \{ from: socket\.id, callId \}/);
+
+  assert.match(realtime, /const callId/);
+  assert.match(realtime, /return \{ callId, targetId/);
+});
+
+
+test("accepting installs the call id before signaling can race the ack", () => {
+  const client = read("public/lesson-comms.mjs");
+  const server = read("server.js");
+
+  const acceptStart = client.indexOf('acceptButton.addEventListener("click"');
+  const declineStart = client.indexOf('declineButton.addEventListener("click"', acceptStart);
+  const acceptBlock = client.slice(acceptStart, declineStart);
+
+  assert.match(
+    acceptBlock,
+    /activeCallId = callId[\s\S]{0,300}acquireLocalMedia\(\)[\s\S]{0,500}socket\.emit\("rtc:accept"/
+  );
+  assert.match(
+    acceptBlock,
+    /if \(!result\?\.ok\)[\s\S]{0,160}activeCallId = null/
+  );
+  assert.match(
+    server,
+    /socket\.on\("disconnect"[\s\S]{0,320}rtc:cancelled"[\s\S]{0,120}callId: call\.callId/
+  );
 });

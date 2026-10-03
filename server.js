@@ -344,7 +344,13 @@ function rtcPeer(socket) {
     id: socket.id,
     role: socket.data.role,
     displayName: socket.data.user?.displayName || socket.data.user?.username || socket.data.role,
+    callId: socket.data.rtcCallId || null,
   };
+}
+
+function normalizeRtcCallId(value) {
+  const callId = String(value || "").trim();
+  return /^[a-zA-Z0-9_-]{8,120}$/.test(callId) ? callId : null;
 }
 
 function activeRtcCall(lessonId) {
@@ -1735,15 +1741,20 @@ io.on("connection", (socket) => {
   if (waitingCall && waitingCall.callerId !== socket.id && role !== "observer") {
     socket.emit("rtc:incoming-call", {
       from: waitingCall.callerId,
+      callId: waitingCall.callId,
       caller: rtcPeer(waitingCall.caller),
     });
   }
 
-  socket.on("rtc:call", async (_payload, ack) => {
+  socket.on("rtc:call", async ({ callId: rawCallId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const callId = normalizeRtcCallId(rawCallId);
+    if (!callId) return ack?.({ ok: false, error: "INVALID_CALL_ID" });
     socket.data.rtcReady = true;
+    socket.data.rtcCallId = callId;
     rtcCallsByLesson.set(lessonId, {
       callerId: socket.id,
+      callId,
       createdAt: Date.now(),
     });
 
@@ -1755,6 +1766,7 @@ io.on("connection", (socket) => {
 
       socket.to(room).emit("rtc:incoming-call", {
         from: socket.id,
+        callId,
         caller: rtcPeer(socket),
       });
       console.info(`RTC call requested lesson=${lessonId} role=${role} recipients=${recipients.length}`);
@@ -1765,38 +1777,48 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("rtc:accept", ({ callerId } = {}, ack) => {
+  socket.on("rtc:accept", ({ callerId, callId: rawCallId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const callId = normalizeRtcCallId(rawCallId);
     const call = activeRtcCall(lessonId);
-    if (!call || call.callerId !== callerId) {
+    if (!callId || !call || call.callerId !== callerId || call.callId !== callId) {
       return ack?.({ ok: false, error: "CALL_NOT_FOUND" });
     }
 
     socket.data.rtcReady = true;
+    socket.data.rtcCallId = callId;
+    call.caller.data.rtcCallId = callId;
     rtcCallsByLesson.delete(lessonId);
     console.info(`RTC call accepted lesson=${lessonId} callerRole=${call.caller.data.role} peerRole=${role}`);
     call.caller.emit("rtc:accepted", {
+      callId,
       peer: rtcPeer(socket),
     });
-    ack?.({ ok: true, caller: rtcPeer(call.caller) });
+    ack?.({ ok: true, callId, caller: rtcPeer(call.caller) });
   });
 
-  socket.on("rtc:decline", ({ callerId } = {}) => {
+  socket.on("rtc:decline", ({ callerId, callId: rawCallId } = {}) => {
+    const callId = normalizeRtcCallId(rawCallId);
     const call = activeRtcCall(lessonId);
-    if (!call || call.callerId !== callerId) return;
+    if (!callId || !call || call.callerId !== callerId || call.callId !== callId) return;
     rtcCallsByLesson.delete(lessonId);
-    call.caller.emit("rtc:declined", { by: rtcPeer(socket) });
+    call.caller.emit("rtc:declined", { callId, by: rtcPeer(socket) });
   });
 
-  socket.on("rtc:cancel", () => {
+  socket.on("rtc:cancel", ({ callId: rawCallId } = {}) => {
+    const callId = normalizeRtcCallId(rawCallId);
     const call = activeRtcCall(lessonId);
-    if (!call || call.callerId !== socket.id) return;
+    if (!callId || !call || call.callerId !== socket.id || call.callId !== callId) return;
     rtcCallsByLesson.delete(lessonId);
-    socket.to(room).emit("rtc:cancelled", { from: socket.id });
+    socket.to(room).emit("rtc:cancelled", { from: socket.id, callId });
   });
 
-  socket.on("rtc:ready", async (_payload, ack) => {
+  socket.on("rtc:ready", async ({ callId: rawCallId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const callId = normalizeRtcCallId(rawCallId);
+    if (!callId || callId !== socket.data.rtcCallId) {
+      return ack?.({ ok: false, error: "CALL_MISMATCH" });
+    }
     socket.data.rtcReady = true;
     try {
       const roomSockets = await io.in(room).fetchSockets();
@@ -1804,6 +1826,7 @@ io.on("connection", (socket) => {
         .filter((peer) =>
           peer.id !== socket.id &&
           peer.data.rtcReady === true &&
+          peer.data.rtcCallId === callId &&
           peer.data.role !== "observer"
         )
         .map(rtcPeer);
@@ -1833,12 +1856,16 @@ io.on("connection", (socket) => {
     }
     const signal = normalizeRtcSignal(payload);
     if (!signal) return ack?.({ ok: false, error: "INVALID_SIGNAL" });
+    if (socket.data.rtcCallId !== signal.callId) {
+      return ack?.({ ok: false, error: "CALL_MISMATCH" });
+    }
 
     const target = io.sockets.sockets.get(signal.targetId);
     if (
       !target ||
       target.data.lessonId !== lessonId ||
       target.data.rtcReady !== true ||
+      target.data.rtcCallId !== signal.callId ||
       target.data.role === "observer"
     ) {
       return ack?.({ ok: false, error: "PEER_UNAVAILABLE" });
@@ -1847,18 +1874,22 @@ io.on("connection", (socket) => {
     target.emit("rtc:signal", {
       from: socket.id,
       fromRole: role,
+      callId: signal.callId,
       description: signal.description,
       candidate: signal.candidate,
     });
     ack?.({ ok: true });
   });
 
-  socket.on("rtc:leave", () => {
+  socket.on("rtc:leave", ({ callId: rawCallId } = {}) => {
+    const callId = normalizeRtcCallId(rawCallId);
+    if (!callId || callId !== socket.data.rtcCallId) return;
     const call = activeRtcCall(lessonId);
-    if (call?.callerId === socket.id) rtcCallsByLesson.delete(lessonId);
+    if (call?.callerId === socket.id && call.callId === callId) rtcCallsByLesson.delete(lessonId);
     if (socket.data.rtcReady !== true) return;
     socket.data.rtcReady = false;
-    socket.to(room).emit("rtc:ended", { from: socket.id });
+    socket.data.rtcCallId = null;
+    socket.to(room).emit("rtc:ended", { from: socket.id, callId });
   });
 
   socket.on("chat:history", async (_payload, ack) => {
@@ -1968,10 +1999,16 @@ io.on("connection", (socket) => {
     const call = activeRtcCall(lessonId);
     if (call?.callerId === socket.id) {
       rtcCallsByLesson.delete(lessonId);
-      socket.to(room).emit("rtc:cancelled", { from: socket.id });
+      socket.to(room).emit("rtc:cancelled", {
+        from: socket.id,
+        callId: call.callId,
+      });
     }
     if (socket.data.rtcReady === true) {
-      socket.to(room).emit("rtc:peer-left", { id: socket.id });
+      socket.to(room).emit("rtc:peer-left", {
+        id: socket.id,
+        callId: socket.data.rtcCallId || null,
+      });
     }
     if (role !== "teacher" || !controllerKey) return;
     teacherFollow.disconnect(controllerKey);

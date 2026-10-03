@@ -11,17 +11,18 @@ test("chat messages are trimmed capped and reject empty content", () => {
 test("rtc descriptions require a target and supported SDP type", () => {
   assert.deepEqual(
     normalizeRtcSignal({
+      callId: "call-12345",
       targetId: "peer-1",
       description: { type: "offer", sdp: "v=0" },
     }),
-    { targetId: "peer-1", description: { type: "offer", sdp: "v=0" } }
+    { callId: "call-12345", targetId: "peer-1", description: { type: "offer", sdp: "v=0" } }
   );
   assert.equal(
-    normalizeRtcSignal({ targetId: "peer-1", description: { type: "invalid", sdp: "x" } }),
+    normalizeRtcSignal({ callId: "call-12345", targetId: "peer-1", description: { type: "invalid", sdp: "x" } }),
     null
   );
   assert.equal(
-    normalizeRtcSignal({ description: { type: "offer", sdp: "x" } }),
+    normalizeRtcSignal({ callId: "call-12345", description: { type: "offer", sdp: "x" } }),
     null
   );
 });
@@ -29,6 +30,8 @@ test("rtc descriptions require a target and supported SDP type", () => {
 test("rtc candidates are normalized and bounded", () => {
   assert.deepEqual(
     normalizeRtcSignal({
+      callId: "call-12345",
+      callId: "call-12345",
       targetId: "peer-2",
       candidate: {
         candidate: "candidate:1",
@@ -38,6 +41,7 @@ test("rtc candidates are normalized and bounded", () => {
       },
     }),
     {
+      callId: "call-12345",
       targetId: "peer-2",
       candidate: {
         candidate: "candidate:1",
@@ -48,7 +52,7 @@ test("rtc candidates are normalized and bounded", () => {
     }
   );
   assert.equal(
-    normalizeRtcSignal({ targetId: "peer-2", candidate: { candidate: "x".repeat(20001) } }),
+    normalizeRtcSignal({ callId: "call-12345", targetId: "peer-2", candidate: { candidate: "x".repeat(20001) } }),
     null
   );
 });
