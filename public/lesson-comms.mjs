@@ -17,6 +17,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let ringtoneTimer = null;
   let ringtoneContext = null;
   let ringtoneUnlocked = false;
+  let activeCallId = null;
+  let pendingCallId = null;
+  let rtcQualityTimer = null;
 
   const launcher = document.createElement("div");
   launcher.className = "lesson-comms-launcher";
@@ -311,11 +314,16 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   function startRtcQualityMonitor(pc) {
+    if (rtcQualityTimer) {
+      clearInterval(rtcQualityTimer);
+      rtcQualityTimer = null;
+    }
     let previousPacketsLost = 0;
     let previousPacketsReceived = 0;
-    const timer = setInterval(async () => {
+    rtcQualityTimer = setInterval(async () => {
       if (pc !== peerConnection || pc.connectionState === "closed") {
-        clearInterval(timer);
+        clearInterval(rtcQualityTimer);
+        rtcQualityTimer = null;
         return;
       }
       try {
@@ -365,7 +373,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   async function ensurePeer(peerId) {
+    if (!activeCallId) throw new Error("CALL_ID_REQUIRED");
     if (peerConnection && activePeerId === peerId) return peerConnection;
+    const peerCallId = activeCallId;
     if (peerConnection) peerConnection.close();
 
     activePeerId = peerId;
@@ -403,14 +413,16 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     }
 
     pc.addEventListener("icecandidate", ({ candidate }) => {
-      if (!candidate || !activePeerId) return;
+      if (!candidate || !activePeerId || peerCallId !== activeCallId) return;
       socket.emit("rtc:signal", {
+        callId: peerCallId,
         targetId: activePeerId,
         candidate: candidate.toJSON ? candidate.toJSON() : candidate,
       });
     });
 
     pc.addEventListener("track", ({ track, streams }) => {
+      if (peerCallId !== activeCallId || pc !== peerConnection) return;
       const stream = streams?.[0];
       if (stream) {
         remoteStream = stream;
@@ -511,6 +523,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     socket.emit("rtc:signal", {
+      callId: activeCallId,
       targetId: peerId,
       description: pc.localDescription,
     });
@@ -527,7 +540,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   async function handleSignal(payload) {
-    if (!localStream || !payload?.from) return;
+    if (!localStream || !payload?.from || !payload?.callId) return;
+    if (payload.callId !== activeCallId) return;
     try {
       const pc = await ensurePeer(payload.from);
       if (payload.description) {
@@ -537,6 +551,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           socket.emit("rtc:signal", {
+            callId: activeCallId,
             targetId: payload.from,
             description: pc.localDescription,
           });
@@ -556,7 +571,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   function announceReady() {
     if (!localStream || !socket.connected) return;
-    socket.emit("rtc:ready", {}, async (result) => {
+    socket.emit("rtc:ready", { callId: activeCallId }, async (result) => {
       if (!result?.ok) return;
       const peer = (result.peers || []).find((item) => item.role !== role) || result.peers?.[0];
       if (!peer) {
@@ -593,6 +608,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       });
       localVideo.srcObject = localStream;
       await localVideo.play().catch(() => {});
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = true;
+        socket.emit("rtc:debug", {
+          event: "local-audio",
+          state: `readyState=${audioTrack.readyState};enabled=${audioTrack.enabled};muted=${audioTrack.muted}`,
+        });
+      }
       callStarted = true;
       updateMediaButtons();
       return true;
@@ -614,6 +637,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     if (!(await acquireLocalMedia())) return;
 
     pendingCallerId = null;
+    pendingCallId = null;
+    activeCallId = crypto.randomUUID();
     incomingBox.hidden = true;
     outgoingCall = true;
     callAccepted = false;
@@ -621,7 +646,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     startButton.textContent = "Звоним…";
     setCallState("Звоним второму участнику…");
 
-    socket.emit("rtc:call", {}, (result) => {
+    socket.emit("rtc:call", { callId: activeCallId }, (result) => {
       if (!result?.ok) {
         outgoingCall = false;
         startButton.textContent = "Позвонить";
@@ -635,6 +660,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   }
 
   function closePeer() {
+    if (rtcQualityTimer) {
+      clearInterval(rtcQualityTimer);
+      rtcQualityTimer = null;
+    }
     peerConnection?.close();
     peerConnection = null;
     activePeerId = null;
@@ -646,6 +675,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   function resetIncomingCall() {
     stopRingtone();
     pendingCallerId = null;
+    pendingCallId = null;
     incomingBox.hidden = true;
     videoButton.classList.remove("ringing");
     videoButton.textContent = "🎥 Связь";
@@ -655,9 +685,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     notify = true,
     finalState = "Нажмите «Позвонить», чтобы начать видеосвязь.",
   } = {}) {
-    if (notify && socket.connected) {
-      if (outgoingCall && !callAccepted) socket.emit("rtc:cancel");
-      else socket.emit("rtc:leave");
+    const callId = activeCallId || pendingCallId;
+    if (notify && socket.connected && callId) {
+      if (outgoingCall && !callAccepted) socket.emit("rtc:cancel", { callId });
+      else socket.emit("rtc:leave", { callId });
     }
     closePeer();
     for (const track of localStream?.getTracks() || []) track.stop();
@@ -666,6 +697,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     callStarted = false;
     outgoingCall = false;
     callAccepted = false;
+    activeCallId = null;
     resetIncomingCall();
     startButton.textContent = "Позвонить";
     updateMediaButtons();
@@ -679,7 +711,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   acceptButton.addEventListener("click", async () => {
     const callerId = pendingCallerId;
-    if (!callerId) return;
+    const callId = pendingCallId;
+    if (!callerId || !callId) return;
     stopRingtone();
     acceptButton.disabled = true;
     if (!(await acquireLocalMedia())) {
@@ -687,15 +720,17 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       return;
     }
 
-    socket.emit("rtc:accept", { callerId }, (result) => {
+    socket.emit("rtc:accept", { callerId, callId }, (result) => {
       acceptButton.disabled = false;
       if (!result?.ok) {
         resetIncomingCall();
         setCallState("Звонок уже завершён.");
         return;
       }
+      if (result.callId !== callId) return;
       callAccepted = true;
       outgoingCall = false;
+      activeCallId = callId;
       activePeerId = callerId;
       resetIncomingCall();
       startButton.textContent = "Подключено";
@@ -704,7 +739,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   });
 
   declineButton.addEventListener("click", () => {
-    if (pendingCallerId) socket.emit("rtc:decline", { callerId: pendingCallerId });
+    if (pendingCallerId && pendingCallId) {
+      socket.emit("rtc:decline", { callerId: pendingCallerId, callId: pendingCallId });
+    }
     resetIncomingCall();
     closePanel();
   });
@@ -725,9 +762,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   window.addEventListener("pagehide", stopRingtone);
 
-  socket.on("rtc:incoming-call", ({ from, caller } = {}) => {
-    if (!from || localStream || outgoingCall || callAccepted) return;
+  socket.on("rtc:incoming-call", ({ from, caller, callId } = {}) => {
+    if (!from || !callId || localStream || outgoingCall || callAccepted) return;
     pendingCallerId = from;
+    pendingCallId = callId;
     incomingName.textContent = `${caller?.displayName || "Участник"} хочет присоединиться`;
     incomingBox.hidden = false;
     updateMediaButtons();
@@ -738,8 +776,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     setCallState("Можно ответить, когда будете готовы 🙂");
   });
 
-  socket.on("rtc:accepted", async ({ peer } = {}) => {
-    if (!outgoingCall || !localStream || !peer?.id) return;
+  socket.on("rtc:accepted", async ({ peer, callId } = {}) => {
+    if (!outgoingCall || !localStream || !peer?.id || callId !== activeCallId) return;
     outgoingCall = false;
     callAccepted = true;
     startButton.textContent = "Подключено";
@@ -752,12 +790,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     }
   });
 
-  socket.on("rtc:declined", () => {
+  socket.on("rtc:declined", ({ callId } = {}) => {
+    if (!callId || callId !== activeCallId) return;
     stopCall({ notify: false });
     setCallState("Звонок отклонён.");
   });
 
-  socket.on("rtc:cancelled", ({ from } = {}) => {
+  socket.on("rtc:cancelled", ({ from, callId } = {}) => {
+    if (!callId || callId !== pendingCallId) return;
     if (from && pendingCallerId && from !== pendingCallerId) return;
     resetIncomingCall();
     setCallState("Входящий звонок завершён.");
@@ -765,6 +805,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   socket.on("rtc:peer-ready", async (peer) => {
     if (!localStream || !callAccepted || !peer?.id || peer.role === role) return;
+    if (!peer.callId || peer.callId !== activeCallId) return;
     const shouldOffer = role === "teacher" || String(socket.id) < String(peer.id);
     if (!shouldOffer) return;
     try {
@@ -778,7 +819,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     handleSignal(payload);
   });
 
-  socket.on("rtc:ended", ({ from } = {}) => {
+  socket.on("rtc:ended", ({ from, callId } = {}) => {
+    if (!callId || callId !== activeCallId) return;
     if (from && activePeerId && from !== activePeerId) return;
     stopCall({
       notify: false,
@@ -786,8 +828,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     });
   });
 
-  socket.on("rtc:peer-left", ({ id } = {}) => {
-    if (id !== activePeerId) return;
+  socket.on("rtc:peer-left", ({ id, callId } = {}) => {
+    if (!callId || callId !== activeCallId || id !== activePeerId) return;
     closePeer();
     if (localStream) {
       callAccepted = true;
@@ -798,7 +840,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   socket.on("connect", () => {
     if (localStream && callAccepted) announceReady();
     else if (localStream && outgoingCall) {
-      socket.emit("rtc:call", {}, (result) => {
+      socket.emit("rtc:call", { callId: activeCallId }, (result) => {
         if (!result?.ok) setCallState("Не удалось восстановить звонок.");
       });
     }
