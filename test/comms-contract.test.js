@@ -255,3 +255,16 @@ test("incoming call hides the outgoing call action until the incoming state ends
   assert.match(client, /startButton\.hidden = callIsActive \|\| incomingCallPending/);
   assert.match(client, /function resetIncomingCall\(\)[\s\S]{0,220}pendingCallerId = null/);
 });
+
+
+test("answering stops the ringtone immediately before media setup", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(
+    client,
+    /acceptButton\.addEventListener\("click",[\s\S]{0,180}stopRingtone\(\)[\s\S]{0,220}acquireLocalMedia/
+  );
+  assert.match(
+    client,
+    /function stopRingtone\(\)[\s\S]{0,260}ringtoneContext\.suspend\(\)/
+  );
+});
