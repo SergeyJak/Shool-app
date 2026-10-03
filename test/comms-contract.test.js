@@ -356,3 +356,18 @@ test("pinch zoom keeps the gesture center anchored and defers PDF rendering", ()
     /event\.touches\.length !== 2[\s\S]{0,500}setZoom\(nextZoom\)/
   );
 });
+
+
+test("sending chat keeps the textarea focused and keyboard stable", () => {
+  const client = read("public/lesson-comms.mjs");
+  const submitStart = client.indexOf('chatForm.addEventListener("submit"');
+  const keydownStart = client.indexOf('chatInput.addEventListener("keydown"', submitStart);
+  const submitBlock = client.slice(submitStart, keydownStart);
+
+  assert.match(client, /chatSubmitButton/);
+  assert.doesNotMatch(submitBlock, /chatInput\.disabled/);
+  assert.doesNotMatch(submitBlock, /chatInput\.focus/);
+  assert.match(submitBlock, /chatSubmitButton\.disabled = true/);
+  assert.match(submitBlock, /chatSubmitButton\.disabled = false/);
+  assert.match(submitBlock, /chatInput\.value = ""/);
+});
