@@ -514,3 +514,20 @@ test("RTC v2 deduplicates lesson recipients by stable client id", () => {
   assert.match(server, /const recipientPeers = rtc2UniquePeersForLesson\(lessonId, callerClientId\)/);
   assert.match(server, /const recipients = recipientPeers\.length/);
 });
+
+
+test("RTC v2 prevents concurrent lesson calls from replacing the active session", () => {
+  const server = read("server.js");
+  assert.match(server, /existing\.callId !== callId/);
+  assert.match(server, /"CALL_IN_PROGRESS"/);
+  assert.match(server, /"CALL_RINGING"/);
+});
+
+test("RTC v2 logs offer answer and candidate routing without SDP bodies", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+  assert.match(server, /const signalKind = signal\.description\?\.type \|\| \(signal\.candidate \? "candidate" : "unknown"\)/);
+  assert.match(server, /RTC2 signal lesson=/);
+  assert.match(client, /event: "answer-v2"/);
+  assert.match(client, /event: "answer-received-v2"/);
+});
