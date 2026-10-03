@@ -194,3 +194,18 @@ test("lesson video call uses friendly child-oriented visual treatment", () => {
   assert.match(css, /linear-gradient/);
   assert.match(css, /lesson-comms-controls button\.primary/);
 });
+
+
+test("explicit hangup ends the call for both participants while disconnect stays reconnectable", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(server, /socket\.on\("rtc:leave"[\s\S]{0,260}rtc:ended/);
+  assert.doesNotMatch(server, /socket\.on\("rtc:leave"[\s\S]{0,260}rtc:peer-left/);
+  assert.match(server, /socket\.on\("disconnect"[\s\S]{0,500}rtc:peer-left/);
+
+  assert.match(client, /socket\.on\("rtc:ended"/);
+  assert.match(client, /Собеседник завершил звонок/);
+  assert.match(client, /socket\.on\("rtc:peer-left"[\s\S]{0,400}Ждём переподключения/);
+  assert.match(client, /finalState/);
+});
