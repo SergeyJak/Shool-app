@@ -45,20 +45,6 @@ test("ICE config is protected and supports TURN environment variables", () => {
   assert.match(server, /WEBRTC_TURN_CREDENTIAL/);
 });
 
-test("lesson client uses explicit incoming call acceptance before negotiation", () => {
-  const client = read("public/lesson-comms.mjs");
-  assert.match(client, /startButton\.addEventListener\("click", startCall\)/);
-  assert.match(client, /socket\.emit\("rtc:call"/);
-  assert.match(client, /socket\.on\("rtc:incoming-call"/);
-  assert.match(client, /acceptButton\.addEventListener\("click"/);
-  assert.match(client, /socket\.emit\("rtc:accept"/);
-  assert.match(client, /socket\.on\("rtc:accepted"/);
-  assert.match(client, /navigator\.mediaDevices\.getUserMedia/);
-  assert.match(client, /new RTCPeerConnection/);
-  assert.match(client, /socket\.on\("rtc:signal"/);
-  assert.match(client, /socket\.on\("chat:message"/);
-});
-
 test("server routes call request accept decline and cancel only inside lesson room", () => {
   const server = read("server.js");
   assert.match(server, /socket\.on\("rtc:call"/);
@@ -68,15 +54,6 @@ test("server routes call request accept decline and cancel only inside lesson ro
   assert.match(server, /socket\.on\("rtc:decline"/);
   assert.match(server, /socket\.on\("rtc:cancel"/);
 });
-
-test("teacher and student lesson pages load communication styles and module bootstrap", () => {
-  for (const file of ["public/teacher.html", "public/student.html"]) {
-    assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-recovery5/);
-  }
-  assert.match(read("public/app.js"), /lesson-comms\.mjs/);
-});
-
 
 test("incoming call has a prominent ringing indicator and explicit actions", () => {
   const client = read("public/lesson-comms.mjs");
@@ -138,17 +115,6 @@ test("Cloudflare TURN remains available while direct ICE fallback is allowed", (
 });
 
 
-test("video capture and sender bitrate are tuned for lesson calls", () => {
-  const client = read("public/lesson-comms.mjs");
-  assert.match(client, /width: \{ ideal: 640, max: 960 \}/);
-  assert.match(client, /height: \{ ideal: 360, max: 540 \}/);
-  assert.match(client, /frameRate: \{ ideal: 20, max: 24 \}/);
-  assert.match(client, /maxBitrate = 500_000/);
-  assert.match(client, /maxFramerate = 20/);
-  assert.match(client, /degradationPreference = "maintain-framerate"/);
-});
-
-
 test("RTC quality monitor reports bandwidth jitter and packet loss without affecting calls", () => {
   const client = read("public/lesson-comms.mjs");
   assert.match(client, /startRtcQualityMonitor/);
@@ -176,16 +142,6 @@ test("selected ICE pair diagnostics include relay transport protocol", () => {
 });
 
 
-test("incoming call ringtone is soft, repeating and stops with call state", () => {
-  const client = read("public/lesson-comms.mjs");
-  assert.match(client, /new AudioContextClass\(\)/);
-  assert.match(client, /oscillator\.type = "sine"/);
-  assert.match(client, /window\.setInterval\(playRingtoneBubble, 2400\)/);
-  assert.match(client, /function stopRingtone\(\)/);
-  assert.match(client, /function resetIncomingCall\(\)[\s\S]{0,120}stopRingtone\(\)/);
-  assert.match(client, /rtc:incoming-call[\s\S]{0,500}startRingtone\(\)/);
-});
-
 test("lesson video call uses friendly child-oriented visual treatment", () => {
   const client = read("public/lesson-comms.mjs");
   const css = read("public/lesson-comms.css");
@@ -195,25 +151,6 @@ test("lesson video call uses friendly child-oriented visual treatment", () => {
   assert.match(css, /lesson-comms-brand/);
   assert.match(css, /linear-gradient/);
   assert.match(css, /lesson-comms-controls button\.primary/);
-});
-
-
-test("explicit hangup ends the call for both participants while disconnect stays reconnectable", () => {
-  const server = read("server.js");
-  const client = read("public/lesson-comms.mjs");
-
-  const leaveStart = server.indexOf('socket.on("rtc:leave"');
-  const chatStart = server.indexOf('socket.on("chat:history"', leaveStart);
-  const leaveBlock = server.slice(leaveStart, chatStart);
-
-  assert.match(leaveBlock, /rtc:ended/);
-  assert.doesNotMatch(leaveBlock, /rtc:peer-left/);
-  assert.match(server, /socket\.on\("disconnect"[\s\S]{0,500}rtc:peer-left/);
-
-  assert.match(client, /socket\.on\("rtc:ended"/);
-  assert.match(client, /Собеседник завершил звонок/);
-  assert.match(client, /socket\.on\("rtc:peer-left"[\s\S]{0,400}Ждём переподключения/);
-  assert.match(client, /finalState/);
 });
 
 
@@ -398,93 +335,6 @@ test("mobile chat hides its launcher so the composer stays usable", () => {
 });
 
 
-test("repeated WebRTC calls are isolated by call id and clean old quality monitors", () => {
-  const client = read("public/lesson-comms.mjs");
-  const server = read("server.js");
-  const realtime = read("lib/realtime-comms.js");
-
-  assert.match(client, /let activeCallId = null/);
-  assert.match(client, /activeCallId = crypto\.randomUUID\(\)/);
-  assert.match(client, /socket\.emit\("rtc:call", \{ callId: activeCallId \}/);
-  assert.match(client, /payload\.callId !== activeCallId/);
-  assert.match(client, /callId !== activeCallId/);
-  assert.match(client, /let rtcQualityTimer = null/);
-  assert.match(client, /clearInterval\(rtcQualityTimer\)/);
-
-  assert.match(server, /function normalizeRtcCallId/);
-  assert.match(server, /rtcCallId/);
-  assert.match(server, /signal\.callId/);
-  assert.match(server, /rtc:ended", \{ from: socket\.id, callId \}/);
-
-  assert.match(realtime, /const callId/);
-  assert.match(realtime, /return \{ callId, targetId/);
-});
-
-
-test("accepting installs the call id before signaling can race the ack", () => {
-  const client = read("public/lesson-comms.mjs");
-  const server = read("server.js");
-
-  const acceptStart = client.indexOf('acceptButton.addEventListener("click"');
-  const declineStart = client.indexOf('declineButton.addEventListener("click"', acceptStart);
-  const acceptBlock = client.slice(acceptStart, declineStart);
-
-  assert.match(
-    acceptBlock,
-    /activeCallId = callId[\s\S]{0,300}acquireLocalMedia\(\)[\s\S]{0,500}socket\.emit\("rtc:accept"/
-  );
-  assert.match(
-    acceptBlock,
-    /if \(!result\?\.ok\)[\s\S]{0,160}activeCallId = null/
-  );
-  assert.match(
-    server,
-    /socket\.on\("disconnect"[\s\S]{0,320}rtc:cancelled"[\s\S]{0,120}callId: call\.callId/
-  );
-});
-
-
-test("WebRTC protocol changes are cache-busted on lesson pages", () => {
-  const app = read("public/app.js");
-  const teacher = read("public/teacher.html");
-  const student = read("public/student.html");
-
-  assert.match(app, /lesson-comms\.mjs\?v=20261003-recovery5/);
-  assert.match(teacher, /app\.js\?v=20261003-recovery5/);
-  assert.match(student, /app\.js\?v=20261003-recovery5/);
-});
-
-
-test("failed WebRTC peers are never reused across call generations", () => {
-  const client = read("public/lesson-comms.mjs");
-
-  assert.match(client, /let peerCallId = null/);
-  assert.match(
-    client,
-    /activePeerId === peerId[\s\S]{0,160}peerCallId === activeCallId[\s\S]{0,180}!\["failed", "closed"\]\.includes/
-  );
-  assert.match(client, /peerCallId = connectionCallId/);
-  assert.match(client, /peerCallId = null/);
-});
-
-test("network handover can trigger one ICE restart before watchdog rebuild", () => {
-  const client = read("public/lesson-comms.mjs");
-
-  assert.match(client, /let iceRestartAttempts = 0/);
-  assert.match(client, /iceRestartAttempts >= 1/);
-  assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
-  assert.match(client, /createOffer\(iceRestart \? \{ iceRestart: true \} : undefined\)/);
-  assert.match(client, /event: "ice-restart"/);
-  assert.match(client, /armRecoveryWatchdog\(peerId\)/);
-});
-
-test("network handover WebRTC fix is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
-});
-
-
 test("hybrid ICE config keeps independent STUN alongside Cloudflare TURN", () => {
   const server = read("server.js");
 
@@ -518,21 +368,6 @@ test("RTC stale target rebinding is bounded by call id and expiry", () => {
 });
 
 
-test("failed media routes escalate from ICE restart to a fresh peer connection", () => {
-  const client = read("public/lesson-comms.mjs");
-
-  assert.match(client, /event: "ice-restart"/);
-  assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
-  assert.match(client, /recoveryWatchdogTimer = setTimeout\(\(\) => \{/);
-  assert.match(client, /event: "recovery-timeout"/);
-  assert.match(client, /rebuildPeerAfterRouteFailure\(peerId\)/);
-  assert.match(client, /event: "peer-rebuild"/);
-  assert.match(client, /peerConnection = null/);
-  assert.match(client, /peerCallId = null/);
-  assert.match(client, /pc\.close\(\)/);
-  assert.match(client, /await createOffer\(peerId\)/);
-});
-
 test("route recovery keeps local media and active call intact", () => {
   const client = read("public/lesson-comms.mjs");
   const rebuildStart = client.indexOf('event: "peer-rebuild"');
@@ -543,13 +378,6 @@ test("route recovery keeps local media and active call intact", () => {
   assert.doesNotMatch(rebuild, /localStream = null/);
   assert.doesNotMatch(rebuild, /activeCallId = null/);
 });
-
-test("peer rebuild recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
-});
-
 
 test("RTC diagnostics are persisted with TTL and call correlation", () => {
   const server = read("server.js");
@@ -562,89 +390,6 @@ test("RTC diagnostics are persisted with TTL and call correlation", () => {
   assert.match(server, /callId: socket\.data\.rtcCallId \|\| null/);
   assert.match(server, /expiresAt: new Date\(now\.getTime\(\) \+ 14 \* 24 \* 60 \* 60 \* 1000\)/);
 });
-
-test("RTC diagnostics include network context without SDP or candidate bodies", () => {
-  const server = read("server.js");
-  const client = read("public/lesson-comms.mjs");
-
-  assert.match(client, /function rtcNetworkSnapshot\(\)/);
-  assert.match(client, /function emitRtcDebug\(payload = \{\}\)/);
-  assert.match(client, /event: "network-change"/);
-  assert.match(server, /effectiveType:/);
-  assert.match(server, /downlink:/);
-  assert.match(server, /rtt:/);
-  assert.doesNotMatch(server, /rtcDiagnostics\?\.insertOne\([\s\S]{0,900}\bsdp\b/);
-  assert.doesNotMatch(server, /rtcDiagnostics\?\.insertOne\([\s\S]{0,900}\bcandidate\b/);
-});
-
-
-test("route recovery rebuilds peers stuck connecting after ICE restart", () => {
-  const client = read("public/lesson-comms.mjs");
-
-  assert.match(client, /\["connected", "closed"\]\.includes\(pc\.connectionState\)/);
-  assert.match(client, /event: "recovery-timeout"/);
-  assert.match(client, /rebuildPeerAfterRouteFailure\(peerId\)/);
-  assert.doesNotMatch(client, /event: "recovery-timeout"[\s\S]{0,300}scheduleIceRestart\(\)/);
-  assert.match(client, /event: "peer-rebuild"/);
-});
-
-test("stuck-connecting recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
-});
-
-
-test("RTC recovery watchdog directly rebuilds a peer instead of re-entering restart scheduling", () => {
-  const client = read("public/lesson-comms.mjs");
-
-  assert.match(client, /let recoveryWatchdogTimer = null/);
-  assert.match(client, /function|const rebuildPeerAfterRouteFailure/);
-  assert.match(client, /event: "recovery-timeout"/);
-  assert.match(client, /rebuildPeerAfterRouteFailure\(peerId\)/);
-  assert.doesNotMatch(client, /event: "recovery-timeout"[\s\S]{0,300}scheduleIceRestart\(\)/);
-  assert.match(client, /armRecoveryWatchdog\(peerId\)[\s\S]{0,220}createOffer\(peerId, \{ iceRestart: true \}\)/);
-});
-
-test("RTC recovery watchdog is cleared when connection recovers or call closes", () => {
-  const client = read("public/lesson-comms.mjs");
-
-  const clears = client.match(/clearTimeout\(recoveryWatchdogTimer\)/g) || [];
-  assert.ok(clears.length >= 2);
-  assert.match(client, /event: "peer-rebuild"/);
-  assert.match(client, /await createOffer\(peerId\)/);
-});
-
-test("direct peer rebuild recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
-});
-
-
-test("initial WebRTC connects are rebuilt when they remain stuck connecting", () => {
-  const client = read("public/lesson-comms.mjs");
-
-  assert.match(client, /let initialConnectWatchdogTimer = null/);
-  assert.match(client, /function armInitialConnectWatchdog\(peerId, pc\)/);
-  assert.match(client, /event: "initial-connect-timeout"/);
-  assert.match(client, /state: "reason=initial-connect-timeout"/);
-  assert.match(client, /if \(!iceRestart\) armInitialConnectWatchdog\(peerId, pc\)/);
-  assert.match(client, /\}, 12000\)/);
-});
-
-test("initial-connect watchdog is cancelled after connection or call close", () => {
-  const client = read("public/lesson-comms.mjs");
-  const clears = client.match(/clearTimeout\(initialConnectWatchdogTimer\)/g) || [];
-  assert.ok(clears.length >= 2);
-});
-
-test("initial-connect watchdog recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
-});
-
 
 test("RTC v2 routes signaling by stable client id instead of socket id", () => {
   const server = read("server.js");
@@ -680,6 +425,74 @@ test("RTC v2 reconnect resumes by stable call session", () => {
 });
 
 test("RTC v2 is cache-busted on lesson pages", () => {
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-rtc2/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-rtc2/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-rtc2/);
+});
+
+
+test("RTC v2 requires explicit accept before caller starts negotiation", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /socket\.emit\("rtc2:call"/);
+  assert.match(client, /socket\.on\("rtc2:incoming-call"/);
+  assert.match(client, /socket\.emit\("rtc2:accept"/);
+  assert.match(client, /socket\.on\("rtc2:accepted"[\s\S]{0,700}startOffer\(peer\.clientId, "accepted"\)/);
+});
+
+test("RTC v2 preserves ringtone and explicit hangup behavior", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /function startRingtone\(\)/);
+  assert.match(client, /rtc2:incoming-call[\s\S]{0,600}startRingtone\(\)/);
+  assert.match(client, /hangupButton\.addEventListener\("click", \(\) => stopCall\(\)\)/);
+  assert.match(client, /socket\.emit\("rtc2:leave"/);
+  assert.match(client, /socket\.emit\("rtc2:cancel"/);
+});
+
+test("RTC v2 keeps calls isolated by call id and rebuilds peers fresh", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /activeCallId = crypto\.randomUUID\(\)/);
+  assert.match(client, /payload\.callId !== activeCallId/);
+  assert.match(client, /function destroyPeer\(\)/);
+  assert.match(client, /async function createFreshPeer\(targetClientId\)/);
+  assert.match(client, /destroyPeer\(\);[\s\S]{0,220}peerClientId = targetClientId/);
+});
+
+test("RTC v2 tunes lesson capture and sender bitrate", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /width: \{ ideal: 640, max: 960 \}/);
+  assert.match(client, /height: \{ ideal: 360, max: 540 \}/);
+  assert.match(client, /frameRate: \{ ideal: 20, max: 24 \}/);
+  assert.match(client, /maxBitrate = 500_000/);
+  assert.match(client, /maxFramerate = 20/);
+  assert.match(client, /maxBitrate = 48_000/);
+});
+
+test("RTC v2 reconnect recovery is stable-client based and watchdog bounded", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+  assert.match(server, /socket\.on\("rtc2:resume"/);
+  assert.match(client, /let connectWatchdogTimer = null/);
+  assert.match(client, /event: "connect-timeout-v2"/);
+  assert.match(client, /resumeRtc2Session\("connect-timeout"\)/);
+  assert.match(client, /resumeRtc2Session\("socket-reconnect"\)/);
+  assert.match(client, /scheduleRtc2Resume\("network-change"\)/);
+});
+
+test("RTC v2 diagnostics keep network context and omit raw SDP or candidates from Mongo writes", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /function rtcNetworkSnapshot\(\)/);
+  assert.match(client, /event: "network-change-v2"/);
+  assert.match(server, /diagnosticCallId/);
+  assert.match(server, /rtcDiagnostics\?\.insertOne\(\{/);
+  const start = server.indexOf("rtcDiagnostics?.insertOne({");
+  const end = server.indexOf("}).catch", start);
+  const writeBlock = server.slice(start, end);
+  assert.doesNotMatch(writeBlock, /\bsdp\b/);
+  assert.doesNotMatch(writeBlock, /\bcandidate\b/);
+});
+
+test("RTC v2 cache bust is active on both lesson pages", () => {
   assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-rtc2/);
   assert.match(read("public/teacher.html"), /app\.js\?v=20261003-rtc2/);
   assert.match(read("public/student.html"), /app\.js\?v=20261003-rtc2/);
