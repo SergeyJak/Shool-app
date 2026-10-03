@@ -98,25 +98,25 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       <div class="lesson-comms-video-stage">
         <video class="lesson-comms-remote" autoplay playsinline></video>
         <video class="lesson-comms-local" autoplay playsinline muted></video>
-        <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
-      </div>
-      <div class="lesson-comms-controls">
-        <button class="lesson-comms-start primary" type="button">
-          <span class="lesson-comms-control-icon" aria-hidden="true">📞</span>
-          <span>Позвонить</span>
-        </button>
-        <button class="lesson-comms-mic call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span>
-          <span>Микрофон</span>
-        </button>
-        <button class="lesson-comms-camera call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">📷</span>
-          <span>Камера</span>
-        </button>
-        <button class="lesson-comms-hangup danger call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">🔴</span>
-          <span>Завершить</span>
-        </button>
+        <div class="lesson-comms-call-state">Нажмите «Позвонить», чтобы подключить камеру и микрофон.</div>
+        <div class="lesson-comms-controls">
+          <button class="lesson-comms-start primary" type="button">
+            <span class="lesson-comms-control-icon" aria-hidden="true">📞</span>
+            <span>Позвонить</span>
+          </button>
+          <button class="lesson-comms-mic call-control" type="button" hidden disabled>
+            <span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span>
+            <span>Микрофон</span>
+          </button>
+          <button class="lesson-comms-camera call-control" type="button" hidden disabled>
+            <span class="lesson-comms-control-icon" aria-hidden="true">📷</span>
+            <span>Камера</span>
+          </button>
+          <button class="lesson-comms-hangup danger call-control" type="button" hidden disabled>
+            <span class="lesson-comms-control-icon" aria-hidden="true">☎</span>
+            <span>Завершить</span>
+          </button>
+        </div>
       </div>
     </div>
     <div class="lesson-comms-view lesson-comms-chat" hidden>
@@ -178,6 +178,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     titleEl.textContent = isVideo ? "Видеосвязь" : "Чат занятия";
     minimizeButton.hidden = !isVideo;
     launcher.classList.toggle("chat-open", !isVideo);
+    launcher.classList.toggle("video-open", isVideo);
     videoButton.classList.toggle("active", isVideo);
     chatButton.classList.toggle("active", !isVideo);
     if (!isVideo) {
@@ -190,6 +191,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     panel.hidden = true;
     panel.classList.remove("mini-video");
     launcher.classList.remove("chat-open");
+    launcher.classList.remove("video-open");
     currentView = null;
     videoButton.classList.remove("active");
     chatButton.classList.remove("active");
@@ -207,12 +209,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   function minimizeVideo() {
     if (currentView !== "video" || panel.hidden) return;
     panel.classList.add("mini-video");
+    launcher.classList.remove("video-open");
     videoButton.classList.remove("active");
   }
 
   function restoreVideo() {
     if (!panel.classList.contains("mini-video")) return;
     panel.classList.remove("mini-video");
+    launcher.classList.add("video-open");
     currentView = "video";
     panel.hidden = false;
     videoButton.classList.add("active");
@@ -315,6 +319,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     const video = localStream?.getVideoTracks()[0];
     const callIsActive = Boolean(localStream || outgoingCall || callAccepted);
     const incomingCallPending = Boolean(pendingCallerId);
+
+    panel.classList.toggle("call-active", callIsActive);
+    panel.classList.toggle("incoming-active", incomingCallPending);
 
     startButton.hidden = callIsActive || incomingCallPending;
     for (const button of [micButton, cameraButton, hangupButton]) {

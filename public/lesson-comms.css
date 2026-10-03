@@ -694,3 +694,373 @@
     min-width: 0;
   }
 }
+
+
+/* 2026-10 School App video-window redesign.
+   Matches the existing light School App UI. RTC behavior is unchanged. */
+
+.lesson-comms-launcher.video-open .lesson-comms-video-button {
+  display: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) {
+  width: min(460px, calc(100vw - 28px));
+  max-height: min(680px, calc(100dvh - 96px));
+  border: 1px solid #d9e0e7;
+  border-radius: 18px;
+  background: rgba(255,255,255,.985);
+  color: #17202a;
+  box-shadow: 0 18px 54px rgba(23,32,42,.18);
+  backdrop-filter: blur(14px);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-head {
+  min-height: 56px;
+  padding: 8px 9px 8px 12px;
+  border-bottom: 1px solid #e6eaee;
+  background: #fff;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-brand {
+  gap: 9px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-mascot {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border: 1px solid #d9d5ff;
+  border-radius: 10px;
+  background: #f0efff;
+  box-shadow: none;
+  font-size: 19px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-title {
+  color: #17202a;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-subtitle {
+  color: #7b8794;
+  font-size: 11px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions {
+  gap: 4px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions .lesson-comms-minimize,
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions .lesson-comms-close {
+  min-width: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: #66717c;
+  font-size: 0;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions .lesson-comms-minimize > span:first-child,
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions .lesson-comms-close > span:first-child {
+  display: inline;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-window-actions button:hover {
+  border-color: #e2e6ea;
+  background: #f6f8fa;
+  color: #17202a;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-view {
+  padding: 10px;
+}
+
+/* Compact pre-call state. No giant empty rectangle. */
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])):not(.call-active):not(.incoming-active) {
+  width: min(380px, calc(100vw - 28px));
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])):not(.call-active):not(.incoming-active) .lesson-comms-video-stage {
+  min-height: 178px;
+  border: 1px solid #e1e6ec;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(108,92,231,.10), transparent 40%),
+    #f7f9fb;
+  box-shadow: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])):not(.call-active):not(.incoming-active) .lesson-comms-remote {
+  display: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])):not(.call-active):not(.incoming-active) .lesson-comms-local {
+  display: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])):not(.call-active):not(.incoming-active) .lesson-comms-call-state {
+  inset: 34px 24px auto;
+  transform: none;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: #68727d;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-shadow: none;
+  text-align: center;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])):not(.call-active):not(.incoming-active) .lesson-comms-controls {
+  bottom: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])):not(.call-active):not(.incoming-active) .lesson-comms-controls .lesson-comms-start {
+  min-width: 154px;
+  height: 46px;
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid #6457df;
+  border-radius: 12px;
+  background: #6c5ce7;
+  color: white;
+  font-size: 14px;
+  font-weight: 750;
+  box-shadow: 0 6px 16px rgba(108,92,231,.18);
+}
+
+/* Active call: video becomes the main surface, controls float over it. */
+.lesson-comms-panel.call-active:has(.lesson-comms-video:not([hidden])) .lesson-comms-video-stage {
+  min-height: 260px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid #e1e6ec;
+  border-radius: 15px;
+  background: #edf1f5;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.45);
+}
+
+.lesson-comms-panel.call-active:has(.lesson-comms-video:not([hidden])) .lesson-comms-remote {
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #edf1f5;
+}
+
+.lesson-comms-panel.call-active:has(.lesson-comms-video:not([hidden])) .lesson-comms-local {
+  top: 12px;
+  right: 12px;
+  bottom: auto;
+  width: 112px;
+  height: 82px;
+  z-index: 4;
+  border: 2px solid #fff;
+  border-radius: 12px;
+  background: #e9edf2;
+  box-shadow: 0 6px 18px rgba(23,32,42,.18);
+}
+
+.lesson-comms-panel.call-active:has(.lesson-comms-video:not([hidden])) .lesson-comms-call-state {
+  inset: auto 50% 76px auto;
+  transform: translateX(50%);
+  width: max-content;
+  max-width: calc(100% - 30px);
+  z-index: 5;
+  padding: 7px 10px;
+  border: 1px solid rgba(207,214,221,.88);
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  color: #4d5965;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-shadow: none;
+  box-shadow: 0 4px 14px rgba(23,32,42,.10);
+  backdrop-filter: blur(8px);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-call-state[hidden] {
+  display: none !important;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  z-index: 6;
+  width: auto;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  display: flex;
+  grid-template-columns: none;
+  flex-wrap: nowrap;
+  gap: 8px;
+  transform: translateX(-50%);
+  padding: 7px;
+  border: 1px solid rgba(207,214,221,.85);
+  border-radius: 17px;
+  background: rgba(255,255,255,.91);
+  box-shadow: 0 8px 24px rgba(23,32,42,.16);
+  backdrop-filter: blur(10px);
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .call-control {
+  flex: 0 0 auto;
+  width: 50px;
+  height: 50px;
+  min-height: 50px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  gap: 0;
+  border: 1px solid #d7dde4;
+  border-radius: 50%;
+  background: #fff;
+  color: #27313b;
+  font-size: 0;
+  box-shadow: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .call-control:hover:not(:disabled) {
+  background: #f4f6f8;
+  border-color: #c9d1d9;
+  box-shadow: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .call-control > span:last-child {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-control-icon {
+  font-size: 22px;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .lesson-comms-hangup {
+  border-color: #efb4b4;
+  background: #ef5350;
+  color: #fff;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .lesson-comms-hangup:hover:not(:disabled) {
+  background: #e64a47;
+  border-color: #e39b9b;
+}
+
+/* Incoming call uses the same light School App card language. */
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming {
+  margin: 0 0 10px;
+  padding: 12px;
+  border: 1px solid #ddd9ff;
+  border-radius: 14px;
+  background: #f8f7ff;
+  box-shadow: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming::after {
+  display: none;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming-title {
+  color: #332c72;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-incoming-name {
+  color: #68727d;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-accept {
+  border-color: #b9d9c2 !important;
+  background: #edf9f0 !important;
+  color: #247a45 !important;
+}
+
+.lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-decline {
+  border-color: #d9dee4 !important;
+  background: #fff !important;
+  color: #59636d !important;
+}
+
+.lesson-comms-panel.mini-video {
+  width: clamp(200px, 22vw, 280px);
+  border: 2px solid #fff;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgba(23,32,42,.20);
+}
+
+.lesson-comms-panel.mini-video .lesson-comms-remote,
+.lesson-comms-panel.mini-video .lesson-comms-video-stage {
+  border-radius: 12px;
+}
+
+@media (max-width: 600px) {
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) {
+    right: 8px;
+    bottom: 60px;
+    width: calc(100vw - 16px);
+    max-height: calc(var(--lesson-viewport-height, 100dvh) - 72px);
+    border-radius: 16px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])):not(.call-active):not(.incoming-active) {
+    width: calc(100vw - 16px);
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-head {
+    min-height: 54px;
+    padding: 8px 8px 8px 10px;
+  }
+
+  .lesson-comms-panel.call-active:has(.lesson-comms-video:not([hidden])) .lesson-comms-video-stage {
+    min-height: min(54dvh, 420px);
+    aspect-ratio: auto;
+  }
+
+  .lesson-comms-panel.call-active:has(.lesson-comms-video:not([hidden])) .lesson-comms-remote {
+    height: min(54dvh, 420px);
+  }
+
+  .lesson-comms-panel.call-active:has(.lesson-comms-video:not([hidden])) .lesson-comms-local {
+    top: 9px;
+    right: 9px;
+    width: 96px;
+    height: 72px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls {
+    bottom: 10px;
+    gap: 7px;
+    padding: 6px;
+  }
+
+  .lesson-comms-panel:has(.lesson-comms-video:not([hidden])) .lesson-comms-controls .call-control {
+    width: 48px;
+    height: 48px;
+    min-height: 48px;
+  }
+
+  .lesson-comms-panel.call-active:has(.lesson-comms-video:not([hidden])) .lesson-comms-call-state {
+    bottom: 70px;
+  }
+}
