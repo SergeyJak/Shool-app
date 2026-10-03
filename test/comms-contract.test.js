@@ -62,7 +62,8 @@ test("lesson client uses explicit incoming call acceptance before negotiation", 
 test("server routes call request accept decline and cancel only inside lesson room", () => {
   const server = read("server.js");
   assert.match(server, /socket\.on\("rtc:call"/);
-  assert.match(server, /socket\.to\(room\)\.emit\("rtc:incoming-call"/);
+  assert.match(server, /const roomSockets = await io\.in\(room\)\.fetchSockets\(\)/);
+  assert.match(server, /for \(const peer of recipientSockets\)[\s\S]{0,220}peer\.emit\("rtc:incoming-call"/);
   assert.match(server, /socket\.on\("rtc:accept"/);
   assert.match(server, /call\.caller\.emit\("rtc:accepted"/);
   assert.match(server, /socket\.on\("rtc:decline"/);
@@ -72,7 +73,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-handover1/);
+    assert.match(read(file), /app\.js\?v=20261003-rebind1/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -449,9 +450,9 @@ test("WebRTC protocol changes are cache-busted on lesson pages", () => {
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
 
-  assert.match(app, /lesson-comms\.mjs\?v=20261003-handover1/);
-  assert.match(teacher, /app\.js\?v=20261003-handover1/);
-  assert.match(student, /app\.js\?v=20261003-handover1/);
+  assert.match(app, /lesson-comms\.mjs\?v=20261003-rebind1/);
+  assert.match(teacher, /app\.js\?v=20261003-rebind1/);
+  assert.match(student, /app\.js\?v=20261003-rebind1/);
 });
 
 
@@ -478,7 +479,37 @@ test("network handover can trigger bounded ICE restart recovery", () => {
 });
 
 test("network handover WebRTC fix is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-handover1/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-handover1/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-handover1/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-rebind1/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-rebind1/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-rebind1/);
+});
+
+
+test("RTC reconnect rebinds an active call to the stable client id", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(server, /const rtcResumeSessions = new Map\(\)/);
+  assert.match(server, /socket\.on\("rtc:resume"/);
+  assert.match(server, /canResumeRtcSession\(socket, callId\)/);
+  assert.match(server, /rtcClientId\(peer\) === clientId/);
+  assert.match(server, /peer\.data\.rtcReady = false/);
+  assert.match(server, /socket\.data\.rtcReady = true/);
+  assert.match(client, /socket\.emit\("rtc:resume", \{ callId: activeCallId \}/);
+  assert.match(client, /activePeerId && activePeerId !== peer\.id/);
+});
+
+test("RTC call recipients are deduplicated by stable client id", () => {
+  const server = read("server.js");
+
+  assert.match(server, /const byParticipant = new Map\(\)/);
+  assert.match(server, /rtcClientId\(peer\) \|\| peer\.id/);
+  assert.match(server, /recipientSockets = \[\.\.\.byParticipant\.values\(\)\]/);
+  assert.match(server, /for \(const peer of recipientSockets\)/);
+});
+
+test("socket rebind WebRTC fix is cache-busted on lesson pages", () => {
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-rebind1/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-rebind1/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-rebind1/);
 });

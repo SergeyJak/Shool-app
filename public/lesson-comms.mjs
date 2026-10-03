@@ -615,6 +615,41 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     }
   }
 
+  function shouldCreateOffer(peer) {
+    if (!peer?.id) return false;
+    if (role === "teacher") return true;
+    if (peer.role === "teacher") return false;
+    return String(socket.id) < String(peer.id);
+  }
+
+  function resumeActiveCall() {
+    if (!localStream || !activeCallId || !socket.connected) return;
+    socket.emit("rtc:resume", { callId: activeCallId }, async (result) => {
+      if (!result?.ok) {
+        setCallState("Не удалось восстановить звонок после смены сети.");
+        return;
+      }
+      const peer = (result.peers || []).find((item) => item.role !== role) || result.peers?.[0];
+      if (!peer) {
+        closePeer();
+        callAccepted = true;
+        setCallState("Ждём переподключения второго участника…");
+        return;
+      }
+      if (activePeerId && activePeerId !== peer.id) closePeer();
+      if (!shouldCreateOffer(peer)) {
+        setCallState("Восстанавливаем соединение…");
+        return;
+      }
+      try {
+        await createOffer(peer.id, { iceRestart: true });
+      } catch (error) {
+        console.error("WebRTC resume offer failed", error);
+        setCallState("Не удалось восстановить видеосвязь.");
+      }
+    });
+  }
+
   function announceReady() {
     if (!localStream || !socket.connected) return;
     socket.emit("rtc:ready", { callId: activeCallId }, async (result) => {
@@ -624,8 +659,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         setCallState("Ждём переподключения второго участника…");
         return;
       }
-      const shouldOffer = role === "teacher" || String(socket.id) < String(peer.id);
-      if (!shouldOffer) return;
+      if (!shouldCreateOffer(peer)) return;
       try {
         await createOffer(peer.id);
       } catch (error) {
@@ -893,7 +927,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   });
 
   socket.on("connect", () => {
-    if (localStream && callAccepted) announceReady();
+    if (localStream && callAccepted) resumeActiveCall();
     else if (localStream && outgoingCall) {
       socket.emit("rtc:call", { callId: activeCallId }, (result) => {
         if (!result?.ok) setCallState("Не удалось восстановить звонок.");
