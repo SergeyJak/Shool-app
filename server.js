@@ -21,10 +21,16 @@ const {
   verifyPassword,
   createSessionToken,
   createGuestToken,
+  REGISTRATION_COOKIE,
+  createRegistrationToken,
+  parseRegistrationToken,
+  parseCookies,
   sessionCookie,
   guestCookie,
+  registrationCookie,
   clearSessionCookie,
   clearGuestCookie,
+  clearRegistrationCookie,
 } = require("./lib/auth");
 const { resolveIdentityFromCookies } = require("./lib/session-context");
 const { canAccessLesson } = require("./lib/lesson-access");
@@ -42,6 +48,8 @@ if (!MONGODB_URI) {
 const AUTH_SECRET =
   process.env.AUTH_SECRET ||
   crypto.createHash("sha256").update(`school-app:${MONGODB_URI}`).digest("hex");
+const ADMIN_TELEGRAM_BOT_TOKEN = String(process.env.ADMIN_TELEGRAM_BOT_TOKEN || "").trim();
+const ADMIN_TELEGRAM_CHAT_ID = String(process.env.ADMIN_TELEGRAM_CHAT_ID || "").trim();
 
 const app = express();
 const server = http.createServer(app);
@@ -136,7 +144,58 @@ function newInviteToken() {
 
 function normalizeManagedUsername(value) {
   const username = normalizeUsername(value);
-  return /^[a-z0-9._-]{3,50}$/.test(username) ? username : null;
+  return /^[\p{L}\p{N}._-]{3,50}$/u.test(username) ? username : null;
+}
+
+function normalizeEmail(value) {
+  const email = String(value || "").trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254 ? email : null;
+}
+
+function normalizeBirthDate(value) {
+  const raw = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const date = new Date(`${raw}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  if (date.toISOString().slice(0, 10) !== raw) return null;
+  if (date > new Date()) return null;
+  return raw;
+}
+
+async function registrationUserFromRequest(req) {
+  const token = parseCookies(req.headers.cookie || "")[REGISTRATION_COOKIE];
+  const payload = parseRegistrationToken(token, AUTH_SECRET);
+  if (!payload) return null;
+  return users.findOne({ _id: payload.uid, role: "teacher" });
+}
+
+async function notifyAdminRegistration(user) {
+  if (!ADMIN_TELEGRAM_BOT_TOKEN || !ADMIN_TELEGRAM_CHAT_ID) return false;
+  const text = [
+    "🆕 Новая регистрация учителя",
+    `Логин: ${user.username}`,
+    `Имя: ${user.displayName || "—"}`,
+    `Email: ${user.email || "—"}`,
+    "Откройте админку → Регистрации для проверки.",
+  ].join("\n");
+  try {
+    const response = await fetch(
+      `https://api.telegram.org/bot${ADMIN_TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: ADMIN_TELEGRAM_CHAT_ID, text }),
+      }
+    );
+    if (!response.ok) {
+      console.error("Telegram registration notification failed", response.status);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Telegram registration notification failed", error);
+    return false;
+  }
 }
 
 function publicUser(user) {
@@ -146,6 +205,10 @@ function publicUser(user) {
     displayName: user.displayName,
     role: user.role,
     active: user.active !== false,
+    approvalStatus: user.approvalStatus || (user.active === false ? "inactive" : "approved"),
+    profileComplete: user.profileComplete !== false,
+    email: user.email || null,
+    birthDate: user.birthDate || null,
   };
 }
 
@@ -207,10 +270,15 @@ app.use(attachUser);
 app.post("/api/auth/register", async (req, res, next) => {
   try {
     const username = normalizeManagedUsername(req.body?.username);
-    const displayName = String(req.body?.displayName || "").trim();
     const password = String(req.body?.password || "");
-    if (!username || !displayName || displayName.length > 80 || password.length < 8) {
-      return res.status(400).json({ error: "INVALID_REGISTRATION" });
+    const passwordConfirm = String(req.body?.passwordConfirm || "");
+
+    if (!username) return res.status(400).json({ error: "INVALID_USERNAME" });
+    if (password.length < 8 || password.length > 128) {
+      return res.status(400).json({ error: "INVALID_PASSWORD" });
+    }
+    if (password !== passwordConfirm) {
+      return res.status(400).json({ error: "PASSWORD_MISMATCH" });
     }
     if (await users.findOne({ _id: username })) {
       return res.status(409).json({ error: "USER_EXISTS" });
@@ -221,25 +289,89 @@ app.post("/api/auth/register", async (req, res, next) => {
     const user = {
       _id: username,
       username,
-      displayName,
+      displayName: "",
       role: "teacher",
-      active: true,
+      active: false,
+      approvalStatus: "onboarding",
+      profileComplete: false,
       lessonIds: [],
       passwordSalt: salt,
       passwordHash: hash,
-      schemaVersion: 2,
+      schemaVersion: 3,
       createdAt: now,
       updatedAt: now,
     };
     await users.insertOne(user);
 
-    const token = createSessionToken(user, AUTH_SECRET);
-    res.setHeader("Set-Cookie", sessionCookie(token, { secure: requestIsSecure(req) }));
+    const token = createRegistrationToken(user, AUTH_SECRET);
+    res.setHeader("Set-Cookie", registrationCookie(token, { secure: requestIsSecure(req) }));
     res.status(201).json({
       ok: true,
-      redirect: "/cabinet",
+      redirect: "/register/profile",
       user: publicUser(user),
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/auth/registration", async (req, res, next) => {
+  try {
+    const user = await registrationUserFromRequest(req);
+    if (!user) return res.status(401).json({ error: "REGISTRATION_REQUIRED" });
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ user: publicUser(user) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/auth/register/profile", async (req, res, next) => {
+  try {
+    const user = await registrationUserFromRequest(req);
+    if (!user) return res.status(401).json({ error: "REGISTRATION_REQUIRED" });
+    if (!["onboarding", "pending"].includes(user.approvalStatus)) {
+      return res.status(409).json({ error: "REGISTRATION_CLOSED" });
+    }
+
+    const firstName = String(req.body?.firstName || "").trim().slice(0, 80);
+    const lastName = String(req.body?.lastName || "").trim().slice(0, 80);
+    const email = normalizeEmail(req.body?.email);
+    const birthDate = normalizeBirthDate(req.body?.birthDate);
+    const phone = String(req.body?.phone || "").trim().slice(0, 40);
+    const subjects = String(req.body?.subjects || "").trim().slice(0, 240);
+    const bio = String(req.body?.bio || "").trim().slice(0, 1000);
+
+    if (!firstName) return res.status(400).json({ error: "FIRST_NAME_REQUIRED" });
+    if (!email) return res.status(400).json({ error: "INVALID_EMAIL" });
+    if (!birthDate) return res.status(400).json({ error: "INVALID_BIRTH_DATE" });
+
+    const now = new Date();
+    const displayName = [firstName, lastName].filter(Boolean).join(" ");
+    await users.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          firstName,
+          lastName,
+          displayName,
+          email,
+          birthDate,
+          phone,
+          subjects,
+          bio,
+          profileComplete: true,
+          approvalStatus: "pending",
+          registrationSubmittedAt: now,
+          updatedAt: now,
+        },
+      }
+    );
+    const updated = await users.findOne({ _id: user._id });
+    await notifyAdminRegistration(updated);
+
+    res.setHeader("Set-Cookie", clearRegistrationCookie({ secure: requestIsSecure(req) }));
+    res.json({ ok: true, redirect: "/registration-pending" });
   } catch (error) {
     next(error);
   }
@@ -249,9 +381,24 @@ app.post("/api/auth/login", async (req, res, next) => {
   try {
     const username = normalizeUsername(req.body?.username);
     const password = String(req.body?.password || "");
-    const user = await users.findOne({ _id: username, active: true });
+    const user = await users.findOne({ _id: username });
     const valid = user && await verifyPassword(password, user.passwordSalt, user.passwordHash);
     if (!valid) return res.status(401).json({ error: "INVALID_CREDENTIALS" });
+
+    if (user.approvalStatus === "onboarding" || user.profileComplete === false) {
+      const registrationToken = createRegistrationToken(user, AUTH_SECRET);
+      res.setHeader("Set-Cookie", registrationCookie(registrationToken, { secure: requestIsSecure(req) }));
+      return res.json({ ok: true, redirect: "/register/profile", registration: "onboarding" });
+    }
+    if (user.approvalStatus === "pending") {
+      return res.status(403).json({ error: "ACCOUNT_PENDING" });
+    }
+    if (user.approvalStatus === "rejected") {
+      return res.status(403).json({ error: "ACCOUNT_REJECTED" });
+    }
+    if (user.active === false) {
+      return res.status(403).json({ error: "ACCOUNT_INACTIVE" });
+    }
 
     const token = createSessionToken(user, AUTH_SECRET);
     res.setHeader("Set-Cookie", sessionCookie(token, { secure: requestIsSecure(req) }));
@@ -270,6 +417,7 @@ app.post("/api/auth/logout", (req, res) => {
   res.setHeader("Set-Cookie", [
     clearSessionCookie({ secure: requestIsSecure(req) }),
     clearGuestCookie({ secure: requestIsSecure(req) }),
+    clearRegistrationCookie({ secure: requestIsSecure(req) }),
   ]);
   res.setHeader("Cache-Control", "no-store");
   res.json({ ok: true });
@@ -677,9 +825,89 @@ app.post("/api/join/:token", async (req, res, next) => {
 });
 
 
+app.get("/api/admin/registrations", requireApiRole("admin"), async (_req, res, next) => {
+  try {
+    const rows = await users.find({
+      role: "teacher",
+      approvalStatus: "pending",
+      profileComplete: true,
+    }).sort({ registrationSubmittedAt: -1 }).toArray();
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      registrations: rows.map((user) => ({
+        ...publicUser(user),
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || "",
+        subjects: user.subjects || "",
+        bio: user.bio || "",
+        registrationSubmittedAt: user.registrationSubmittedAt || user.updatedAt || user.createdAt,
+      })),
+      count: rows.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/registrations/:id/approve", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = normalizeManagedUsername(req.params.id);
+    if (!id) return res.status(400).json({ error: "INVALID_USER" });
+    const current = await users.findOne({ _id: id, role: "teacher", approvalStatus: "pending" });
+    if (!current) return res.status(404).json({ error: "REGISTRATION_NOT_FOUND" });
+    const now = new Date();
+    await users.updateOne(
+      { _id: id },
+      {
+        $set: {
+          active: true,
+          approvalStatus: "approved",
+          approvedAt: now,
+          approvedBy: req.user._id,
+          updatedAt: now,
+        },
+      }
+    );
+    const updated = await users.findOne({ _id: id });
+    res.json({ user: publicUser(updated) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/registrations/:id/reject", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = normalizeManagedUsername(req.params.id);
+    if (!id) return res.status(400).json({ error: "INVALID_USER" });
+    const current = await users.findOne({ _id: id, role: "teacher", approvalStatus: "pending" });
+    if (!current) return res.status(404).json({ error: "REGISTRATION_NOT_FOUND" });
+    const now = new Date();
+    await users.updateOne(
+      { _id: id },
+      {
+        $set: {
+          active: false,
+          approvalStatus: "rejected",
+          rejectedAt: now,
+          rejectedBy: req.user._id,
+          updatedAt: now,
+        },
+      }
+    );
+    const updated = await users.findOne({ _id: id });
+    res.json({ user: publicUser(updated) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/admin/users", requireApiRole("admin"), async (_req, res, next) => {
   try {
-    const rows = await users.find({ role: { $in: ["teacher", "student"] } }).sort({ role: 1, displayName: 1 }).toArray();
+    const rows = await users.find({
+      role: { $in: ["teacher", "student"] },
+      approvalStatus: { $nin: ["onboarding", "pending"] },
+    }).sort({ role: 1, displayName: 1 }).toArray();
     res.setHeader("Cache-Control", "no-store");
     res.json({ users: rows.map(publicUser) });
   } catch (error) {
@@ -878,6 +1106,20 @@ app.get("/register", (req, res) => {
   if (req.user && !req.user.guest) return res.redirect("/cabinet");
   res.sendFile(path.join(__dirname, "public", "register.html"));
 });
+app.get("/register/profile", async (req, res, next) => {
+  try {
+    const user = await registrationUserFromRequest(req);
+    if (!user) return res.redirect("/register");
+    if (user.approvalStatus === "pending") return res.redirect("/registration-pending");
+    if (user.approvalStatus === "approved" && user.active) return res.redirect("/cabinet");
+    res.sendFile(path.join(__dirname, "public", "register-profile.html"));
+  } catch (error) {
+    next(error);
+  }
+});
+app.get("/registration-pending", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "registration-pending.html"))
+);
 app.get("/cabinet", requirePageAuth("teacher", "student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "dashboard.html"))
 );
@@ -1600,6 +1842,8 @@ async function start() {
   }
 
   await users.createIndex({ role: 1, active: 1 });
+  await users.createIndex({ approvalStatus: 1, registrationSubmittedAt: -1 });
+  await users.createIndex({ email: 1 }, { sparse: true });
   await lessons.createIndex({ teacherIds: 1 });
   await lessons.createIndex({ studentIds: 1 });
   await lessons.createIndex({ ownerId: 1, updatedAt: -1 });
@@ -1618,6 +1862,8 @@ async function start() {
       displayName,
       role,
       active: true,
+      approvalStatus: "approved",
+      profileComplete: true,
       lessonIds,
       passwordSalt,
       passwordHash,
