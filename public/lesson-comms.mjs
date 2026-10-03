@@ -715,7 +715,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     if (!callerId || !callId) return;
     stopRingtone();
     acceptButton.disabled = true;
+    activeCallId = callId;
     if (!(await acquireLocalMedia())) {
+      activeCallId = null;
       acceptButton.disabled = false;
       return;
     }
@@ -723,6 +725,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     socket.emit("rtc:accept", { callerId, callId }, (result) => {
       acceptButton.disabled = false;
       if (!result?.ok) {
+        activeCallId = null;
         resetIncomingCall();
         setCallState("Звонок уже завершён.");
         return;
