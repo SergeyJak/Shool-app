@@ -515,8 +515,12 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
               if (
                 connectionCallId === activeCallId &&
                 pc === peerConnection &&
-                ["disconnected", "failed"].includes(pc.connectionState)
+                !["connected", "closed"].includes(pc.connectionState)
               ) {
+                emitRtcDebug({
+                  event: "recovery-timeout",
+                  state: `connection=${pc.connectionState};ice=${pc.iceConnectionState}`,
+                });
                 scheduleIceRestart();
               }
             }, 5000);
