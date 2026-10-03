@@ -249,6 +249,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       window.clearInterval(ringtoneTimer);
       ringtoneTimer = null;
     }
+    if (ringtoneContext?.state === "running") {
+      ringtoneContext.suspend().catch(() => {});
+    }
   }
 
   document.addEventListener("pointerdown", unlockRingtone, { once: true, passive: true });
@@ -665,6 +668,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   acceptButton.addEventListener("click", async () => {
     const callerId = pendingCallerId;
     if (!callerId) return;
+    stopRingtone();
     acceptButton.disabled = true;
     if (!(await acquireLocalMedia())) {
       acceptButton.disabled = false;
