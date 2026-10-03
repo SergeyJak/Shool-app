@@ -164,3 +164,10 @@ test("Cloudflare TURN prefers TLS over TCP 443 for unstable UDP networks", () =>
   assert.match(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
   assert.match(server, /iceTransportPolicy: "relay"/);
 });
+
+
+test("selected ICE pair diagnostics include relay transport protocol", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /relayProtocol/);
+  assert.match(client, /event: "selected-pair"/);
+});
