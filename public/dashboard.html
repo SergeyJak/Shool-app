@@ -186,7 +186,16 @@
             <button type="submit">Создать пользователя</button>
           </form>
         </div>
-        <div class="admin-lists"><section><h3>Пользователи</h3><div id="adminUserList" class="admin-list"></div></section></div>
+        <div class="admin-lists"><section>
+          <div class="admin-section-title">
+            <h3>Пользователи</h3>
+            <nav class="admin-subtabs" aria-label="Фильтр пользователей">
+              <button type="button" class="admin-subtab active" data-user-state="active">Активные <span id="activeUsersCount">0</span></button>
+              <button type="button" class="admin-subtab" data-user-state="inactive">Деактивированные <span id="inactiveUsersCount">0</span></button>
+            </nav>
+          </div>
+          <div id="adminUserList" class="admin-list"></div>
+        </section></div>
       </section>
 
       <section class="admin-view" data-admin-section="lessons" hidden>
@@ -199,7 +208,16 @@
             <button type="submit">Создать урок</button>
           </form>
         </div>
-        <div class="admin-lists"><section><h3>Все уроки</h3><div id="adminLessonList" class="admin-list"></div></section></div>
+        <div class="admin-lists"><section>
+          <div class="admin-section-title">
+            <h3>Уроки</h3>
+            <nav class="admin-subtabs" aria-label="Фильтр уроков">
+              <button type="button" class="admin-subtab active" data-lesson-state="active">Активные <span id="activeLessonsCount">0</span></button>
+              <button type="button" class="admin-subtab" data-lesson-state="inactive">Деактивированные <span id="inactiveLessonsCount">0</span></button>
+            </nav>
+          </div>
+          <div id="adminLessonList" class="admin-list"></div>
+        </section></div>
       </section>
     </section>
   </main>
@@ -219,6 +237,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261003-registrations1"></script>
+  <script src="/cabinet.js?v=20261003-registrations2"></script>
 </body>
 </html>
