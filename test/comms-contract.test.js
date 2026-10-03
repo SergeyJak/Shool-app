@@ -146,3 +146,14 @@ test("video capture and sender bitrate are tuned for lesson calls", () => {
   assert.match(client, /maxFramerate = 24/);
   assert.match(client, /degradationPreference = "maintain-framerate"/);
 });
+
+
+test("video capture and sender bitrate are tuned for lesson calls", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /width: \{ ideal: 960, max: 1280 \}/);
+  assert.match(client, /height: \{ ideal: 540, max: 720 \}/);
+  assert.match(client, /frameRate: \{ ideal: 24, max: 30 \}/);
+  assert.match(client, /maxBitrate = 900000/);
+  assert.match(client, /maxFramerate = 24/);
+  assert.match(client, /degradationPreference = "maintain-framerate"/);
+});
