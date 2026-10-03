@@ -128,7 +128,8 @@ test("RTC quality monitor reports bandwidth jitter and packet loss without affec
 
 test("Cloudflare TURN keeps transport fallbacks without relay-only ICE", () => {
   const server = read("server.js");
-  assert.match(server, /return payload\.iceServers/);
+  assert.match(server, /cloudflareTurnCache = \{[\s\S]{0,180}iceServers: payload\.iceServers/);
+  assert.match(server, /return cloudflareTurnCache\.iceServers/);
   assert.doesNotMatch(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
   assert.doesNotMatch(server, /\^turns:\.\*:443\\\?transport=tcp\$\/i/);
   assert.match(server, /source: "hybrid-stun-cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
@@ -459,9 +460,9 @@ test("RTC v2 keeps calls isolated by call id and rebuilds peers fresh", () => {
 
 test("RTC v2 tunes lesson capture and sender bitrate", () => {
   const client = read("public/lesson-comms.mjs");
-  assert.match(client, /width: \\{ ideal: 480, max: 640 \\}/);
-  assert.match(client, /height: \\{ ideal: 270, max: 360 \\}/);
-  assert.match(client, /frameRate: \\{ ideal: 15, max: 18 \\}/);
+  assert.match(client, /width: \{ ideal: 480, max: 640 \}/);
+  assert.match(client, /height: \{ ideal: 270, max: 360 \}/);
+  assert.match(client, /frameRate: \{ ideal: 15, max: 18 \}/);
   assert.match(client, /maxBitrate = 280_000/);
   assert.match(client, /maxFramerate = 15/);
   assert.match(client, /maxBitrate = 48_000/);
