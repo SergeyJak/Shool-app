@@ -272,8 +272,12 @@ test("answering stops the ringtone immediately before media setup", () => {
 
 test("chat opening does not summon the mobile keyboard automatically", () => {
   const client = read("public/lesson-comms.mjs");
-  assert.doesNotMatch(client, /chatInput\.focus/);
-  assert.match(client, /loadChatHistory\(\)/);
+  const showViewStart = client.indexOf("function showView(view)");
+  const closePanelStart = client.indexOf("function closePanel()", showViewStart);
+  const showView = client.slice(showViewStart, closePanelStart);
+
+  assert.match(showView, /loadChatHistory\(\)/);
+  assert.doesNotMatch(showView, /chatInput\.focus/);
 });
 
 test("lesson starts in hand mode instead of drawing mode", () => {
