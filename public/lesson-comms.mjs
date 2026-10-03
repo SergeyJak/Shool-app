@@ -425,9 +425,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   });
 
   socket.on("rtc:declined", () => {
-    outgoingCall = false;
-    callAccepted = false;
-    startButton.textContent = "Позвонить";
+    stopCall({ notify: false });
     setCallState("Звонок отклонён.");
   });
 
@@ -463,7 +461,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   socket.on("connect", () => {
     if (localStream && callAccepted) announceReady();
-    else if (outgoingCall) startCall();
+    else if (localStream && outgoingCall) {
+      socket.emit("rtc:call", {}, (result) => {
+        if (!result?.ok) setCallState("Не удалось восстановить звонок.");
+      });
+    }
   });
 
   function appendMessage(message) {
