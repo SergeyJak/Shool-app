@@ -305,3 +305,186 @@
     width: min(44vw, 220px);
   }
 }
+
+
+/* Friendly lesson call UI */
+.lesson-comms-panel {
+  border: 1px solid #d9e2ec;
+  border-radius: 22px;
+  background: rgba(255,255,255,.985);
+  box-shadow: 0 18px 48px rgba(23,32,42,.18);
+}
+.lesson-comms-head {
+  min-height: 58px;
+  padding: 10px 12px 10px 14px;
+  border-bottom: 1px solid #e6edf3;
+  background: linear-gradient(135deg, #f7fbff 0%, #fffaf1 100%);
+}
+.lesson-comms-brand {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lesson-comms-brand > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.lesson-comms-mascot {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #eef4fb;
+  box-shadow: inset 0 0 0 1px #d8e5f2;
+  font-size: 21px;
+}
+.lesson-comms-title {
+  color: #17202a;
+  font-size: 15px;
+}
+.lesson-comms-subtitle {
+  overflow: hidden;
+  color: #71808f;
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lesson-comms-minimize,
+.lesson-comms-close {
+  transition: background .18s ease, transform .18s ease;
+}
+.lesson-comms-minimize:hover,
+.lesson-comms-close:hover {
+  background: #eef3f7;
+}
+.lesson-comms-minimize:active,
+.lesson-comms-close:active {
+  transform: scale(.94);
+}
+.lesson-comms-view {
+  padding: 14px;
+}
+.lesson-comms-video-stage {
+  min-height: 220px;
+  border: 3px solid #edf3f8;
+  border-radius: 18px;
+  background: #16212c;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.lesson-comms-remote {
+  border-radius: 15px;
+}
+.lesson-comms-local {
+  right: 12px;
+  bottom: 12px;
+  border: 3px solid white;
+  border-radius: 13px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.2);
+}
+.lesson-comms-call-state {
+  font-weight: 650;
+  line-height: 1.45;
+  text-shadow: 0 1px 8px rgba(0,0,0,.35);
+}
+.lesson-comms-controls {
+  gap: 9px;
+  margin-top: 12px;
+}
+.lesson-comms-controls button,
+.lesson-comms-incoming-actions button {
+  border: 1px solid #d7e0e8;
+  border-radius: 13px;
+  background: #f8fafc;
+  color: #27313b;
+  font-weight: 650;
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.lesson-comms-controls button:not(:disabled):hover,
+.lesson-comms-incoming-actions button:not(:disabled):hover {
+  background: #eef4f8;
+  box-shadow: 0 4px 12px rgba(23,32,42,.08);
+}
+.lesson-comms-controls button:not(:disabled):active,
+.lesson-comms-incoming-actions button:not(:disabled):active {
+  transform: translateY(1px) scale(.985);
+}
+.lesson-comms-controls button.primary {
+  border-color: #9db5d1;
+  background: #eef4fb;
+  color: #203d5c;
+}
+.lesson-comms-controls .danger,
+.lesson-comms-decline {
+  border-color: #ead3d3;
+  background: #fff7f7;
+  color: #9b3b3b;
+}
+.lesson-comms-incoming {
+  position: relative;
+  margin-bottom: 12px;
+  padding: 13px;
+  grid-template-columns: 1fr;
+  gap: 11px;
+  overflow: hidden;
+  border: 1px solid #d5e5f4;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #f3f8ff 0%, #fffaf0 100%);
+  box-shadow: 0 7px 20px rgba(54,83,112,.09);
+}
+.lesson-comms-incoming::after {
+  content: "";
+  position: absolute;
+  width: 76px;
+  height: 76px;
+  right: -25px;
+  top: -30px;
+  border-radius: 50%;
+  background: rgba(157,181,209,.16);
+}
+.lesson-comms-incoming-title {
+  color: #294966;
+  font-size: 15px;
+}
+.lesson-comms-incoming-name {
+  color: #637485;
+  font-size: 13px;
+}
+.lesson-comms-accept {
+  border-color: #a9d6b5 !important;
+  background: #edf9f0 !important;
+  color: #247a45 !important;
+}
+.lesson-comms-video-button.ringing {
+  border-color: #a9c3dc;
+  background: #eef6ff;
+  color: #294966;
+  animation: lesson-call-pulse 1.35s ease-in-out infinite;
+}
+.lesson-comms-panel.mini-video {
+  border: 3px solid white;
+  border-radius: 16px;
+  box-shadow: 0 14px 40px rgba(23,32,42,.25);
+}
+.lesson-comms-panel.mini-video .lesson-comms-remote,
+.lesson-comms-panel.mini-video .lesson-comms-video-stage {
+  border-radius: 13px;
+}
+@media (max-width: 600px) {
+  .lesson-comms-panel {
+    border-radius: 20px;
+  }
+  .lesson-comms-head {
+    min-height: 56px;
+  }
+  .lesson-comms-mascot {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+}
