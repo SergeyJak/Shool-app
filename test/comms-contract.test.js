@@ -467,14 +467,15 @@ test("failed WebRTC peers are never reused across call generations", () => {
   assert.match(client, /peerCallId = null/);
 });
 
-test("network handover can trigger bounded ICE restart recovery", () => {
+test("network handover can trigger one ICE restart before watchdog rebuild", () => {
   const client = read("public/lesson-comms.mjs");
 
   assert.match(client, /let iceRestartAttempts = 0/);
-  assert.match(client, /iceRestartAttempts >= 2/);
+  assert.match(client, /iceRestartAttempts >= 1/);
   assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
   assert.match(client, /createOffer\(iceRestart \? \{ iceRestart: true \} : undefined\)/);
   assert.match(client, /event: "ice-restart"/);
+  assert.match(client, /armRecoveryWatchdog\(peerId\)/);
 });
 
 test("network handover WebRTC fix is cache-busted on lesson pages", () => {
@@ -522,7 +523,9 @@ test("failed media routes escalate from ICE restart to a fresh peer connection",
 
   assert.match(client, /event: "ice-restart"/);
   assert.match(client, /createOffer\(peerId, \{ iceRestart: true \}\)/);
-  assert.match(client, /setTimeout\(\(\) => \{[\s\S]{0,500}scheduleIceRestart\(\);[\s\S]{0,100}\}, 5000\)/);
+  assert.match(client, /recoveryWatchdogTimer = setTimeout\(\(\) => \{/);
+  assert.match(client, /event: "recovery-timeout"/);
+  assert.match(client, /rebuildPeerAfterRouteFailure\(peerId\)/);
   assert.match(client, /event: "peer-rebuild"/);
   assert.match(client, /peerConnection = null/);
   assert.match(client, /peerCallId = null/);
@@ -578,9 +581,10 @@ test("RTC diagnostics include network context without SDP or candidate bodies", 
 test("route recovery rebuilds peers stuck connecting after ICE restart", () => {
   const client = read("public/lesson-comms.mjs");
 
-  assert.match(client, /!\["connected", "closed"\]\.includes\(pc\.connectionState\)/);
+  assert.match(client, /\["connected", "closed"\]\.includes\(pc\.connectionState\)/);
   assert.match(client, /event: "recovery-timeout"/);
-  assert.match(client, /scheduleIceRestart\(\)/);
+  assert.match(client, /rebuildPeerAfterRouteFailure\(peerId\)/);
+  assert.doesNotMatch(client, /event: "recovery-timeout"[\s\S]{0,300}scheduleIceRestart\(\)/);
   assert.match(client, /event: "peer-rebuild"/);
 });
 
