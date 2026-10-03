@@ -160,11 +160,13 @@ test("RTC quality monitor reports bandwidth jitter and packet loss without affec
 });
 
 
-test("Cloudflare TURN prefers TLS over TCP 443 for unstable UDP networks", () => {
+test("Cloudflare TURN keeps transport fallbacks while still forcing relay", () => {
   const server = read("server.js");
-  assert.match(server, /\^turns:\.\*:443\\\?transport=tcp\$/i);
-  assert.match(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
-  assert.match(server, /iceTransportPolicy: "relay"/);
+
+  assert.match(server, /return payload\.iceServers/);
+  assert.doesNotMatch(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
+  assert.doesNotMatch(server, /\^turns:\.\*:443\\\?transport=tcp\$\/i/);
+  assert.match(server, /source: "cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "relay"/);
 });
 
 
