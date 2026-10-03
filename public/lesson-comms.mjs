@@ -116,6 +116,15 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const chatForm = panel.querySelector(".lesson-comms-form");
   const chatInput = chatForm.querySelector("textarea");
 
+  function syncChatViewportHeight() {
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    panel.style.setProperty("--lesson-viewport-height", `${Math.round(viewportHeight)}px`);
+  }
+
+  window.visualViewport?.addEventListener("resize", syncChatViewportHeight);
+  window.addEventListener("resize", syncChatViewportHeight);
+  syncChatViewportHeight();
+
   function setUnread(value) {
     unread = Math.max(0, value);
     unreadEl.hidden = unread === 0;
