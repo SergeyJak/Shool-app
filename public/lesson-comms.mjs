@@ -37,8 +37,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           <small class="lesson-comms-subtitle">Вы на занятии вместе</small>
         </span>
       </div>
-      <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видео" title="Свернуть видео">↙</button>
-      <button class="lesson-comms-close" type="button" aria-label="Закрыть">×</button>
+      <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видеозвонок">⌄ <span>Свернуть</span></button>
     </div>
     <div class="lesson-comms-view lesson-comms-video">
       <div class="lesson-comms-incoming" hidden>
@@ -57,10 +56,22 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
       </div>
       <div class="lesson-comms-controls">
-        <button class="lesson-comms-start primary" type="button">📞 Позвонить</button>
-        <button class="lesson-comms-mic" type="button" disabled>🎙 Микрофон</button>
-        <button class="lesson-comms-camera" type="button" disabled>📷 Камера</button>
-        <button class="lesson-comms-hangup danger" type="button" disabled>☎ Завершить</button>
+        <button class="lesson-comms-start primary" type="button">
+          <span class="lesson-comms-control-icon" aria-hidden="true">📞</span>
+          <span>Позвонить</span>
+        </button>
+        <button class="lesson-comms-mic call-control" type="button" hidden disabled>
+          <span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span>
+          <span>Микрофон</span>
+        </button>
+        <button class="lesson-comms-camera call-control" type="button" hidden disabled>
+          <span class="lesson-comms-control-icon" aria-hidden="true">📷</span>
+          <span>Камера</span>
+        </button>
+        <button class="lesson-comms-hangup danger call-control" type="button" hidden disabled>
+          <span class="lesson-comms-control-icon" aria-hidden="true">🔴</span>
+          <span>Завершить</span>
+        </button>
       </div>
     </div>
     <div class="lesson-comms-view lesson-comms-chat" hidden>
@@ -76,7 +87,6 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const videoButton = launcher.querySelector(".lesson-comms-video-button");
   const chatButton = launcher.querySelector(".lesson-comms-chat-button");
   const unreadEl = launcher.querySelector(".lesson-comms-unread");
-  const closeButton = panel.querySelector(".lesson-comms-close");
   const minimizeButton = panel.querySelector(".lesson-comms-minimize");
   const titleEl = panel.querySelector(".lesson-comms-title");
   const videoView = panel.querySelector(".lesson-comms-video");
@@ -135,7 +145,6 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     if (!panel.hidden && currentView === "chat") closePanel();
     else showView("chat");
   });
-  closeButton.addEventListener("click", closePanel);
 
   function minimizeVideo() {
     if (currentView !== "video" || panel.hidden) return;
@@ -185,7 +194,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     const now = context.currentTime;
     const master = context.createGain();
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.055, now + 0.02);
+    master.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
     master.gain.exponentialRampToValueAtTime(0.0001, now + 0.72);
     master.connect(context.destination);
 
@@ -242,12 +251,23 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   function updateMediaButtons() {
     const audio = localStream?.getAudioTracks()[0];
     const video = localStream?.getVideoTracks()[0];
+    const callIsActive = Boolean(localStream || outgoingCall || callAccepted);
+
+    startButton.hidden = callIsActive;
+    for (const button of [micButton, cameraButton, hangupButton]) {
+      button.hidden = !callIsActive;
+    }
+
     micButton.disabled = !audio;
     cameraButton.disabled = !video;
-    hangupButton.disabled = !localStream;
-    startButton.disabled = Boolean(localStream);
-    micButton.textContent = audio?.enabled ? "🎙 Микрофон" : "🔇 Микрофон";
-    cameraButton.textContent = video?.enabled ? "📷 Камера" : "🚫 Камера";
+    hangupButton.disabled = !callIsActive;
+
+    micButton.innerHTML = audio?.enabled
+      ? '<span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span><span>Микрофон</span>'
+      : '<span class="lesson-comms-control-icon" aria-hidden="true">🔇</span><span>Включить звук</span>';
+    cameraButton.innerHTML = video?.enabled
+      ? '<span class="lesson-comms-control-icon" aria-hidden="true">📷</span><span>Камера</span>'
+      : '<span class="lesson-comms-control-icon" aria-hidden="true">🚫</span><span>Включить камеру</span>';
   }
 
   async function getIceConfig() {
@@ -570,6 +590,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     incomingBox.hidden = true;
     outgoingCall = true;
     callAccepted = false;
+    updateMediaButtons();
     startButton.textContent = "Звоним…";
     setCallState("Звоним второму участнику…");
 
@@ -623,6 +644,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     updateMediaButtons();
     setCallState(finalState);
   }
+
+  updateMediaButtons();
 
   startButton.addEventListener("click", startCall);
   hangupButton.addEventListener("click", () => stopCall());
@@ -679,6 +702,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     pendingCallerId = from;
     incomingName.textContent = `${caller?.displayName || "Участник"} хочет присоединиться`;
     incomingBox.hidden = false;
+    updateMediaButtons();
     startRingtone();
     videoButton.classList.add("ringing");
     videoButton.textContent = "📞 Входящий";
