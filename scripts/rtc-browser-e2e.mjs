@@ -427,6 +427,7 @@ const child = spawn(
     "--use-fake-ui-for-media-stream",
     "--use-fake-device-for-media-stream",
     "--disable-features=MediaStreamTrackWebRtcStats",
+    "--virtual-time-budget=30000",
     "--dump-dom",
     url,
   ],
@@ -458,14 +459,15 @@ if (exitCode !== 0) {
   );
 }
 
-const match = stdout.match(/<title>RTC_E2E:([^<]+)<\/title>/);
-if (!match) {
+const matches = [...stdout.matchAll(/<title>RTC_E2E:([^<]+)<\/title>/g)];
+const encoded = matches.map((match) => match[1]).find((value) => value !== "PENDING");
+if (!encoded) {
   throw new Error(
-    `RTC browser test returned no result; stderr=${stderr.slice(-1200)} stdout=${stdout.slice(-1600)}`
+    `RTC browser test returned no final result; stderr=${stderr.slice(-1200)} stdout=${stdout.slice(-2000)}`
   );
 }
 
-const result = JSON.parse(decodeURIComponent(match[1]));
+const result = JSON.parse(decodeURIComponent(encoded));
 
 if (!result.connectedRoles.includes("teacher") || !result.connectedRoles.includes("student")) {
   throw new Error(`Both peers did not connect: ${JSON.stringify(result)}`);
