@@ -583,3 +583,23 @@ test("RTC v2 only resumes on online when the peer is not already connected", () 
   assert.match(client, /scheduleRtc2Resume\("network-online"\)/);
   assert.match(client, /event: "network-offline-v2"/);
 });
+
+
+test("RTC v2 sends answer before flushing queued remote ICE candidates", () => {
+  const client = read("public/lesson-comms.mjs");
+  const start = client.indexOf('if (payload.description?.type === "offer")');
+  const end = client.indexOf('if (payload.description?.type === "answer")', start);
+  const block = client.slice(start, end);
+
+  const answerSignal = block.indexOf("const result = await sendRtc2Signal");
+  const remoteFlush = block.indexOf("flushRemoteCandidates(pc)");
+  assert.ok(answerSignal >= 0);
+  assert.ok(remoteFlush > answerSignal);
+  assert.match(block, /event: "offer-remote-set-v2"/);
+});
+
+test("RTC v2 queued candidate flush failure does not block answer negotiation", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /flushRemoteCandidates\(pc\)\.catch/);
+  assert.match(client, /event: "candidate-flush-error-v2"/);
+});
