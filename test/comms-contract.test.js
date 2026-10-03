@@ -128,7 +128,8 @@ test("RTC quality monitor reports bandwidth jitter and packet loss without affec
 
 test("Cloudflare TURN keeps transport fallbacks without relay-only ICE", () => {
   const server = read("server.js");
-  assert.match(server, /return payload\.iceServers/);
+  assert.match(server, /cloudflareTurnCache = \{[\s\S]{0,180}iceServers: payload\.iceServers/);
+  assert.match(server, /return cloudflareTurnCache\.iceServers/);
   assert.doesNotMatch(server, /tlsOnly\.length \? tlsOnly : payload\.iceServers/);
   assert.doesNotMatch(server, /\^turns:\.\*:443\\\?transport=tcp\$\/i/);
   assert.match(server, /source: "hybrid-stun-cloudflare-turn",[\s\S]{0,120}iceTransportPolicy: "all"/);
@@ -459,11 +460,11 @@ test("RTC v2 keeps calls isolated by call id and rebuilds peers fresh", () => {
 
 test("RTC v2 tunes lesson capture and sender bitrate", () => {
   const client = read("public/lesson-comms.mjs");
-  assert.match(client, /width: \{ ideal: 640, max: 960 \}/);
-  assert.match(client, /height: \{ ideal: 360, max: 540 \}/);
-  assert.match(client, /frameRate: \{ ideal: 20, max: 24 \}/);
-  assert.match(client, /maxBitrate = 500_000/);
-  assert.match(client, /maxFramerate = 20/);
+  assert.match(client, /width: \{ ideal: 480, max: 640 \}/);
+  assert.match(client, /height: \{ ideal: 270, max: 360 \}/);
+  assert.match(client, /frameRate: \{ ideal: 15, max: 18 \}/);
+  assert.match(client, /maxBitrate = 280_000/);
+  assert.match(client, /maxFramerate = 15/);
   assert.match(client, /maxBitrate = 48_000/);
 });
 
@@ -530,4 +531,23 @@ test("RTC v2 logs offer answer and candidate routing without SDP bodies", () => 
   assert.match(server, /RTC2 signal lesson=/);
   assert.match(client, /event: "answer-v2"/);
   assert.match(client, /event: "answer-received-v2"/);
+});
+
+
+test("Cloudflare TURN credentials are cached and concurrent fetches are deduplicated", () => {
+  const server = read("server.js");
+  assert.match(server, /let cloudflareTurnCache = null/);
+  assert.match(server, /let cloudflareTurnFetchPromise = null/);
+  assert.match(server, /const CLOUDFLARE_TURN_CACHE_MS = 5 \* 60 \* 1000/);
+  assert.match(server, /cloudflareTurnCache\?\.expiresAt > now/);
+  assert.match(server, /if \(cloudflareTurnFetchPromise\) return cloudflareTurnFetchPromise/);
+});
+
+test("RTC v2 mobile media profile stays within measured relay bandwidth", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /width: \{ ideal: 480, max: 640 \}/);
+  assert.match(client, /height: \{ ideal: 270, max: 360 \}/);
+  assert.match(client, /frameRate: \{ ideal: 15, max: 18 \}/);
+  assert.match(client, /maxBitrate = 280_000/);
+  assert.match(client, /maxFramerate = 15/);
 });

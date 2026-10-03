@@ -476,8 +476,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       const params = sender.getParameters();
       params.encodings = params.encodings?.length ? params.encodings : [{}];
       if (track.kind === "video") {
-        params.encodings[0].maxBitrate = 500_000;
-        params.encodings[0].maxFramerate = 20;
+        params.encodings[0].maxBitrate = 280_000;
+        params.encodings[0].maxFramerate = 15;
       } else if (track.kind === "audio") {
         params.encodings[0].maxBitrate = 48_000;
       }
@@ -694,9 +694,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           autoGainControl: true,
         },
         video: {
-          width: { ideal: 640, max: 960 },
-          height: { ideal: 360, max: 540 },
-          frameRate: { ideal: 20, max: 24 },
+          width: { ideal: 480, max: 640 },
+          height: { ideal: 270, max: 360 },
+          frameRate: { ideal: 15, max: 18 },
           facingMode: "user",
         },
       });
