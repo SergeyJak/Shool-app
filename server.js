@@ -334,7 +334,7 @@ app.post("/api/auth/register/profile", async (req, res, next) => {
       }
     );
     const updated = await users.findOne({ _id: user._id });
-    await notifyAdminRegistration(updated);
+    void notifyAdminRegistration(updated);
 
     res.setHeader("Set-Cookie", clearRegistrationCookie({ secure: requestIsSecure(req) }));
     res.json({ ok: true, redirect: "/registration-pending" });
