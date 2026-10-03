@@ -95,16 +95,13 @@
   padding:6px;
 }
 .pdf-view-page .compact-sync{
-  position:fixed;
-  right:10px;
-  top:66px;
-  z-index:14;
-  width:auto;
+  position:static;
+  width:min(1600px,calc(100vw - 12px));
   min-height:0;
-  margin:0;
-  pointer-events:none;
-}
-.pdf-view-page .compact-sync>*{
+  margin:0 auto 6px;
+  padding:0 2px;
+  display:flex;
+  justify-content:flex-end;
   pointer-events:auto;
 }
 .pdf-view-page .follow-button,
