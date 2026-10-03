@@ -603,7 +603,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     videoButton.textContent = "🎥 Связь";
   }
 
-  function stopCall({ notify = true } = {}) {
+  function stopCall({
+    notify = true,
+    finalState = "Нажмите «Позвонить», чтобы начать видеосвязь.",
+  } = {}) {
     if (notify && socket.connected) {
       if (outgoingCall && !callAccepted) socket.emit("rtc:cancel");
       else socket.emit("rtc:leave");
@@ -618,7 +621,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     resetIncomingCall();
     startButton.textContent = "Позвонить";
     updateMediaButtons();
-    setCallState("Нажмите «Позвонить», чтобы начать видеосвязь.");
+    setCallState(finalState);
   }
 
   startButton.addEventListener("click", startCall);
@@ -721,6 +724,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
 
   socket.on("rtc:signal", (payload) => {
     handleSignal(payload);
+  });
+
+  socket.on("rtc:ended", ({ from } = {}) => {
+    if (from && activePeerId && from !== activePeerId) return;
+    stopCall({
+      notify: false,
+      finalState: "Собеседник завершил звонок. Можно позвонить снова.",
+    });
   });
 
   socket.on("rtc:peer-left", ({ id } = {}) => {
