@@ -7,6 +7,7 @@ const messages = {
   INVALID_PASSWORD: "Пароль должен быть длиной от 8 до 128 символов.",
   PASSWORD_MISMATCH: "Пароли не совпадают.",
   USER_EXISTS: "Такой логин уже занят.",
+  TOO_MANY_ATTEMPTS: "Слишком много регистраций с этого подключения. Попробуйте позже.",
 };
 
 form.addEventListener("submit", async (event) => {
