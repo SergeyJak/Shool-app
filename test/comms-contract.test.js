@@ -83,7 +83,8 @@ test("incoming call has a prominent ringing indicator and explicit actions", () 
   const css = read("public/lesson-comms.css");
   assert.match(client, /lesson-comms-incoming/);
   assert.match(client, /Ответить/);
-  assert.match(client, /Отклонить/);
+  assert.match(client, /lesson-comms-decline/);
+  assert.match(client, /Не сейчас/);
   assert.match(client, /videoButton\.classList\.add\("ringing"\)/);
   assert.match(css, /lesson-comms-video-button\.ringing/);
 });
