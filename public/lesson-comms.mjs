@@ -141,6 +141,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     chatView.hidden = isVideo;
     titleEl.textContent = isVideo ? "Видеосвязь" : "Чат занятия";
     minimizeButton.hidden = !isVideo;
+    launcher.classList.toggle("chat-open", !isVideo);
     videoButton.classList.toggle("active", isVideo);
     chatButton.classList.toggle("active", !isVideo);
     if (!isVideo) {
@@ -152,6 +153,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   function closePanel() {
     panel.hidden = true;
     panel.classList.remove("mini-video");
+    launcher.classList.remove("chat-open");
     currentView = null;
     videoButton.classList.remove("active");
     chatButton.classList.remove("active");
