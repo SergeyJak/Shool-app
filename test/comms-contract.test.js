@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video3/);
+    assert.match(read(file), /app\.js\?v=20261003-video4/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -109,4 +109,18 @@ test("WebRTC config generates short-lived Cloudflare TURN credentials on the bac
   assert.match(server, /body: JSON\.stringify\(\{ ttl: CLOUDFLARE_TURN_TTL_SECONDS \}\)/);
   assert.match(server, /source: "cloudflare-turn"/);
   assert.match(server, /source: "static-fallback"/);
+});
+
+
+test("video call can collapse to opponent-only mini window and restore on click", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+  assert.match(client, /lesson-comms-minimize/);
+  assert.match(client, /panel\.classList\.add\("mini-video"\)/);
+  assert.match(client, /panel\.classList\.remove\("mini-video"\)/);
+  assert.match(client, /remoteVideo\.addEventListener\("click"/);
+  assert.match(css, /lesson-comms-panel\.mini-video/);
+  assert.match(css, /mini-video \.lesson-comms-local/);
+  assert.match(css, /mini-video \.lesson-comms-controls/);
+  assert.match(css, /left: 16px/);
 });
