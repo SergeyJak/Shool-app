@@ -244,6 +244,17 @@ test("homepage presents distinct actions and only real product capabilities", ()
   assert.match(css, /\.hero-stage::after/);
 });
 
+test("teacher follow active state stays visible and distinct", () => {
+  const css = read("public/pdf-view.css");
+  const app = read("public/app.js");
+
+  assert.match(css, /\.pdf-view-page \.follow-button\.active\s*\{/);
+  assert.match(css, /\.follow-button\.active\s*\{[\s\S]*background:#6258ef/);
+  assert.match(css, /\.follow-button\.active\s*\{[\s\S]*color:#fff/);
+  assert.match(app, /followBtn\.classList\.toggle\("active", teacherFollowEnabled\)/);
+  assert.match(app, /"🔗 Страницы связаны"/);
+});
+
 test("mobile teacher follow control has its own row and cannot overlay toolbar", () => {
   const teacher = read("public/teacher.html");
   const css = read("public/pdf-view.css");
