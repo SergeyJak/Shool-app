@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-recovery4/);
+    assert.match(read(file), /app\.js\?v=20261003-recovery5/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -449,9 +449,9 @@ test("WebRTC protocol changes are cache-busted on lesson pages", () => {
   const teacher = read("public/teacher.html");
   const student = read("public/student.html");
 
-  assert.match(app, /lesson-comms\.mjs\?v=20261003-recovery4/);
-  assert.match(teacher, /app\.js\?v=20261003-recovery4/);
-  assert.match(student, /app\.js\?v=20261003-recovery4/);
+  assert.match(app, /lesson-comms\.mjs\?v=20261003-recovery5/);
+  assert.match(teacher, /app\.js\?v=20261003-recovery5/);
+  assert.match(student, /app\.js\?v=20261003-recovery5/);
 });
 
 
@@ -479,9 +479,9 @@ test("network handover can trigger one ICE restart before watchdog rebuild", () 
 });
 
 test("network handover WebRTC fix is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery4/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery4/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery4/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
 });
 
 
@@ -545,9 +545,9 @@ test("route recovery keeps local media and active call intact", () => {
 });
 
 test("peer rebuild recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery4/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery4/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery4/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
 });
 
 
@@ -589,9 +589,9 @@ test("route recovery rebuilds peers stuck connecting after ICE restart", () => {
 });
 
 test("stuck-connecting recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery4/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery4/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery4/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
 });
 
 
@@ -616,7 +616,31 @@ test("RTC recovery watchdog is cleared when connection recovers or call closes",
 });
 
 test("direct peer rebuild recovery is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery4/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery4/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery4/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
+});
+
+
+test("initial WebRTC connects are rebuilt when they remain stuck connecting", () => {
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(client, /let initialConnectWatchdogTimer = null/);
+  assert.match(client, /function armInitialConnectWatchdog\(peerId, pc\)/);
+  assert.match(client, /event: "initial-connect-timeout"/);
+  assert.match(client, /state: "reason=initial-connect-timeout"/);
+  assert.match(client, /if \(!iceRestart\) armInitialConnectWatchdog\(peerId, pc\)/);
+  assert.match(client, /\}, 12000\)/);
+});
+
+test("initial-connect watchdog is cancelled after connection or call close", () => {
+  const client = read("public/lesson-comms.mjs");
+  const clears = client.match(/clearTimeout\(initialConnectWatchdogTimer\)/g) || [];
+  assert.ok(clears.length >= 2);
+});
+
+test("initial-connect watchdog recovery is cache-busted on lesson pages", () => {
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-recovery5/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery5/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery5/);
 });
