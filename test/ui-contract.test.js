@@ -355,9 +355,16 @@ test("guest invite identity uses one shared resolver for HTTP and realtime", () 
 
   assert.match(server, /resolveIdentityFromCookies/);
   assert.match(server, /normalizeLessonId\(req\.query\?\.lesson\)/);
-  assert.match(server, /userFromCookieHeader\(req\.headers\.cookie, preferredLessonId\)/);
+  assert.match(
+    server,
+    /userFromCookieHeader\(req\.headers\.cookie, preferredLessonId, \{ preferAccount \}\)/
+  );
   assert.match(server, /userFromCookieHeader\(socket\.handshake\.headers\.cookie, lessonId\)/);
-  assert.match(context, /guest && preferredLessonId && guest\.lessonId === preferredLessonId/);
+  assert.match(context, /preferAccount = false/);
+  assert.match(
+    context,
+    /!preferAccount && guest && preferredLessonId && guest\.lessonId === preferredLessonId/
+  );
 });
 
 test("teacher material library can attach PDFs and collect homework submissions", () => {
