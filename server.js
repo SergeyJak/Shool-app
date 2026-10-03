@@ -310,21 +310,10 @@ async function cloudflareTurnIceServers() {
   const payload = await response.json();
   if (!Array.isArray(payload.iceServers)) return null;
 
-  const tlsOnly = payload.iceServers
-    .map((server) => {
-      const urls = Array.isArray(server.urls) ? server.urls : [server.urls].filter(Boolean);
-      const filteredUrls = urls.filter(
-        (url) => typeof url === "string" && /^turns:.*:443\?transport=tcp$/i.test(url)
-      );
-      if (!filteredUrls.length) return null;
-      return {
-        ...server,
-        urls: filteredUrls,
-      };
-    })
-    .filter(Boolean);
-
-  return tlsOnly.length ? tlsOnly : payload.iceServers;
+  // Keep every Cloudflare TURN transport. Some mobile/tablet networks cannot
+  // establish TURN over TLS/TCP 443 even though UDP or plain TCP relay works.
+  // iceTransportPolicy remains "relay", so media still stays on TURN.
+  return payload.iceServers;
 }
 
 function publicChatMessage(row) {
