@@ -67,6 +67,12 @@ const WEBRTC_STUN_URLS = String(
 const WEBRTC_TURN_URL = String(process.env.WEBRTC_TURN_URL || "").trim();
 const WEBRTC_TURN_USERNAME = String(process.env.WEBRTC_TURN_USERNAME || "").trim();
 const WEBRTC_TURN_CREDENTIAL = String(process.env.WEBRTC_TURN_CREDENTIAL || "").trim();
+const CLOUDFLARE_TURN_KEY_ID = String(process.env.CLOUDFLARE_TURN_KEY_ID || "").trim();
+const CLOUDFLARE_TURN_API_TOKEN = String(process.env.CLOUDFLARE_TURN_API_TOKEN || "").trim();
+const CLOUDFLARE_TURN_TTL_SECONDS = Math.max(
+  600,
+  Math.min(86400, Number(process.env.CLOUDFLARE_TURN_TTL_SECONDS || 14400))
+);
 
 const app = express();
 app.disable("x-powered-by");
@@ -266,7 +272,7 @@ function lessonRoom(lessonId) {
   return `lesson:${lessonId}`;
 }
 
-function webrtcIceServers() {
+function staticWebrtcIceServers() {
   const servers = [];
   if (WEBRTC_STUN_URLS.length) servers.push({ urls: WEBRTC_STUN_URLS });
   if (WEBRTC_TURN_URL) {
@@ -276,6 +282,31 @@ function webrtcIceServers() {
     servers.push(turn);
   }
   return servers;
+}
+
+async function cloudflareTurnIceServers() {
+  if (!CLOUDFLARE_TURN_KEY_ID || !CLOUDFLARE_TURN_API_TOKEN) return null;
+  const endpoint =
+    `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(CLOUDFLARE_TURN_KEY_ID)}/credentials/generate-ice-servers`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${CLOUDFLARE_TURN_API_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ttl: CLOUDFLARE_TURN_TTL_SECONDS }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `Cloudflare TURN credential request failed: ${response.status} ${body.slice(0, 200)}`
+    );
+  }
+
+  const payload = await response.json();
+  return Array.isArray(payload.iceServers) ? payload.iceServers : null;
 }
 
 function publicChatMessage(row) {
@@ -1550,9 +1581,17 @@ app.get("/api/performance", requireApiRole("admin"), async (req, res, next) => {
 });
 
 
-app.get("/api/webrtc/config", requireApiRole("teacher", "student"), requireLessonAccess, (req, res) => {
+app.get("/api/webrtc/config", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json({ iceServers: webrtcIceServers() });
+  try {
+    const cloudflareIceServers = await cloudflareTurnIceServers();
+    if (cloudflareIceServers?.length) {
+      return res.json({ iceServers: cloudflareIceServers, source: "cloudflare-turn" });
+    }
+  } catch (error) {
+    console.error("Cloudflare TURN config failed", error);
+  }
+  res.json({ iceServers: staticWebrtcIceServers(), source: "static-fallback" });
 });
 
 app.get("/api/annotations/:page", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
