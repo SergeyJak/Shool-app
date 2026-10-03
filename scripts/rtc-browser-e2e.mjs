@@ -27,7 +27,44 @@ const html = `<!doctype html>
 </head>
 <body>
 <script type="module">
+  window.addEventListener("error", (event) => {
+    document.title = "RTC_E2E_ERROR:" + encodeURIComponent(event.message || "unknown error");
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    document.title = "RTC_E2E_ERROR:" + encodeURIComponent(String(event.reason || "unhandled rejection"));
+  });
+
   import { initLessonComms } from "/lesson-comms.mjs";
+
+  // Stable synthetic camera/mic for CI. This keeps the test on the real
+  // RTCPeerConnection path without depending on runner media devices.
+  const makeSyntheticStream = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 320;
+    canvas.height = 180;
+    const ctx = canvas.getContext("2d");
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const videoStream = canvas.captureStream(15);
+
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioCtx();
+    const oscillator = audioCtx.createOscillator();
+    const destination = audioCtx.createMediaStreamDestination();
+    oscillator.connect(destination);
+    oscillator.start();
+
+    return new MediaStream([
+      ...videoStream.getVideoTracks(),
+      ...destination.stream.getAudioTracks(),
+    ]);
+  };
+
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      getUserMedia: async () => makeSyntheticStream(),
+    },
+  });
 
   const result = {
     connectedRoles: [],
@@ -457,6 +494,11 @@ if (exitCode !== 0) {
   throw new Error(
     `RTC browser Chrome failed with ${exitCode}: ${stderr.slice(-2000)}\n${stdout.slice(-1000)}`
   );
+}
+
+const errorMatch = stdout.match(/<title>RTC_E2E_ERROR:([^<]+)<\/title>/);
+if (errorMatch) {
+  throw new Error("RTC browser page error: " + decodeURIComponent(errorMatch[1]));
 }
 
 const matches = [...stdout.matchAll(/<title>RTC_E2E:([^<]+)<\/title>/g)];
