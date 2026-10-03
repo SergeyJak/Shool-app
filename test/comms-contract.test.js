@@ -336,3 +336,23 @@ test("hand mode pans the page when dragging directly on the PDF", () => {
   assert.match(app, /event\.touches\.length !== 2 \|\| !pinchStartDistance/);
   assert.match(app, /touchcancel/);
 });
+
+
+test("pinch zoom keeps the gesture center anchored and defers PDF rendering", () => {
+  const app = read("public/app.js");
+
+  assert.match(app, /function touchCenter\(touches\)/);
+  assert.match(app, /anchorX: originX \/ rect\.width/);
+  assert.match(app, /anchorY: originY \/ rect\.height/);
+  assert.match(app, /shell\.style\.transformOrigin/);
+  assert.match(app, /shell\.style\.transform =[\s\S]{0,180}translate/);
+  assert.match(app, /scale\(\$\{scale\}\)/);
+  assert.match(app, /async function finishPinchGesture\(\)/);
+  assert.match(app, /await renderPage\(\)/);
+  assert.match(app, /stage\.scrollLeft \+= anchorScreenX - targetCenter\.x/);
+  assert.match(app, /window\.scrollBy\(0, anchorScreenY - targetCenter\.y\)/);
+  assert.doesNotMatch(
+    app,
+    /event\.touches\.length !== 2[\s\S]{0,500}setZoom\(nextZoom\)/
+  );
+});
