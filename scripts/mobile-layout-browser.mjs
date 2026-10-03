@@ -71,6 +71,7 @@ for (const viewport of viewports) {
 </main>
 <script>
   const sync = document.querySelector(".compact-sync");
+  const follow = document.getElementById("followBtn");
   const toolbar = document.querySelector(".toolbar");
   const header = document.querySelector(".pdf-header");
   const headerActions = document.querySelector(".pdf-header-actions");
@@ -80,6 +81,22 @@ for (const viewport of viewports) {
   const h = header.getBoundingClientRect();
   const ha = headerActions.getBoundingClientRect();
   const s = stage.getBoundingClientRect();
+
+  const inactiveStyle = getComputedStyle(follow);
+  const inactiveState = {
+    backgroundColor: inactiveStyle.backgroundColor,
+    color: inactiveStyle.color,
+  };
+
+  follow.classList.add("active");
+  follow.textContent = "🔗 Страницы связаны";
+  const activeStyle = getComputedStyle(follow);
+  const activeState = {
+    backgroundColor: activeStyle.backgroundColor,
+    color: activeStyle.color,
+    text: follow.textContent,
+  };
+
   const overlapX = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
   const overlapY = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
   const result = {
@@ -93,6 +110,8 @@ for (const viewport of viewports) {
     syncPosition: getComputedStyle(sync).position,
     toolbarOverflowX: toolbar.scrollWidth > toolbar.clientWidth + 1,
     bodyOverflowX: document.documentElement.scrollWidth > innerWidth + 1,
+    inactiveState,
+    activeState,
   };
   document.title = "LAYOUT:" + encodeURIComponent(JSON.stringify(result));
 </script>
@@ -149,8 +168,24 @@ for (const viewport of viewports) {
   if (viewport.width >= 1200 && result.toolbarOverflowX) {
     throw new Error(`${viewport.name}: desktop toolbar unexpectedly needs horizontal scrolling`);
   }
+  if (result.activeState.text !== "🔗 Страницы связаны") {
+    throw new Error(`${viewport.name}: active follow state text is wrong: ${result.activeState.text}`);
+  }
+  if (result.activeState.backgroundColor !== "rgb(98, 88, 239)") {
+    throw new Error(
+      `${viewport.name}: active follow button lost its purple background: ${result.activeState.backgroundColor}`
+    );
+  }
+  if (result.activeState.color !== "rgb(255, 255, 255)") {
+    throw new Error(
+      `${viewport.name}: active follow button text is not white/visible: ${result.activeState.color}`
+    );
+  }
+  if (result.activeState.backgroundColor === result.inactiveState.backgroundColor) {
+    throw new Error(`${viewport.name}: active follow button is visually indistinguishable from inactive state`);
+  }
 
   console.log(
-    `✓ ${viewport.name}: toolbar/header/stage are inside viewport and follow control does not overlap`
+    `✓ ${viewport.name}: layout is stable and follow button active/inactive states are visually distinct`
   );
 }
