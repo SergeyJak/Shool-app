@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video2/);
+    assert.match(read(file), /app\.js\?v=20261003-video3/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -86,4 +86,15 @@ test("incoming call has a prominent ringing indicator and explicit actions", () 
   assert.match(client, /Отклонить/);
   assert.match(client, /videoButton\.classList\.add\("ringing"\)/);
   assert.match(css, /lesson-comms-video-button\.ringing/);
+});
+
+
+test("lesson client exposes ICE diagnostics and retries remote playback", () => {
+  const client = read("public/lesson-comms.mjs");
+  const server = read("server.js");
+  assert.match(client, /iceconnectionstatechange/);
+  assert.match(client, /icecandidateerror/);
+  assert.match(client, /remoteVideo\.play\(\)/);
+  assert.match(server, /socket\.on\("rtc:debug"/);
+  assert.match(server, /stun:stun\.cloudflare\.com:3478/);
 });
