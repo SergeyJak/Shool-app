@@ -546,3 +546,30 @@ test("peer rebuild recovery is cache-busted on lesson pages", () => {
   assert.match(read("public/teacher.html"), /app\.js\?v=20261003-recovery2/);
   assert.match(read("public/student.html"), /app\.js\?v=20261003-recovery2/);
 });
+
+
+test("RTC diagnostics are persisted with TTL and call correlation", () => {
+  const server = read("server.js");
+
+  assert.match(server, /rtcDiagnostics = db\.collection\(collectionName\("rtc_diagnostics"\)\)/);
+  assert.match(server, /rtcDiagnostics\.createIndex\(\{ lessonId: 1, createdAt: -1 \}\)/);
+  assert.match(server, /rtcDiagnostics\.createIndex\(\{ callId: 1, createdAt: 1 \}\)/);
+  assert.match(server, /rtcDiagnostics\.createIndex\(\{ expiresAt: 1 \}, \{ expireAfterSeconds: 0 \}\)/);
+  assert.match(server, /rtcDiagnostics\?\.insertOne\(\{/);
+  assert.match(server, /callId: socket\.data\.rtcCallId \|\| null/);
+  assert.match(server, /expiresAt: new Date\(now\.getTime\(\) \+ 14 \* 24 \* 60 \* 60 \* 1000\)/);
+});
+
+test("RTC diagnostics include network context without SDP or candidate bodies", () => {
+  const server = read("server.js");
+  const client = read("public/lesson-comms.mjs");
+
+  assert.match(client, /function rtcNetworkSnapshot\(\)/);
+  assert.match(client, /function emitRtcDebug\(payload = \{\}\)/);
+  assert.match(client, /event: "network-change"/);
+  assert.match(server, /effectiveType:/);
+  assert.match(server, /downlink:/);
+  assert.match(server, /rtt:/);
+  assert.doesNotMatch(server, /rtcDiagnostics\?\.insertOne\([\s\S]{0,900}\bsdp\b/);
+  assert.doesNotMatch(server, /rtcDiagnostics\?\.insertOne\([\s\S]{0,900}\bcandidate\b/);
+});
