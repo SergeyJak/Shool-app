@@ -205,3 +205,13 @@ Session: 2026-10-01
 5. PDF, страницы, аннотации и follow-state полностью изолированы по lesson/session.
 6. После перезапуска Railway все данные остаются в MongoDB.
 7. Добавление новых пользователей не требует изменений в коде или ручного создания отдельных страниц.
+
+
+### Phase 8 validation note
+- [x] Cross-network / inter-city 1:1 video calls validated through Cloudflare TURN.
+- [x] Stable production profile fixed at 640×360, 20 fps, 500 kbps video, 48 kbps audio.
+- [x] TURN relay forced for reliability; TLS/TCP 443 preferred when Cloudflare credentials provide it.
+- [x] RTC quality telemetry added for jitter, packet loss, bandwidth and selected candidate pair.
+- [ ] Device selector.
+- [ ] Screen sharing.
+- [ ] Connection quality indicator in UI.
