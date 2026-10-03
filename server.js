@@ -1589,7 +1589,7 @@ app.get("/api/webrtc/config", requireApiRole("teacher", "student"), requireLesso
       return res.json({
         iceServers: cloudflareIceServers,
         source: "cloudflare-turn",
-        iceTransportPolicy: "all",
+        iceTransportPolicy: "relay",
       });
     }
   } catch (error) {
