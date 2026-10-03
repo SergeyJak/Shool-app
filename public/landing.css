@@ -979,3 +979,42 @@ h1 {
   .registration-details{grid-template-columns:1fr}
   .registration-details dd{padding-bottom:5px}
 }
+
+@media (max-width: 620px) {
+  .admin-panel {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .admin-nav {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    padding: 5px;
+    overflow: visible;
+  }
+
+  .admin-nav-btn {
+    min-width: 0;
+    width: 100%;
+    padding: 9px 7px;
+    font-size: 12px;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .admin-badge {
+    vertical-align: middle;
+  }
+
+  .landing-side-button {
+    display: none;
+  }
+
+  .admin-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
