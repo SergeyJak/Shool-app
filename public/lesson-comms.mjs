@@ -135,7 +135,6 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     if (!isVideo) {
       setUnread(0);
       loadChatHistory();
-      requestAnimationFrame(() => chatInput.focus({ preventScroll: true }));
     }
   }
 
