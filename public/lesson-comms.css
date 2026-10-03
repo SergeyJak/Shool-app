@@ -1,0 +1,205 @@
+.lesson-comms-launcher {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 40;
+  display: flex;
+  gap: 8px;
+}
+.lesson-comms-launcher button {
+  min-height: 44px;
+  border: 1px solid #cfd6dd;
+  border-radius: 14px;
+  padding: 0 14px;
+  background: rgba(255,255,255,.96);
+  color: #17202a;
+  font: 650 14px/1 system-ui, sans-serif;
+  box-shadow: 0 8px 26px rgba(23,32,42,.16);
+  backdrop-filter: blur(10px);
+}
+.lesson-comms-launcher button.active {
+  background: #17202a;
+  color: white;
+  border-color: #17202a;
+}
+.lesson-comms-chat-button {
+  position: relative;
+}
+.lesson-comms-unread {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #e53935;
+  color: white;
+  font-size: 11px;
+  line-height: 1;
+}
+.lesson-comms-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 74px;
+  z-index: 39;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(680px, calc(100dvh - 110px));
+  overflow: hidden;
+  border: 1px solid rgba(207,214,221,.92);
+  border-radius: 18px;
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 18px 54px rgba(23,32,42,.22);
+  backdrop-filter: blur(14px);
+}
+.lesson-comms-panel[hidden] { display: none !important; }
+.lesson-comms-head {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e6eaee;
+}
+.lesson-comms-head strong { flex: 1; }
+.lesson-comms-close {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font-size: 22px;
+}
+.lesson-comms-view { padding: 12px; }
+.lesson-comms-video-stage {
+  position: relative;
+  min-height: 220px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #111820;
+}
+.lesson-comms-remote {
+  width: 100%;
+  height: 260px;
+  display: block;
+  object-fit: cover;
+  background: #111820;
+}
+.lesson-comms-local {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 108px;
+  height: 78px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,.92);
+  border-radius: 10px;
+  background: #27313b;
+  transform: scaleX(-1);
+}
+.lesson-comms-call-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  text-align: center;
+  color: rgba(255,255,255,.82);
+  pointer-events: none;
+}
+.lesson-comms-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.lesson-comms-controls button {
+  flex: 1 1 90px;
+  min-height: 40px;
+}
+.lesson-comms-controls .danger {
+  border-color: #e2a3a3;
+  color: #a42525;
+}
+.lesson-comms-chat {
+  display: grid;
+  grid-template-rows: minmax(160px, 1fr) auto;
+  min-height: 360px;
+  max-height: min(560px, calc(100dvh - 180px));
+}
+.lesson-comms-messages {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 12px;
+}
+.lesson-comms-message {
+  max-width: 86%;
+  align-self: flex-start;
+  padding: 8px 10px;
+  border-radius: 12px 12px 12px 4px;
+  background: #f1f4f7;
+  overflow-wrap: anywhere;
+}
+.lesson-comms-message.mine {
+  align-self: flex-end;
+  border-radius: 12px 12px 4px 12px;
+  background: #e8f1ff;
+}
+.lesson-comms-message-meta {
+  display: block;
+  margin-bottom: 3px;
+  color: #69737e;
+  font-size: 11px;
+}
+.lesson-comms-message-text {
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.lesson-comms-form {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e6eaee;
+}
+.lesson-comms-form textarea {
+  flex: 1;
+  min-height: 42px;
+  max-height: 120px;
+  resize: vertical;
+  border: 1px solid #cfd6dd;
+  border-radius: 11px;
+  padding: 10px;
+  font: inherit;
+}
+.lesson-comms-form button {
+  align-self: flex-end;
+  min-height: 42px;
+}
+@media (max-width: 600px) {
+  .lesson-comms-launcher {
+    right: 10px;
+    bottom: 10px;
+  }
+  .lesson-comms-launcher button {
+    min-height: 42px;
+    padding: 0 12px;
+  }
+  .lesson-comms-panel {
+    right: 10px;
+    bottom: 62px;
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 76px);
+  }
+  .lesson-comms-remote {
+    height: min(38dvh, 300px);
+  }
+  .lesson-comms-chat {
+    min-height: min(56dvh, 480px);
+    max-height: calc(100dvh - 150px);
+  }
+}
