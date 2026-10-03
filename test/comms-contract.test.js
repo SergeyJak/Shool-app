@@ -72,7 +72,7 @@ test("server routes call request accept decline and cancel only inside lesson ro
 test("teacher and student lesson pages load communication styles and module bootstrap", () => {
   for (const file of ["public/teacher.html", "public/student.html"]) {
     assert.match(read(file), /lesson-comms\.css/);
-    assert.match(read(file), /app\.js\?v=20261003-video9/);
+    assert.match(read(file), /app\.js\?v=20261003-callid1/);
   }
   assert.match(read("public/app.js"), /lesson-comms\.mjs/);
 });
@@ -440,4 +440,15 @@ test("accepting installs the call id before signaling can race the ack", () => {
     server,
     /socket\.on\("disconnect"[\s\S]{0,320}rtc:cancelled"[\s\S]{0,120}callId: call\.callId/
   );
+});
+
+
+test("WebRTC protocol changes are cache-busted on lesson pages", () => {
+  const app = read("public/app.js");
+  const teacher = read("public/teacher.html");
+  const student = read("public/student.html");
+
+  assert.match(app, /lesson-comms\.mjs\?v=20261003-callid1/);
+  assert.match(teacher, /app\.js\?v=20261003-callid1/);
+  assert.match(student, /app\.js\?v=20261003-callid1/);
 });
