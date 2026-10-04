@@ -94,7 +94,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           <span class="lesson-comms-incoming-name">Участник хочет присоединиться</span>
         </div>
         <div class="lesson-comms-incoming-actions">
-          <button class="lesson-comms-accept" type="button">📹 Ответить</button>
+          <button class="lesson-comms-accept" type="button"><img src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_45-5.png" alt="" aria-hidden="true"><span>Ответить</span></button>
           <button class="lesson-comms-decline danger" type="button">Не сейчас</button>
         </div>
       </div>
