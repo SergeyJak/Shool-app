@@ -426,9 +426,9 @@ test("RTC v2 reconnect resumes by stable call session", () => {
 });
 
 test("RTC v2 is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-rtc2/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-rtc2/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-rtc2/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-friendly-active1/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-friendly-active1/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261004-friendly-active1/);
 });
 
 
@@ -494,9 +494,9 @@ test("RTC v2 diagnostics keep network context and omit raw SDP or candidates fro
 });
 
 test("RTC v2 cache bust is active on both lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261003-rtc2/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261003-rtc2/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261003-rtc2/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-friendly-active1/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-friendly-active1/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261004-friendly-active1/);
 });
 
 
@@ -640,4 +640,21 @@ test("RTC v2 cancels pending recovery when the peer reconnects", () => {
   assert.match(block, /if \(reconnectTimer\)/);
   assert.match(block, /clearTimeout\(reconnectTimer\)/);
   assert.match(block, /event: "recovery-cancelled-v2"/);
+});
+
+
+test("approved video call mock has friendly pre-call and active-call states", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /lesson-comms-placeholder/);
+  assert.match(client, /Готов к видеосвязи/);
+  assert.match(client, /lesson-comms-live/);
+  assert.match(client, /lesson-comms-duration/);
+  assert.match(client, /panel\.classList\.toggle\("call-active"/);
+  assert.match(client, /panel\.classList\.toggle\("call-connected"/);
+  assert.match(css, /Approved friendly video-call mock/);
+  assert.match(css, /linear-gradient\(135deg,#8d6cf4,#6f54e8\)/);
+  assert.match(css, /lesson-comms-panel\.call-connected/);
+  assert.match(css, /lesson-comms-hangup/);
 });
