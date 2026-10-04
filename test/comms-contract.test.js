@@ -427,8 +427,8 @@ test("RTC v2 reconnect resumes by stable call session", () => {
 
 test("RTC v2 is cache-busted on lesson pages", () => {
   assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets3/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-assets3/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261004-assets3/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-pdf2/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261004-pdf2/);
 });
 
 
@@ -495,8 +495,8 @@ test("RTC v2 diagnostics keep network context and omit raw SDP or candidates fro
 
 test("RTC v2 cache bust is active on both lesson pages", () => {
   assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets3/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-assets3/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261004-assets3/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-pdf2/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261004-pdf2/);
 });
 
 
