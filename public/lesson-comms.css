@@ -1158,3 +1158,36 @@
     font-size: 16px;
   }
 }
+
+
+/* Video call visual polish after live review */
+.lesson-comms-controls button.lesson-comms-start.primary {
+  border-color: transparent;
+  background: linear-gradient(135deg,#8d6cf4,#7254e8);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(111,84,232,.24);
+}
+.lesson-comms-controls button.lesson-comms-start.primary:not(:disabled):hover {
+  background: linear-gradient(135deg,#8564ef,#6849df);
+  box-shadow: 0 14px 28px rgba(111,84,232,.30);
+}
+.lesson-comms-panel.call-active .lesson-comms-placeholder {
+  display: none;
+}
+.lesson-comms-panel.call-active .lesson-comms-remote-fallback {
+  display: block;
+}
+.lesson-comms-window-actions .lesson-comms-minimize img,
+.lesson-comms-window-actions .lesson-comms-close img {
+  transform: scale(1.6);
+  transform-origin: center;
+}
+.lesson-comms-panel.call-active .lesson-comms-video-stage {
+  background: #edf1fb;
+}
+.lesson-comms-panel.call-active:not(.call-connected) .lesson-comms-remote {
+  opacity: 0;
+}
+.lesson-comms-panel.call-active:not(.call-connected) .lesson-comms-remote-fallback {
+  filter: saturate(.96) brightness(1.02);
+}
