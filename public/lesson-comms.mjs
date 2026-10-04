@@ -18,6 +18,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   let ringtoneTimer = null;
   let ringtoneContext = null;
   let ringtoneUnlocked = false;
+  let callTimerId = null;
+  let callStartedAt = 0;
   let activeCallId = null;
   let pendingCallId = null;
   let rtcQualityTimer = null;
@@ -71,6 +73,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         <span>
           <strong class="lesson-comms-title">Связь</strong>
           <small class="lesson-comms-subtitle">Вы на занятии вместе</small>
+          <span class="lesson-comms-live" hidden><span class="lesson-comms-live-dot" aria-hidden="true"></span><span class="lesson-comms-duration">00:00</span></span>
         </span>
       </div>
       <div class="lesson-comms-window-actions">
@@ -96,6 +99,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
         </div>
       </div>
       <div class="lesson-comms-video-stage">
+        <div class="lesson-comms-placeholder" aria-hidden="true">
+          <div class="lesson-comms-placeholder-art">📹</div>
+          <strong>Готов к видеосвязи?</strong>
+          <span>Начни урок вместе с учителем</span>
+        </div>
         <video class="lesson-comms-remote" autoplay playsinline></video>
         <video class="lesson-comms-local" autoplay playsinline muted></video>
         <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
@@ -114,7 +122,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           <span>Камера</span>
         </button>
         <button class="lesson-comms-hangup danger call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">🔴</span>
+          <span class="lesson-comms-control-icon" aria-hidden="true">☎</span>
           <span>Завершить</span>
         </button>
       </div>
@@ -135,6 +143,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const minimizeButton = panel.querySelector(".lesson-comms-minimize");
   const closeButton = panel.querySelector(".lesson-comms-close");
   const titleEl = panel.querySelector(".lesson-comms-title");
+  const liveEl = panel.querySelector(".lesson-comms-live");
+  const durationEl = panel.querySelector(".lesson-comms-duration");
   const videoView = panel.querySelector(".lesson-comms-video");
   const chatView = panel.querySelector(".lesson-comms-chat");
   const localVideo = panel.querySelector(".lesson-comms-local");
@@ -305,9 +315,39 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   document.addEventListener("pointerdown", unlockRingtone, { once: true, passive: true });
   document.addEventListener("keydown", unlockRingtone, { once: true });
 
+  function formatCallDuration(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function syncCallTimer() {
+    if (!callAccepted) {
+      liveEl.hidden = true;
+      durationEl.textContent = "00:00";
+      if (callTimerId) {
+        clearInterval(callTimerId);
+        callTimerId = null;
+      }
+      callStartedAt = 0;
+      return;
+    }
+
+    liveEl.hidden = false;
+    if (!callStartedAt) callStartedAt = Date.now();
+    const render = () => {
+      const elapsed = Math.max(0, Math.floor((Date.now() - callStartedAt) / 1000));
+      durationEl.textContent = formatCallDuration(elapsed);
+    };
+    render();
+    if (!callTimerId) callTimerId = setInterval(render, 1000);
+  }
+
   function setCallState(text) {
+    const connected = Boolean(remoteStream?.getTracks().length);
     callState.textContent = text;
-    callState.hidden = Boolean(remoteStream?.getTracks().length);
+    callState.hidden = connected;
+    panel.classList.toggle("call-connected", connected);
   }
 
   function updateMediaButtons() {
@@ -315,6 +355,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     const video = localStream?.getVideoTracks()[0];
     const callIsActive = Boolean(localStream || outgoingCall || callAccepted);
     const incomingCallPending = Boolean(pendingCallerId);
+
+    panel.classList.toggle("call-active", callIsActive);
+    panel.classList.toggle("call-accepted", callAccepted);
+    syncCallTimer();
 
     startButton.hidden = callIsActive || incomingCallPending;
     for (const button of [micButton, cameraButton, hangupButton]) {
@@ -889,6 +933,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     callAccepted = false;
     activeCallId = null;
     rebuilding = false;
+    panel.classList.remove("call-connected");
+    syncCallTimer();
     resetIncomingCall();
     startButton.textContent = "Позвонить";
     updateMediaButtons();
