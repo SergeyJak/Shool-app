@@ -157,6 +157,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const callState = panel.querySelector(".lesson-comms-call-state");
   const placeholderTitle = panel.querySelector(".lesson-comms-placeholder-title");
   const startButtonLabel = panel.querySelector(".lesson-comms-start span:last-child");
+  const remoteFallback = panel.querySelector(".lesson-comms-remote-fallback");
   const localFallback = panel.querySelector(".lesson-comms-local-fallback");
   const incomingBox = panel.querySelector(".lesson-comms-incoming");
   const incomingName = panel.querySelector(".lesson-comms-incoming-name");
@@ -183,7 +184,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const counterpartLabel = role === "teacher" ? "Ученик" : "Учитель";
   placeholderTitle.textContent = `${counterpartLabel} скоро подключится`;
   startButtonLabel.textContent = `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
-  if (role === "teacher") localFallback.src = "/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_42-2.png";
+  if (role === "teacher") {
+    remoteFallback.src = "/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_43-3.png";
+    localFallback.src = "/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_42-2.png";
+  }
 
   function setUnread(value) {
     unread = Math.max(0, value);
