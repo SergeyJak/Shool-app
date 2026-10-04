@@ -1,0 +1,145 @@
+.lesson-view-switch{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  padding:3px;
+  border:1px solid #e2e5f1;
+  border-radius:12px;
+  background:#f5f7fc;
+}
+.lesson-view-switch button{
+  min-height:30px;
+  padding:5px 9px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:#64708d;
+  font:inherit;
+  font-size:11px;
+  font-weight:800;
+  cursor:pointer;
+}
+.lesson-view-switch button.active{
+  background:#fff;
+  color:#5149cf;
+  box-shadow:0 2px 8px rgba(52,58,110,.12);
+}
+.lesson-notebook{
+  width:min(1600px,calc(100vw - 12px));
+  margin:0 auto;
+  padding:6px 0;
+}
+.notebook-toolbar{
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:5px 7px;
+  margin-bottom:6px;
+  overflow-x:auto;
+  border:1px solid rgba(216,221,238,.95);
+  border-radius:14px;
+  background:rgba(255,255,255,.97);
+  box-shadow:0 7px 22px rgba(54,64,117,.08);
+}
+.notebook-toolbar button{
+  min-height:40px;
+  padding:7px 10px;
+  border:1px solid #e0e4ef;
+  border-radius:10px;
+  background:#fff;
+  color:#2c3966;
+  font:inherit;
+  font-weight:700;
+  white-space:nowrap;
+}
+.notebook-toolbar button.active{
+  background:linear-gradient(135deg,#725cf3,#5b69ef);
+  border-color:transparent;
+  color:#fff;
+}
+.notebook-toolbar .notebook-spacer{flex:1}
+.notebook-page-jump{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  color:#69758e;
+  white-space:nowrap;
+}
+.notebook-page-jump input{
+  width:44px;
+  padding:7px 4px;
+  text-align:center;
+  border:1px solid #dfe3ee;
+  border-radius:9px;
+  color:#26345f;
+  background:#fff;
+}
+#notebookAddPageBtn{
+  color:#fff;
+  border-color:transparent;
+  background:#6258ef;
+}
+.notebook-save-state{
+  min-width:72px;
+  color:#71809b;
+  font-size:11px;
+  text-align:right;
+}
+.notebook-save-state.error{color:#b43b45}
+.notebook-stage{
+  width:100%;
+  max-height:calc(100vh - 122px);
+  overflow:auto;
+  padding:8px;
+  border-radius:16px;
+  background:#eaf0f8;
+  overscroll-behavior:contain;
+}
+.notebook-page-shell{
+  position:relative;
+  margin:0 auto;
+  background:#fffef9;
+  box-shadow:0 8px 28px rgba(36,47,96,.16);
+}
+.notebook-page-shell canvas{
+  position:absolute;
+  inset:0;
+  display:block;
+}
+#notebookPaperCanvas{z-index:1}
+#notebookInkCanvas{
+  z-index:2;
+  touch-action:none;
+}
+.notebook-stage.hand-mode{touch-action:pan-x pan-y}
+@media (max-width:900px){
+  .lesson-view-switch button{
+    padding:5px 7px;
+    font-size:10px;
+  }
+  .lesson-notebook{
+    width:calc(100vw - 10px);
+    padding:5px 0;
+  }
+  .notebook-toolbar{
+    min-height:48px;
+    border-radius:12px;
+  }
+  .notebook-toolbar button{
+    min-height:38px;
+    padding:6px 8px;
+  }
+  .notebook-save-state{display:none}
+  .notebook-stage{
+    max-height:calc(100vh - 112px);
+    border-radius:12px;
+    padding:5px;
+  }
+}
+@media (max-width:699px){
+  .lesson-view-switch{
+    grid-column:auto;
+  }
+  .lesson-view-switch button span{display:none}
+}
