@@ -1,3 +1,4 @@
+const role = document.body.dataset.role;
 const lessonId = new URLSearchParams(location.search).get("lesson") || "default";
 const lessonParam = encodeURIComponent(lessonId);
 
@@ -14,6 +15,8 @@ const inkCtx = inkCanvas?.getContext("2d");
 const penBtn = document.getElementById("notebookPenBtn");
 const eraserBtn = document.getElementById("notebookEraserBtn");
 const handBtn = document.getElementById("notebookHandBtn");
+const textBtn = document.getElementById("notebookTextBtn");
+const textSizeSelect = document.getElementById("notebookTextSizeSelect");
 const undoBtn = document.getElementById("notebookUndoBtn");
 const addPageBtn = document.getElementById("notebookAddPageBtn");
 const firstBtn = document.getElementById("notebookFirstBtn");
@@ -34,6 +37,8 @@ let tool = "pen";
 let strokes = [];
 let activeStroke = null;
 let erasePath = null;
+let textEditor = null;
+let textFontSize = Number(textSizeSelect?.value) || 18;
 let saveTimer = null;
 
 function setSaveState(text, kind = "") {
@@ -76,10 +81,10 @@ function showLoadError() {
 
 function setTool(next) {
   tool = next;
-  for (const [button, name] of [[penBtn, "pen"], [eraserBtn, "eraser"], [handBtn, "hand"]]) {
+  for (const [button, name] of [[penBtn, "pen"], [eraserBtn, "eraser"], [handBtn, "hand"], [textBtn, "text"]]) {
     button?.classList.toggle("active", name === tool);
   }
-  inkCanvas.style.cursor = tool === "hand" ? "grab" : tool === "eraser" ? "cell" : "crosshair";
+  inkCanvas.style.cursor = tool === "hand" ? "grab" : tool === "eraser" ? "cell" : tool === "text" ? "text" : "crosshair";
   inkCanvas.style.pointerEvents = tool === "hand" ? "none" : "auto";
   stage.classList.toggle("hand-mode", tool === "hand");
 }
@@ -131,7 +136,52 @@ function drawPaper() {
   paperCtx.stroke();
 }
 
+function drawTextAnnotation(item) {
+  if (!item?.box || !item?.text) return;
+  const { x, y, w } = item.box;
+  const px = x * inkCanvas.width;
+  const py = y * inkCanvas.height;
+  const maxWidth = Math.max(1, w * inkCanvas.width);
+  const outputScale = inkCanvas.width / Math.max(1, inkCanvas.getBoundingClientRect().width);
+  const cssFontSize = Number.isFinite(item.fontScale)
+    ? item.fontScale * inkCanvas.getBoundingClientRect().width
+    : (item.fontSize || 18);
+  const fontSize = cssFontSize * outputScale;
+
+  inkCtx.save();
+  inkCtx.fillStyle = item.color || "#e53935";
+  inkCtx.font = `${fontSize}px system-ui, sans-serif`;
+  inkCtx.textBaseline = "top";
+
+  const lineHeight = fontSize * 1.2;
+  let cursorY = py;
+  for (const paragraph of String(item.text).split("\n")) {
+    if (!paragraph) {
+      cursorY += lineHeight;
+      continue;
+    }
+    const words = paragraph.split(/\s+/);
+    let line = "";
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (inkCtx.measureText(candidate).width > maxWidth && line) {
+        inkCtx.fillText(line, px, cursorY);
+        cursorY += lineHeight;
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) {
+      inkCtx.fillText(line, px, cursorY);
+      cursorY += lineHeight;
+    }
+  }
+  inkCtx.restore();
+}
+
 function drawStroke(stroke) {
+  if (stroke?.type === "text") return drawTextAnnotation(stroke);
   if (!stroke?.points?.length) return;
   inkCtx.save();
   inkCtx.lineCap = "round";
@@ -152,8 +202,21 @@ function pointDistance(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+function erasePathHitsTextBox(erase, box) {
+  if (!box) return false;
+  const pad = erase.radius;
+  return erase.points.some(
+    (p) =>
+      p.x >= box.x - pad &&
+      p.x <= box.x + box.w + pad &&
+      p.y >= box.y - pad &&
+      p.y <= box.y + box.h + pad
+  );
+}
+
 function erasePreviewParts(stroke, erase) {
   if (!erase?.points?.length) return [stroke];
+  if (stroke?.type === "text") return erasePathHitsTextBox(erase, stroke.box) ? [] : [stroke];
   const parts = [];
   let current = [];
   for (const point of stroke.points || []) {
@@ -190,6 +253,143 @@ function redrawInk() {
   }
 }
 
+function textAtPoint(point) {
+  for (let i = strokes.length - 1; i >= 0; i -= 1) {
+    const item = strokes[i];
+    if (item.type !== "text" || !item.box) continue;
+    const { x, y, w, h } = item.box;
+    if (point.x >= x && point.x <= x + w && point.y >= y && point.y <= y + h) return item;
+  }
+  return null;
+}
+
+function syncTextEditorGeometry() {
+  if (!textEditor) return;
+  const item = textEditor._annotation;
+  if (!item) return;
+
+  textEditor.style.height = "auto";
+  const heightPx = Math.max(textFontSize * 1.45, textEditor.scrollHeight + 2);
+  textEditor.style.height = `${heightPx}px`;
+
+  const widthPx = textEditor.offsetWidth;
+  let leftPx = Number.parseFloat(textEditor.style.left) || 0;
+  let topPx = Number.parseFloat(textEditor.style.top) || 0;
+  leftPx = Math.max(0, Math.min(leftPx, Math.max(0, shell.clientWidth - widthPx)));
+  topPx = Math.max(0, Math.min(topPx, Math.max(0, shell.clientHeight - heightPx)));
+
+  textEditor.style.left = `${leftPx}px`;
+  textEditor.style.top = `${topPx}px`;
+  item.box = {
+    x: leftPx / shell.clientWidth,
+    y: topPx / shell.clientHeight,
+    w: Math.min(1, widthPx / shell.clientWidth),
+    h: Math.min(1, heightPx / shell.clientHeight),
+  };
+  item.fontSize = textFontSize;
+  item.fontScale = textFontSize / shell.clientWidth;
+}
+
+async function saveText(item) {
+  setSaveState("сохраняем…");
+  try {
+    const response = await api("/api/notebook/text", {
+      method: "POST",
+      body: JSON.stringify(item),
+    });
+    if (!response.ok) throw new Error("SAVE_TEXT");
+    setSaveState("сохранено");
+  } catch {
+    setSaveState("Не удалось сохранить текст", "error");
+  }
+}
+
+function closeTextEditor({ save = true } = {}) {
+  if (!textEditor) return;
+  syncTextEditorGeometry();
+  const editor = textEditor;
+  textEditor = null;
+  const item = editor._annotation;
+  const text = editor.value.trim();
+  editor.remove();
+
+  if (!save || !text || !item) {
+    redrawInk();
+    return;
+  }
+
+  const saved = { ...item, text };
+  const index = strokes.findIndex((entry) => entry.id === saved.id);
+  if (index >= 0) strokes[index] = saved;
+  else strokes.push(saved);
+  redrawInk();
+  void saveText(saved);
+}
+
+function openTextEditor(point, existing = null) {
+  if (role !== "teacher") return;
+  closeTextEditor({ save: true });
+
+  const editor = document.createElement("textarea");
+  editor.className = "notebook-text-editor";
+  editor.placeholder = "Введите текст…";
+
+  const clickX = existing
+    ? existing.box.x * shell.clientWidth
+    : Math.max(0, Math.min(point.x * shell.clientWidth, shell.clientWidth - 1));
+  const clickY = existing
+    ? existing.box.y * shell.clientHeight
+    : Math.max(0, Math.min(point.y * shell.clientHeight, shell.clientHeight - 1));
+  const preferredWidthPx = existing
+    ? existing.box.w * shell.clientWidth
+    : Math.max(180, shell.clientWidth * 0.38);
+  const remainingWidthPx = Math.max(1, shell.clientWidth - clickX);
+  const widthPx = Math.min(preferredWidthPx, remainingWidthPx);
+  const initialFontSize = existing?.fontScale
+    ? existing.fontScale * shell.clientWidth
+    : (existing?.fontSize || textFontSize);
+  textFontSize = Math.min(48, Math.max(10, Number(initialFontSize) || 18));
+  if (textSizeSelect) textSizeSelect.value = String(Math.round(textFontSize));
+
+  editor.style.left = `${clickX}px`;
+  editor.style.top = `${Math.max(0, Math.min(clickY, shell.clientHeight - textFontSize * 1.6))}px`;
+  editor.style.width = `${widthPx}px`;
+  editor.style.fontSize = `${textFontSize}px`;
+  editor.value = existing?.text || "";
+  editor._annotation = {
+    id: existing?.id || crypto.randomUUID(),
+    type: "text",
+    page,
+    color: "#e53935",
+    fontSize: textFontSize,
+    fontScale: textFontSize / shell.clientWidth,
+    box: existing?.box || {
+      x: clickX / shell.clientWidth,
+      y: clickY / shell.clientHeight,
+      w: widthPx / shell.clientWidth,
+      h: Math.min(1, (textFontSize * 1.6) / shell.clientHeight),
+    },
+    text: existing?.text || "",
+  };
+
+  editor.addEventListener("input", syncTextEditorGeometry);
+  editor.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeTextEditor({ save: false });
+    } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      closeTextEditor({ save: true });
+    }
+  });
+  editor.addEventListener("blur", () => closeTextEditor({ save: true }), { once: true });
+  shell.appendChild(editor);
+  textEditor = editor;
+  syncTextEditorGeometry();
+  try { editor.focus({ preventScroll: true }); } catch { editor.focus(); }
+  editor.setSelectionRange(editor.value.length, editor.value.length);
+}
+
 function pointFromEvent(event) {
   const rect = inkCanvas.getBoundingClientRect();
   return {
@@ -219,6 +419,7 @@ async function loadNotebook() {
 }
 
 async function loadPage(nextPage) {
+  closeTextEditor({ save: true });
   page = Math.max(1, Math.min(Number(nextPage) || 1, pageCount));
   localStorage.setItem(`school:notebook:${lessonId}:page`, String(page));
   setSaveState("загрузка…");
@@ -279,8 +480,13 @@ async function saveErase(erase) {
 inkCanvas.addEventListener("pointerdown", (event) => {
   if (tool === "hand") return;
   event.preventDefault();
-  inkCanvas.setPointerCapture(event.pointerId);
   const point = pointFromEvent(event);
+  if (tool === "text") {
+    if (role !== "teacher") return;
+    openTextEditor(point, textAtPoint(point));
+    return;
+  }
+  inkCanvas.setPointerCapture(event.pointerId);
   if (tool === "eraser") {
     erasePath = { page, radius: 0.022, points: [point, point] };
   } else {
@@ -330,6 +536,16 @@ notebookViewBtn?.addEventListener("click", () => setView("notebook"));
 penBtn?.addEventListener("click", () => setTool("pen"));
 eraserBtn?.addEventListener("click", () => setTool("eraser"));
 handBtn?.addEventListener("click", () => setTool("hand"));
+textBtn?.addEventListener("click", () => setTool("text"));
+textSizeSelect?.addEventListener("change", () => {
+  const next = Number(textSizeSelect.value);
+  textFontSize = Number.isFinite(next) ? Math.min(48, Math.max(10, next)) : 18;
+  if (textEditor) {
+    textEditor.style.fontSize = `${textFontSize}px`;
+    textEditor._annotation.fontSize = textFontSize;
+    syncTextEditorGeometry();
+  }
+});
 firstBtn?.addEventListener("click", () => loadPage(1));
 prevBtn?.addEventListener("click", () => loadPage(page - 1));
 nextBtn?.addEventListener("click", () => loadPage(page + 1));
@@ -358,7 +574,10 @@ undoBtn?.addEventListener("click", async () => {
 
 window.addEventListener("resize", () => {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(resizeNotebook, 120);
+  saveTimer = setTimeout(() => {
+    resizeNotebook();
+    syncTextEditorGeometry();
+  }, 120);
 });
 
 setTool("pen");
