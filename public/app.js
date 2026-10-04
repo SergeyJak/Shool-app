@@ -1,4 +1,4 @@
-import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs";
+const pdfjsLib = window.pdfjsLib;
 import {
   clampPage,
   clampZoom,
@@ -12,7 +12,7 @@ import {
 } from "./realtime-preview.mjs";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs";
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 const role = document.body.dataset.role;
 const isObserver = role === "observer";
