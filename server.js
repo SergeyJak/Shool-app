@@ -98,6 +98,8 @@ let lessons;
 let materials;
 let homeworkSubmissions;
 let lessonMessages;
+let notebooks;
+let notebookAnnotations;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 const rtcCallsByLesson = new Map();
@@ -834,6 +836,8 @@ app.delete("/api/teacher/lessons/:id", requireApiRole("teacher"), async (req, re
       settings.deleteOne({ _id: `currentDocument:${id}` }),
       annotations.deleteMany(annotationLessonFilter(id)),
       homeworkSubmissions.deleteMany({ lessonId: id }),
+      notebooks.deleteMany({ lessonId: id }),
+      notebookAnnotations.deleteMany({ lessonId: id }),
     ]);
     teacherFollowByLesson.delete(id);
     teacherPageByLesson.delete(id);
@@ -1729,6 +1733,184 @@ app.get("/api/webrtc/config", requireApiRole("teacher", "student"), requireLesso
   });
 });
 
+
+function notebookOwnerId(user) {
+  return String(user?._id || "");
+}
+
+async function notebookStateFor(user, lessonId) {
+  const userId = notebookOwnerId(user);
+  if (!userId) return null;
+  const existing = await notebooks.findOne({ lessonId, userId });
+  if (existing) return existing;
+  const row = {
+    _id: `notebook:${lessonId}:${userId}`,
+    lessonId,
+    userId,
+    pageCount: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    schemaVersion: 1,
+  };
+  await notebooks.updateOne(
+    { _id: row._id },
+    { $setOnInsert: row },
+    { upsert: true }
+  );
+  return notebooks.findOne({ _id: row._id });
+}
+
+app.get("/api/notebook", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
+  try {
+    const state = await notebookStateFor(req.user, req.lessonId);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ pageCount: Math.max(1, Number(state?.pageCount || 1)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/notebook/pages", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
+  try {
+    const userId = notebookOwnerId(req.user);
+    const current = await notebookStateFor(req.user, req.lessonId);
+    const nextCount = Math.max(1, Number(current?.pageCount || 1)) + 1;
+    await notebooks.updateOne(
+      { lessonId: req.lessonId, userId },
+      { $set: { pageCount: nextCount, updatedAt: new Date() } }
+    );
+    res.status(201).json({ pageCount: nextCount });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/notebook/:page", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
+  try {
+    const page = Number(req.params.page);
+    if (!Number.isInteger(page) || page < 1) {
+      return res.status(400).json({ error: "INVALID_PAGE" });
+    }
+    const state = await notebookStateFor(req.user, req.lessonId);
+    if (page > Number(state?.pageCount || 1)) {
+      return res.status(404).json({ error: "NOTEBOOK_PAGE_NOT_FOUND" });
+    }
+    const userId = notebookOwnerId(req.user);
+    const rows = await notebookAnnotations
+      .find({ lessonId: req.lessonId, userId, page })
+      .sort({ createdAt: 1 })
+      .toArray();
+    res.setHeader("Cache-Control", "no-store");
+    res.json(rows.map((row) => ({
+      id: row._id,
+      page: row.page,
+      color: row.color,
+      width: row.width,
+      points: row.points,
+      createdAt: row.createdAt,
+    })));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/notebook/strokes", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
+  try {
+    const stroke = req.body || {};
+    if (!isValidStroke(stroke)) {
+      return res.status(400).json({ error: "INVALID_STROKE" });
+    }
+    const state = await notebookStateFor(req.user, req.lessonId);
+    if (stroke.page > Number(state?.pageCount || 1)) {
+      return res.status(400).json({ error: "INVALID_PAGE" });
+    }
+    const userId = notebookOwnerId(req.user);
+    const row = {
+      _id: stroke.id,
+      lessonId: req.lessonId,
+      userId,
+      page: stroke.page,
+      color: stroke.color,
+      width: stroke.width,
+      points: stroke.points,
+      createdAt: new Date(),
+    };
+    const existing = await notebookAnnotations.findOne({ _id: row._id });
+    if (existing && (existing.lessonId !== req.lessonId || existing.userId !== userId)) {
+      return res.status(403).json({ error: "NOTEBOOK_STROKE_FORBIDDEN" });
+    }
+    await notebookAnnotations.updateOne({ _id: row._id }, { $setOnInsert: row }, { upsert: true });
+    await notebooks.updateOne(
+      { lessonId: req.lessonId, userId },
+      { $set: { updatedAt: new Date() } }
+    );
+    res.status(201).json({ ok: true, id: row._id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/notebook/erase", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
+  try {
+    const erase = req.body || {};
+    if (!isValidErasePath(erase)) {
+      return res.status(400).json({ error: "INVALID_ERASE_PATH" });
+    }
+    const userId = notebookOwnerId(req.user);
+    const pageStrokes = await notebookAnnotations
+      .find({ lessonId: req.lessonId, userId, page: erase.page })
+      .toArray();
+
+    for (const stroke of pageStrokes) {
+      const parts = splitStrokeByErasePath(stroke, erase);
+      if (parts.length === 1 && parts[0].points.length === stroke.points.length) continue;
+      await notebookAnnotations.deleteOne({ _id: stroke._id, lessonId: req.lessonId, userId });
+      if (parts.length) {
+        const replacements = parts.map((part, index) => ({
+          ...part,
+          _id: `${stroke._id}:erase:${Date.now()}:${index}`,
+          lessonId: req.lessonId,
+          userId,
+          createdAt: stroke.createdAt || new Date(),
+        }));
+        await notebookAnnotations.insertMany(replacements);
+      }
+    }
+
+    await notebooks.updateOne(
+      { lessonId: req.lessonId, userId },
+      { $set: { updatedAt: new Date() } }
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/notebook/undo", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
+  try {
+    const page = Number(req.body?.page);
+    if (!Number.isInteger(page) || page < 1) {
+      return res.status(400).json({ error: "INVALID_PAGE" });
+    }
+    const userId = notebookOwnerId(req.user);
+    const row = await notebookAnnotations
+      .find({ lessonId: req.lessonId, userId, page })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .next();
+    if (!row) return res.json({ ok: false });
+    await notebookAnnotations.deleteOne({ _id: row._id, lessonId: req.lessonId, userId });
+    await notebooks.updateOne(
+      { lessonId: req.lessonId, userId },
+      { $set: { updatedAt: new Date() } }
+    );
+    res.json({ ok: true, id: row._id });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/annotations/:page", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
   try {
     const page = Number(req.params.page);
@@ -2598,6 +2780,8 @@ async function start() {
   materials = db.collection(collectionName("materials"));
   homeworkSubmissions = db.collection(collectionName("homework_submissions"));
   lessonMessages = db.collection(collectionName("lesson_messages"));
+  notebooks = db.collection(collectionName("notebooks"));
+  notebookAnnotations = db.collection(collectionName("notebook_annotations"));
 
   if (DATA_NAMESPACE && await users.countDocuments({}) === 0) {
     const sourceUsers = await db.collection("users").find({}).toArray();
@@ -2622,6 +2806,8 @@ async function start() {
   await homeworkSubmissions.createIndex({ lessonId: 1, submittedAt: -1 });
   await homeworkSubmissions.createIndex({ lessonId: 1, participantKey: 1 }, { unique: true });
   await lessonMessages.createIndex({ lessonId: 1, createdAt: -1 });
+  await notebooks.createIndex({ lessonId: 1, userId: 1 }, { unique: true });
+  await notebookAnnotations.createIndex({ lessonId: 1, userId: 1, page: 1, createdAt: 1 });
   await rtcDiagnostics.createIndex({ lessonId: 1, createdAt: -1 });
   await rtcDiagnostics.createIndex({ callId: 1, createdAt: 1 });
   await rtcDiagnostics.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });

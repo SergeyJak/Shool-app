@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/styles.css?v=20260930-auth1" />
   <link rel="stylesheet" href="/pdf-view.css?v=20261003-mobile-sync2" />
   <link rel="stylesheet" href="/lesson-comms.css?v=20261004-assets3" />
+  <link rel="stylesheet" href="/notebook.css?v=20261004-notebook1" />
 </head>
 <body data-role="student" class="pdf-view-page">
   <header class="pdf-header">
@@ -20,12 +21,16 @@
       <span id="status">подключение…</span>
     </div>
     <div class="pdf-header-actions">
+      <div class="lesson-view-switch" role="group" aria-label="Режим урока">
+        <button id="viewPdfBtn" class="active" type="button" aria-pressed="true">📖 <span>Учебник</span></button>
+        <button id="viewNotebookBtn" type="button" aria-pressed="false">📓 <span>Тетрадь</span></button>
+      </div>
       <button id="submitHomeworkBtn" class="pdf-action homework-submit" type="button" hidden>✓ Сдать</button>
       <a id="downloadPdfBtn" class="pdf-action" href="#" title="Скачать PDF" hidden>↓ PDF</a>
     </div>
   </header>
 
-  <main>
+  <main id="lessonPdfMain">
     <div class="lesson-sync-row compact-sync">
       <div id="followStatus" class="follow-status" hidden>🔗 Учитель ведёт страницу</div>
     </div>
@@ -69,9 +74,36 @@
     </div>
   </main>
 
+  <section id="lessonNotebookView" class="lesson-notebook" hidden aria-label="Тетрадь урока">
+    <div class="notebook-toolbar">
+      <button id="notebookPenBtn" type="button">✎ Ручка</button>
+      <button id="notebookEraserBtn" type="button">⌫ Ластик</button>
+      <button id="notebookHandBtn" type="button">✋ Рука</button>
+      <button id="notebookUndoBtn" type="button">↶ Отменить</button>
+      <span class="notebook-spacer"></span>
+      <button id="notebookFirstBtn" type="button" title="В начало">«</button>
+      <button id="notebookPrevBtn" type="button" title="Назад">‹</button>
+      <span class="notebook-page-jump">
+        <input id="notebookPageInput" type="number" min="1" inputmode="numeric" aria-label="Страница тетради" />
+        <span id="notebookPageTotal">/ 1</span>
+      </span>
+      <button id="notebookNextBtn" type="button" title="Вперёд">›</button>
+      <button id="notebookLastBtn" type="button" title="В конец">»</button>
+      <button id="notebookAddPageBtn" type="button">＋ Страница</button>
+      <span id="notebookSaveState" class="notebook-save-state">сохранено</span>
+    </div>
+    <div id="notebookStage" class="notebook-stage">
+      <div id="notebookPageShell" class="notebook-page-shell">
+        <canvas id="notebookPaperCanvas"></canvas>
+        <canvas id="notebookInkCanvas"></canvas>
+      </div>
+    </div>
+  </section>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script type="module" src="/app.js?v=20261004-huawei-pdf3"></script>
+  <script type="module" src="/notebook.mjs?v=20261004-notebook1"></script>
   <script src="/student-session.js?v=20261002-1"></script>
 </body>
 </html>
