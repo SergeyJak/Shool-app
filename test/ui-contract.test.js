@@ -55,6 +55,10 @@ test("client keeps PDF cache versioning, loading progress and page persistence",
   const js = read("public/app.js");
   assert.match(js, /document\/file\?id=/);
   assert.match(js, /loadingTask\.onProgress/);
+  assert.match(js, /PDF\.js URL loading failed; retrying as a full download/);
+  assert.match(js, /pdfResponse\.arrayBuffer\(\)/);
+  assert.match(js, /signature !== "%PDF-"/);
+  assert.match(js, /data: new Uint8Array\(pdfBuffer\)/);
   assert.match(js, /pageStorageKey/);
   assert.match(js, /legacyPageStorageKey/);
   assert.match(js, /erase:path/);

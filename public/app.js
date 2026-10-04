@@ -1116,19 +1116,61 @@ async function loadDocument() {
     }
     loadingText.textContent = "Скачиваем PDF…";
 
-    const loadingTask = pdfjsLib.getDocument(
-      `/api/document/file?id=${encodeURIComponent(documentMeta.id)}&lesson=${lessonParam}`
-    );
-    loadingTask.onProgress = ({ loaded, total }) => {
-      if (total > 0) {
-        const percent = Math.min(100, Math.round((loaded / total) * 100));
-        loadingText.textContent = `Скачиваем PDF… ${percent}%`;
-      } else if (loaded > 0) {
-        loadingText.textContent = `Скачиваем PDF… ${humanFileSize(loaded)}`;
-      }
+    const pdfUrl =
+      `/api/document/file?id=${encodeURIComponent(documentMeta.id)}&lesson=${lessonParam}`;
+
+    const attachPdfProgress = (loadingTask) => {
+      loadingTask.onProgress = ({ loaded, total }) => {
+        if (total > 0) {
+          const percent = Math.min(100, Math.round((loaded / total) * 100));
+          loadingText.textContent = `Скачиваем PDF… ${percent}%`;
+        } else if (loaded > 0) {
+          loadingText.textContent = `Скачиваем PDF… ${humanFileSize(loaded)}`;
+        }
+      };
+      return loadingTask;
     };
 
-    pdfDoc = await loadingTask.promise;
+    try {
+      const loadingTask = attachPdfProgress(pdfjsLib.getDocument(pdfUrl));
+      pdfDoc = await loadingTask.promise;
+    } catch (directError) {
+      console.warn("PDF.js URL loading failed; retrying as a full download:", directError);
+      loadingText.textContent = "Повторно скачиваем PDF…";
+
+      const pdfResponse = await fetch(pdfUrl, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (!pdfResponse.ok) {
+        const fallbackError = new Error(`PDF_FETCH_${pdfResponse.status}`);
+        fallbackError.status = pdfResponse.status;
+        fallbackError.directError = directError;
+        throw fallbackError;
+      }
+
+      const pdfBuffer = await pdfResponse.arrayBuffer();
+      if (!pdfBuffer.byteLength) {
+        const fallbackError = new Error("PDF_FETCH_EMPTY");
+        fallbackError.directError = directError;
+        throw fallbackError;
+      }
+
+      const signature = new TextDecoder("ascii").decode(
+        new Uint8Array(pdfBuffer, 0, Math.min(5, pdfBuffer.byteLength))
+      );
+      if (signature !== "%PDF-") {
+        const fallbackError = new Error("PDF_FETCH_INVALID");
+        fallbackError.directError = directError;
+        throw fallbackError;
+      }
+
+      loadingText.textContent = "Открываем PDF…";
+      const fallbackTask = pdfjsLib.getDocument({
+        data: new Uint8Array(pdfBuffer),
+      });
+      pdfDoc = await fallbackTask.promise;
+    }
     const pageKey = pageStorageKey(documentMeta.id, role);
     const legacyPageKey = legacyPageStorageKey(documentMeta.id, role);
     const savedPage = Number(
