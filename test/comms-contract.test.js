@@ -426,9 +426,9 @@ test("RTC v2 reconnect resumes by stable call session", () => {
 });
 
 test("RTC v2 is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-friendly-active1/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-friendly-active1/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261004-friendly-active1/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets2/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-assets2/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261004-assets2/);
 });
 
 
@@ -494,9 +494,9 @@ test("RTC v2 diagnostics keep network context and omit raw SDP or candidates fro
 });
 
 test("RTC v2 cache bust is active on both lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-friendly-active1/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-friendly-active1/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261004-friendly-active1/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets2/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-assets2/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261004-assets2/);
 });
 
 
@@ -648,13 +648,42 @@ test("approved video call mock has friendly pre-call and active-call states", ()
   const css = read("public/lesson-comms.css");
 
   assert.match(client, /lesson-comms-placeholder/);
-  assert.match(client, /Готов к видеосвязи/);
+  assert.match(client, /скоро подключится/);
   assert.match(client, /lesson-comms-live/);
   assert.match(client, /lesson-comms-duration/);
   assert.match(client, /panel\.classList\.toggle\("call-active"/);
   assert.match(client, /panel\.classList\.toggle\("call-connected"/);
   assert.match(css, /Approved friendly video-call mock/);
-  assert.match(css, /linear-gradient\(135deg,#8d6cf4,#6f54e8\)/);
+  assert.match(css, /linear-gradient\(135deg,#8d6cf4,#7254e8\)/);
   assert.match(css, /lesson-comms-panel\.call-connected/);
   assert.match(css, /lesson-comms-hangup/);
+});
+
+
+test("video call UI uses the generated asset pack instead of emoji controls", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+
+  assert.match(client, /09_32_41-1\.png/);
+  assert.match(client, /09_32_42-2\.png/);
+  assert.match(client, /09_32_43-3\.png/);
+  assert.match(client, /09_32_44-4\.png/);
+  assert.match(client, /09_32_45-5\.png/);
+  assert.match(client, /09_32_45-6\.png/);
+  assert.match(client, /09_32_46-7\.png/);
+  assert.match(client, /09_32_48-8\.png/);
+  assert.match(client, /09_32_49-9\.png/);
+  assert.match(client, /09_32_49-10\.png/);
+  assert.match(client, /lesson-comms-placeholder-image/);
+  assert.match(client, /lesson-comms-button-icon/);
+  assert.match(css, /asset-backed v2/);
+  assert.match(css, /lesson-comms-placeholder-image/);
+  assert.match(css, /lesson-comms-remote-fallback/);
+  assert.match(css, /lesson-comms-local-fallback/);
+});
+
+test("video call copy adapts to teacher and student roles", () => {
+  const client = read("public/lesson-comms.mjs");
+  assert.match(client, /role === "teacher" \? "Ученик" : "Учитель"/);
+  assert.match(client, /Позвонить \$\{role === "teacher" \? "ученику" : "учителю"\}/);
 });
