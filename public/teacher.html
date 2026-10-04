@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/styles.css?v=20260930-auth1" />
   <link rel="stylesheet" href="/pdf-view.css?v=20261003-mobile-sync2" />
   <link rel="stylesheet" href="/lesson-comms.css?v=20261004-assets3" />
-  <link rel="stylesheet" href="/notebook.css?v=20261004-notebook1" />
+  <link rel="stylesheet" href="/notebook.css?v=20261004-notebook2" />
 </head>
 <body data-role="teacher" class="pdf-view-page">
   <header class="pdf-header">
@@ -95,6 +95,19 @@
       <button id="notebookPenBtn" type="button">✎ Ручка</button>
       <button id="notebookEraserBtn" type="button">⌫ Ластик</button>
       <button id="notebookHandBtn" type="button">✋ Рука</button>
+      <button id="notebookTextBtn" type="button">Текст</button>
+      <label class="notebook-text-size" title="Размер текста">
+        <span>Шрифт</span>
+        <select id="notebookTextSizeSelect" aria-label="Размер текста в тетради">
+          <option value="12">12</option>
+          <option value="14">14</option>
+          <option value="18" selected>18</option>
+          <option value="24">24</option>
+          <option value="32">32</option>
+          <option value="40">40</option>
+          <option value="48">48</option>
+        </select>
+      </label>
       <button id="notebookUndoBtn" type="button">↶ Отменить</button>
       <span class="notebook-spacer"></span>
       <button id="notebookFirstBtn" type="button" title="В начало">«</button>
@@ -119,6 +132,6 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script type="module" src="/app.js?v=20261004-huawei-pdf3"></script>
-  <script type="module" src="/notebook.mjs?v=20261004-notebook1"></script>
+  <script type="module" src="/notebook.mjs?v=20261004-notebook2"></script>
 </body>
 </html>
