@@ -426,9 +426,9 @@ test("RTC v2 reconnect resumes by stable call session", () => {
 });
 
 test("RTC v2 is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets2/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-assets2/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261004-assets2/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets3/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-assets3/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261004-assets3/);
 });
 
 
@@ -494,9 +494,9 @@ test("RTC v2 diagnostics keep network context and omit raw SDP or candidates fro
 });
 
 test("RTC v2 cache bust is active on both lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets2/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-assets2/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261004-assets2/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets3/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-assets3/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261004-assets3/);
 });
 
 
@@ -686,4 +686,16 @@ test("video call copy adapts to teacher and student roles", () => {
   const client = read("public/lesson-comms.mjs");
   assert.match(client, /role === "teacher" \? "Ученик" : "Учитель"/);
   assert.match(client, /Позвонить \$\{role === "teacher" \? "ученику" : "учителю"\}/);
+});
+
+
+test("video call live-review polish keeps the primary CTA purple and separates pre-call from waiting", () => {
+  const client = read("public/lesson-comms.mjs");
+  const css = read("public/lesson-comms.css");
+  assert.match(client, /remoteFallback/);
+  assert.match(client, /role === "teacher"[\s\S]{0,350}09_32_43-3\.png/);
+  assert.match(css, /button\.lesson-comms-start\.primary/);
+  assert.match(css, /call-active \.lesson-comms-placeholder/);
+  assert.match(css, /call-active \.lesson-comms-remote-fallback/);
+  assert.match(css, /transform: scale\(1\.6\)/);
 });
