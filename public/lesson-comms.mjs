@@ -69,7 +69,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   panel.innerHTML = `
     <div class="lesson-comms-head">
       <div class="lesson-comms-brand">
-        <span class="lesson-comms-mascot" aria-hidden="true">🦉</span>
+        <span class="lesson-comms-mascot" aria-hidden="true"><img src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_44-4.png" alt=""></span>
         <span>
           <strong class="lesson-comms-title">Связь</strong>
           <small class="lesson-comms-subtitle">Вы на занятии вместе</small>
@@ -78,11 +78,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       </div>
       <div class="lesson-comms-window-actions">
         <button class="lesson-comms-minimize" type="button" aria-label="Свернуть видеозвонок">
-          <span aria-hidden="true">▁</span>
+          <img src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_49-9.png" alt="" aria-hidden="true">
           <span>Свернуть</span>
         </button>
         <button class="lesson-comms-close" type="button" aria-label="Закрыть окно видеозвонка">
-          <span aria-hidden="true">✕</span>
+          <img src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_49-10.png" alt="" aria-hidden="true">
           <span>Закрыть</span>
         </button>
       </div>
@@ -94,35 +94,40 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
           <span class="lesson-comms-incoming-name">Участник хочет присоединиться</span>
         </div>
         <div class="lesson-comms-incoming-actions">
-          <button class="lesson-comms-accept" type="button">📹 Ответить</button>
+          <button class="lesson-comms-accept" type="button"><img src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_45-5.png" alt="" aria-hidden="true"><span>Ответить</span></button>
           <button class="lesson-comms-decline danger" type="button">Не сейчас</button>
         </div>
       </div>
       <div class="lesson-comms-video-stage">
-        <div class="lesson-comms-placeholder" aria-hidden="true">
-          <div class="lesson-comms-placeholder-art">📹</div>
-          <strong>Готов к видеосвязи?</strong>
-          <span>Начни урок вместе с учителем</span>
+        <div class="lesson-comms-placeholder">
+          <img class="lesson-comms-placeholder-image" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_41-1.png" alt="" aria-hidden="true">
+          <div class="lesson-comms-placeholder-copy">
+            <strong class="lesson-comms-placeholder-title">Учитель скоро подключится</strong>
+            <span class="lesson-comms-placeholder-subtitle">Ты готов к уроку?</span>
+            <span class="lesson-comms-ready"><span aria-hidden="true">▮▮▮</span> Готово к звонку</span>
+          </div>
         </div>
+        <img class="lesson-comms-remote-fallback" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_42-2.png" alt="" aria-hidden="true">
         <video class="lesson-comms-remote" autoplay playsinline></video>
+        <img class="lesson-comms-local-fallback" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_43-3.png" alt="" aria-hidden="true">
         <video class="lesson-comms-local" autoplay playsinline muted></video>
         <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
       </div>
       <div class="lesson-comms-controls">
         <button class="lesson-comms-start primary" type="button">
-          <span class="lesson-comms-control-icon" aria-hidden="true">📞</span>
-          <span>Позвонить</span>
+          <img class="lesson-comms-button-icon" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_45-5.png" alt="" aria-hidden="true">
+          <span>Позвонить учителю</span>
         </button>
         <button class="lesson-comms-mic call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span>
+          <img class="lesson-comms-button-icon" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_45-6.png" alt="" aria-hidden="true">
           <span>Микрофон</span>
         </button>
         <button class="lesson-comms-camera call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">📷</span>
+          <img class="lesson-comms-button-icon" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_46-7.png" alt="" aria-hidden="true">
           <span>Камера</span>
         </button>
         <button class="lesson-comms-hangup danger call-control" type="button" hidden disabled>
-          <span class="lesson-comms-control-icon" aria-hidden="true">☎</span>
+          <img class="lesson-comms-button-icon" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_48-8.png" alt="" aria-hidden="true">
           <span>Завершить</span>
         </button>
       </div>
@@ -150,6 +155,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   const localVideo = panel.querySelector(".lesson-comms-local");
   const remoteVideo = panel.querySelector(".lesson-comms-remote");
   const callState = panel.querySelector(".lesson-comms-call-state");
+  const placeholderTitle = panel.querySelector(".lesson-comms-placeholder-title");
+  const startButtonLabel = panel.querySelector(".lesson-comms-start span:last-child");
+  const localFallback = panel.querySelector(".lesson-comms-local-fallback");
   const incomingBox = panel.querySelector(".lesson-comms-incoming");
   const incomingName = panel.querySelector(".lesson-comms-incoming-name");
   const acceptButton = panel.querySelector(".lesson-comms-accept");
@@ -171,6 +179,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   window.visualViewport?.addEventListener("resize", syncChatViewportHeight);
   window.addEventListener("resize", syncChatViewportHeight);
   syncChatViewportHeight();
+
+  const counterpartLabel = role === "teacher" ? "Ученик" : "Учитель";
+  placeholderTitle.textContent = `${counterpartLabel} скоро подключится`;
+  startButtonLabel.textContent = `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
+  if (role === "teacher") localFallback.src = "/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_42-2.png";
 
   function setUnread(value) {
     unread = Math.max(0, value);
@@ -369,12 +382,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     cameraButton.disabled = !video;
     hangupButton.disabled = !callIsActive;
 
-    micButton.innerHTML = audio?.enabled
-      ? '<span class="lesson-comms-control-icon" aria-hidden="true">🎙️</span><span>Микрофон</span>'
-      : '<span class="lesson-comms-control-icon" aria-hidden="true">🔇</span><span>Включить звук</span>';
-    cameraButton.innerHTML = video?.enabled
-      ? '<span class="lesson-comms-control-icon" aria-hidden="true">📷</span><span>Камера</span>'
-      : '<span class="lesson-comms-control-icon" aria-hidden="true">🚫</span><span>Включить камеру</span>';
+    micButton.classList.toggle("is-off", Boolean(audio && !audio.enabled));
+    cameraButton.classList.toggle("is-off", Boolean(video && !video.enabled));
+    micButton.querySelector("span").textContent = audio?.enabled ? "Микрофон" : "Включить звук";
+    cameraButton.querySelector("span").textContent = video?.enabled ? "Камера" : "Включить камеру";
   }
 
   async function fetchIceConfig() {
@@ -887,14 +898,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     outgoingCall = true;
     callAccepted = false;
     incomingBox.hidden = true;
-    startButton.textContent = "Звоним…";
+    startButton.querySelector("span").textContent = "Звоним…";
     setCallState("Звоним второму участнику…");
     updateMediaButtons();
 
     socket.emit("rtc2:call", { callId: activeCallId }, (result) => {
       if (!result?.ok) {
         outgoingCall = false;
-        startButton.textContent = "Позвонить";
+        startButton.querySelector("span").textContent = `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
         setCallState(
           ["CALL_RINGING", "CALL_IN_PROGRESS"].includes(result.error)
             ? "У второго участника уже есть активный вызов."
@@ -936,7 +947,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     panel.classList.remove("call-connected");
     syncCallTimer();
     resetIncomingCall();
-    startButton.textContent = "Позвонить";
+    startButton.querySelector("span").textContent = `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
     updateMediaButtons();
     setCallState(finalState);
   }
@@ -969,7 +980,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
       callAccepted = true;
       peerClientId = callerClientId;
       resetIncomingCall();
-      startButton.textContent = "Подключено";
+      startButton.querySelector("span").textContent = "Подключено";
       setCallState("Соединяем…");
       updateMediaButtons();
     });
@@ -1021,7 +1032,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     outgoingCall = false;
     callAccepted = true;
     peerClientId = peer.clientId;
-    startButton.textContent = "Подключено";
+    startButton.querySelector("span").textContent = "Подключено";
     updateMediaButtons();
     startOffer(peer.clientId, "accepted");
   });
