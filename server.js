@@ -1803,10 +1803,15 @@ app.get("/api/notebook/:page", requireApiRole("teacher", "student"), requireLess
     res.setHeader("Cache-Control", "no-store");
     res.json(rows.map((row) => ({
       id: row._id,
+      type: row.type || "stroke",
       page: row.page,
       color: row.color,
       width: row.width,
       points: row.points,
+      text: row.text,
+      box: row.box,
+      fontSize: row.fontSize,
+      fontScale: row.fontScale,
       createdAt: row.createdAt,
     })));
   } catch (error) {
@@ -1850,6 +1855,53 @@ app.post("/api/notebook/strokes", requireApiRole("teacher", "student"), requireL
   }
 });
 
+app.post("/api/notebook/text", requireApiRole("teacher"), requireLessonAccess, async (req, res, next) => {
+  try {
+    if (req.user.guest) return res.status(403).json({ error: "TEACHER_ONLY" });
+    const item = req.body || {};
+    if (!isValidTextAnnotation(item)) {
+      return res.status(400).json({ error: "INVALID_TEXT" });
+    }
+    const state = await notebookStateFor(req.user, req.lessonId);
+    if (item.page > Number(state?.pageCount || 1)) {
+      return res.status(400).json({ error: "INVALID_PAGE" });
+    }
+
+    const userId = notebookOwnerId(req.user);
+    const existing = await notebookAnnotations.findOne({ _id: item.id });
+    if (existing && (existing.lessonId !== req.lessonId || existing.userId !== userId)) {
+      return res.status(403).json({ error: "NOTEBOOK_TEXT_FORBIDDEN" });
+    }
+
+    const row = {
+      _id: item.id,
+      type: "text",
+      lessonId: req.lessonId,
+      userId,
+      page: item.page,
+      color: "#e53935",
+      text: item.text,
+      box: item.box,
+      fontSize: Number.isFinite(item.fontSize) ? Math.min(48, Math.max(10, item.fontSize)) : 18,
+      fontScale:
+        Number.isFinite(item.fontScale) && item.fontScale > 0 && item.fontScale < 0.25
+          ? item.fontScale
+          : null,
+      createdAt: existing?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+
+    await notebookAnnotations.updateOne({ _id: row._id }, { $set: row }, { upsert: true });
+    await notebooks.updateOne(
+      { lessonId: req.lessonId, userId },
+      { $set: { updatedAt: new Date() } }
+    );
+    res.status(existing ? 200 : 201).json({ ok: true, id: row._id });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/notebook/erase", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res, next) => {
   try {
     const erase = req.body || {};
@@ -1862,6 +1914,12 @@ app.post("/api/notebook/erase", requireApiRole("teacher", "student"), requireLes
       .toArray();
 
     for (const stroke of pageStrokes) {
+      if (stroke.type === "text") {
+        if (!stroke.box || !erasePathHitsBox(erase, stroke.box)) continue;
+        await notebookAnnotations.deleteOne({ _id: stroke._id, lessonId: req.lessonId, userId });
+        continue;
+      }
+
       const parts = splitStrokeByErasePath(stroke, erase);
       if (parts.length === 1 && parts[0].points.length === stroke.points.length) continue;
       await notebookAnnotations.deleteOne({ _id: stroke._id, lessonId: req.lessonId, userId });
