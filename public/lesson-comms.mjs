@@ -1,4 +1,4 @@
-export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
+export function initLessonComms({ socket, role, lessonId, showSnackbar, context = "lesson" }) {
   if (!socket || role === "observer") return;
 
   let localStream = null;
@@ -181,9 +181,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
   window.addEventListener("resize", syncChatViewportHeight);
   syncChatViewportHeight();
 
-  const counterpartLabel = role === "teacher" ? "Ученик" : "Учитель";
+  const isConnection = context === "connection";
+  const counterpartLabel = isConnection ? "Собеседник" : (role === "teacher" ? "Ученик" : "Учитель");
   placeholderTitle.textContent = `${counterpartLabel} скоро подключится`;
-  startButtonLabel.textContent = `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
+  startButtonLabel.textContent = isConnection ? "Позвонить" : `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
   if (role === "teacher") {
     remoteFallback.src = "/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_43-3.png";
     localFallback.src = "/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_42-2.png";
@@ -202,7 +203,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     const isVideo = view === "video";
     videoView.hidden = !isVideo;
     chatView.hidden = isVideo;
-    titleEl.textContent = isVideo ? "Видеосвязь" : "Чат занятия";
+    titleEl.textContent = isVideo ? "Видеосвязь" : (isConnection ? "Чат" : "Чат занятия");
     minimizeButton.hidden = !isVideo;
     launcher.classList.toggle("chat-open", !isVideo);
     videoButton.classList.toggle("active", isVideo);
@@ -909,7 +910,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     socket.emit("rtc2:call", { callId: activeCallId }, (result) => {
       if (!result?.ok) {
         outgoingCall = false;
-        startButton.querySelector("span").textContent = `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
+        startButton.querySelector("span").textContent = isConnection ? "Позвонить" : `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
         setCallState(
           ["CALL_RINGING", "CALL_IN_PROGRESS"].includes(result.error)
             ? "У второго участника уже есть активный вызов."
@@ -951,7 +952,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar }) {
     panel.classList.remove("call-connected");
     syncCallTimer();
     resetIncomingCall();
-    startButton.querySelector("span").textContent = `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
+    startButton.querySelector("span").textContent = isConnection ? "Позвонить" : `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
     updateMediaButtons();
     setCallState(finalState);
   }
