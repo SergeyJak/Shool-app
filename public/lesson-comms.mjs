@@ -310,6 +310,12 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     if (isConnection && !isVideo) titleEl.textContent = "Чат";
     minimizeButton.hidden = !isVideo;
     launcher.classList.toggle("chat-open", !isVideo);
+    launcher.classList.toggle("embedded-chat-switcher", isConnection && !isVideo);
+    if (isConnection && !isVideo) {
+      chatView.insertBefore(launcher, chatForm);
+    } else if (launcher.parentElement !== document.body) {
+      document.body.appendChild(launcher);
+    }
     videoButton.classList.toggle("active", isVideo);
     chatButton.classList.toggle("active", !isVideo);
     if (!isVideo) {
@@ -321,7 +327,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   function closePanel() {
     panel.hidden = true;
     panel.classList.remove("mini-video");
-    launcher.classList.remove("chat-open");
+    launcher.classList.remove("chat-open", "embedded-chat-switcher");
+    if (launcher.parentElement !== document.body) document.body.appendChild(launcher);
+    closeMessageMenu();
     currentView = null;
     videoButton.classList.remove("active");
     chatButton.classList.remove("active");
@@ -1273,7 +1281,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     if (!isConnection || !isMineMessage(message)) return;
     closeMessageMenu();
     const menu = document.createElement("div");
-    menu.className = "lesson-comms-message-menu";
+    menu.className = "lesson-comms-message-menu connection-menu-portal";
+    menu.dataset.messageId = message.id;
 
     const edit = document.createElement("button");
     edit.type = "button";
@@ -1295,8 +1304,19 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     });
 
     menu.append(edit, remove);
-    item.appendChild(menu);
+    document.body.appendChild(menu);
     activeMessageMenu = menu;
+
+    const rect = item.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const gap = 8;
+    const left = Math.max(10, Math.min(window.innerWidth - menuRect.width - 10, rect.right - menuRect.width));
+    const spaceAbove = rect.top - gap;
+    const top = spaceAbove >= menuRect.height + 8
+      ? rect.top - menuRect.height - gap
+      : Math.min(window.innerHeight - menuRect.height - 10, rect.bottom + gap);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${Math.max(10, top)}px`;
   }
 
   function appendMessage(message) {
@@ -1332,7 +1352,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
       action.textContent = "⌄";
       action.addEventListener("click", (event) => {
         event.stopPropagation();
-        if (activeMessageMenu?.parentElement === item) closeMessageMenu();
+        if (activeMessageMenu?.dataset.messageId === message.id) closeMessageMenu();
         else openMessageMenu(message, item);
       });
       item.appendChild(action);
