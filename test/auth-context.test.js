@@ -23,6 +23,14 @@ const teacher = {
   active: true,
 };
 
+const admin = {
+  _id: "admin",
+  username: "admin",
+  displayName: "Admin",
+  role: "admin",
+  active: true,
+};
+
 function cookieHeader(sessionToken, guestToken) {
   return [
     sessionToken && `${SESSION_COOKIE}=${encodeURIComponent(sessionToken)}`,
@@ -228,4 +236,25 @@ test("no valid cookies resolves no identity", async () => {
   });
 
   assert.equal(identity, null);
+});
+
+
+test("admin session always wins over matching guest room cookie", async () => {
+  const session = createSessionToken(admin, SECRET, 60);
+  const guest = createGuestToken(
+    { lessonId: "connection_room", name: "Alisa", guestId: "guest-a" },
+    SECRET,
+    60
+  );
+
+  const identity = await resolveIdentityFromCookies({
+    cookieHeader: cookieHeader(session, guest),
+    preferredLessonId: "connection_room",
+    secret: SECRET,
+    findActiveUserById: userFinder([admin]),
+  });
+
+  assert.equal(identity._id, "admin");
+  assert.equal(identity.role, "admin");
+  assert.equal(identity.guest, undefined);
 });
