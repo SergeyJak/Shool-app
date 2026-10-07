@@ -75,17 +75,18 @@ test("expired session and guest tokens are rejected", () => {
   assert.equal(parseGuestToken(guest, SECRET), null);
 });
 
-test("cookies are HttpOnly, SameSite strict, scoped to root, and secure by default", () => {
+test("cookies are HttpOnly, root-scoped, secure, with strict account and lax guest policy", () => {
   const session = sessionCookie("token");
   const guest = guestCookie("token");
 
   for (const value of [session, guest]) {
     assert.match(value, /Path=\//);
     assert.match(value, /HttpOnly/);
-    assert.match(value, /SameSite=Strict/);
     assert.match(value, /Secure/);
     assert.match(value, /Max-Age=/);
   }
+  assert.match(session, /SameSite=Strict/);
+  assert.match(guest, /SameSite=Lax/);
 });
 
 test("cookie parser handles encoded signed tokens", () => {
