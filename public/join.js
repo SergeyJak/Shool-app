@@ -12,9 +12,12 @@ async function loadInvite() {
     return;
   }
   const { lesson } = await res.json();
-  lessonName.textContent = lesson.type === "homework"
-    ? `Домашняя работа: ${lesson.title}`
-    : `Урок: ${lesson.title}`;
+  lessonName.textContent = lesson.type === "connection"
+    ? `Связь: ${lesson.title}`
+    : lesson.type === "homework"
+      ? `Домашняя работа: ${lesson.title}`
+      : `Урок: ${lesson.title}`;
+  if (lesson.type === "connection") button.textContent = "Подключиться";
   form.hidden = false;
 }
 
@@ -38,7 +41,7 @@ form.addEventListener("submit", async (event) => {
       : "Не удалось подключиться. Проверьте ссылку и попробуйте ещё раз.";
     errorEl.hidden = false;
     button.disabled = false;
-    button.textContent = "Войти в занятие";
+    button.textContent = location.pathname.startsWith("/connect/") ? "Подключиться" : "Войти в занятие";
   }
 });
 
