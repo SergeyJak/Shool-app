@@ -708,3 +708,17 @@ test("chat history reloads after socket connects when chat is already open", () 
     /socket\.on\("connect", \(\) => \{[\s\S]*?currentView === "chat"[\s\S]*?historyLoaded = false;[\s\S]*?loadChatHistory\(\)/
   );
 });
+
+
+test("persistent connection chat treats role side as message ownership", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
+  assert.match(source, /if \(isConnection\) return message\.role === role;/);
+});
+
+test("persistent connection chat supports edit delete and emoji picker", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
+  assert.match(source, /chat:edit/);
+  assert.match(source, /chat:delete/);
+  assert.match(source, /lesson-comms-emoji-picker/);
+  assert.match(source, /Редактирование сообщения/);
+});
