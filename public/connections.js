@@ -96,7 +96,7 @@ async function loadConnections() {
 async function initManager() {
   managerView.hidden = false;
   const user = await loadMe();
-  if (user.role !== "teacher" && user.role !== "admin") {
+  if (user.role !== "admin") {
     location.replace("/cabinet");
     return;
   }
@@ -136,7 +136,7 @@ async function initRoom(lessonId) {
   roomTitle.textContent = connection.title;
   roomStatus.textContent = user.role === "teacher" ? "Ваша постоянная комната" : "Вы подключены к постоянной комнате";
 
-  if (user.role === "teacher" || user.role === "admin") {
+  if (user.role === "admin") {
     roomInviteBox.hidden = false;
     roomInviteUrl.value = absoluteUrl(connection.inviteUrl);
     copyRoomInvite.addEventListener("click", () => copyText(roomInviteUrl.value, copyRoomInvite));
@@ -146,7 +146,7 @@ async function initRoom(lessonId) {
     sessionStorage.getItem("school:realtimeClientId") || crypto.randomUUID();
   sessionStorage.setItem("school:realtimeClientId", realtimeClientId);
 
-  const socketRole = user.role === "teacher" || user.role === "admin" ? "teacher" : "student";
+  const socketRole = user.role === "admin" ? "teacher" : "student";
   const socket = io({ auth: { role: socketRole, lessonId, clientId: realtimeClientId } });
 
   socket.on("connect", () => {
