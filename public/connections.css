@@ -331,3 +331,189 @@ body.connections-page{min-height:100vh;background:linear-gradient(180deg,#f7f9ff
     opacity:.82;
   }
 }
+
+
+/* v4 mobile chat controls: explicit reset prevents native browser button chrome. */
+.connections-page .connection-comms button{
+  -webkit-appearance:none;
+  appearance:none;
+  font-family:inherit;
+}
+.connections-page .lesson-comms-launcher{
+  position:fixed!important;
+  left:auto!important;
+  right:12px!important;
+  bottom:max(14px,env(safe-area-inset-bottom))!important;
+  z-index:999!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  pointer-events:auto!important;
+}
+.connections-page .lesson-comms-launcher button{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  min-height:48px!important;
+  padding:0 17px!important;
+  border:1px solid #e0e3ec!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.98)!important;
+  color:#3b4258!important;
+  box-shadow:0 10px 26px rgba(35,42,73,.14)!important;
+  font:800 14px/1 system-ui,sans-serif!important;
+}
+.connections-page .lesson-comms-launcher button.active{
+  border-color:#293247!important;
+  background:#293247!important;
+  color:#fff!important;
+}
+.connections-page .connection-comms .lesson-comms-form{
+  position:relative!important;
+  grid-template-columns:42px minmax(0,1fr) 48px!important;
+  gap:8px!important;
+  padding:10px 12px 12px!important;
+  border-top:1px solid #edf0f5!important;
+  background:#fff!important;
+}
+.connections-page .connection-comms .lesson-comms-form textarea{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  min-height:48px!important;
+  max-height:118px!important;
+  resize:none!important;
+  padding:13px 16px!important;
+  border:1px solid #e0e4ec!important;
+  border-radius:24px!important;
+  background:#f5f7fb!important;
+  color:#28324e!important;
+  font:400 16px/21px system-ui,sans-serif!important;
+  box-shadow:none!important;
+}
+.connections-page .connection-comms .lesson-comms-form textarea:focus{
+  border-color:#beb7f2!important;
+  background:#fff!important;
+  outline:none!important;
+  box-shadow:0 0 0 3px rgba(105,85,243,.08)!important;
+}
+.connections-page .connection-comms .lesson-comms-emoji-button{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  align-self:center!important;
+  width:42px!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:50%!important;
+  background:transparent!important;
+  color:#687188!important;
+  box-shadow:none!important;
+  font-size:27px!important;
+  line-height:1!important;
+}
+.connections-page .connection-comms .lesson-comms-emoji-button:active{
+  background:#eef0f5!important;
+}
+.connections-page .connection-comms .lesson-comms-form>button[type="submit"]{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  align-self:center!important;
+  width:48px!important;
+  height:48px!important;
+  min-height:48px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:50%!important;
+  background:linear-gradient(145deg,#7460ee,#5e62e7)!important;
+  color:#fff!important;
+  box-shadow:0 8px 18px rgba(99,83,224,.28)!important;
+  font-size:20px!important;
+  line-height:48px!important;
+  text-align:center!important;
+}
+.connections-page .connection-comms .lesson-comms-form>button[type="submit"]:active{
+  transform:scale(.95);
+}
+.connections-page .connection-comms .lesson-comms-message-action{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  top:7px!important;
+  right:7px!important;
+  transform:none!important;
+  width:25px!important;
+  height:25px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:50%!important;
+  background:rgba(255,255,255,.22)!important;
+  color:inherit!important;
+  box-shadow:none!important;
+  font:800 16px/22px system-ui,sans-serif!important;
+  opacity:.62!important;
+}
+.connections-page .connection-comms .lesson-comms-message.mine{
+  padding-right:34px!important;
+}
+.connections-page .connection-comms .lesson-comms-message-menu{
+  right:4px!important;
+  bottom:calc(100% + 8px)!important;
+  z-index:100!important;
+  min-width:178px!important;
+  padding:6px!important;
+  border:1px solid #e7e9f0!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:0 14px 38px rgba(27,34,65,.22)!important;
+}
+.connections-page .connection-comms .lesson-comms-message-menu button{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  min-height:42px!important;
+  padding:10px 12px!important;
+  border:0!important;
+  border-radius:11px!important;
+  background:transparent!important;
+  color:#2f374f!important;
+  box-shadow:none!important;
+  text-align:left!important;
+  font:700 14px/1.25 system-ui,sans-serif!important;
+}
+.connections-page .connection-comms .lesson-comms-message-menu button+button{
+  margin-top:2px!important;
+}
+.connections-page .connection-comms .lesson-comms-message-menu button:active{
+  background:#f4f5f8!important;
+}
+.connections-page .connection-comms .lesson-comms-message-menu button.danger{
+  color:#c84646!important;
+}
+.connections-page .connection-comms .lesson-comms-emoji-picker{
+  left:8px!important;
+  right:8px!important;
+  bottom:74px!important;
+  border:1px solid #e4e7ee!important;
+  border-radius:20px!important;
+  background:#fff!important;
+  box-shadow:0 16px 46px rgba(30,37,68,.22)!important;
+}
+@media(max-width:760px){
+  .connections-page .lesson-comms-panel.connection-comms:not(.mini-video){
+    width:calc(100% - 18px)!important;
+    margin:10px auto 90px!important;
+    overflow:visible!important;
+  }
+  .connections-page .connection-comms .lesson-comms-chat{
+    min-height:min(54dvh,520px)!important;
+    max-height:none!important;
+  }
+  .connections-page .connection-comms .lesson-comms-form{
+    padding:10px 10px calc(12px + env(safe-area-inset-bottom))!important;
+  }
+  .connections-page .lesson-comms-launcher{
+    right:10px!important;
+    bottom:max(10px,env(safe-area-inset-bottom))!important;
+  }
+}
