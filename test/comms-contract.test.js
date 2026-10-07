@@ -730,3 +730,14 @@ test("connection chat embeds switcher and portals message menu", () => {
   assert.match(source, /connection-menu-portal/);
   assert.match(source, /document\.body\.appendChild\(menu\)/);
 });
+
+
+test("persistent connection room broadcasts both sides presence", () => {
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  const client = fs.readFileSync(path.join(__dirname, "..", "public", "connections.js"), "utf8");
+  assert.match(server, /function connectionPresenceForLesson\(lessonId\)/);
+  assert.match(server, /connection:presence/);
+  assert.match(client, /presence-me/);
+  assert.match(client, /presence-peer/);
+  assert.match(client, /socket\.on\("connection:presence"/);
+});

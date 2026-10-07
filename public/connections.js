@@ -134,7 +134,17 @@ async function initRoom(lessonId) {
   const user = await loadMe();
   const { connection } = await fetchJson(`/api/connections/${encodeURIComponent(lessonId)}?lesson=${encodeURIComponent(lessonId)}`);
   roomTitle.textContent = connection.title;
-  roomStatus.textContent = user.role === "teacher" ? "Ваша постоянная комната" : "Вы подключены к постоянной комнате";
+  roomStatus.classList.add("connection-presence");
+  roomStatus.innerHTML = `
+    <span class="presence-row presence-me"><i></i><b>Вы:</b> <span>подключаемся…</span></span>
+    <span class="presence-row presence-peer"><i></i><b></b> <span>не в сети</span></span>
+  `;
+  const myPresence = roomStatus.querySelector(".presence-me");
+  const peerPresence = roomStatus.querySelector(".presence-peer");
+  const myPresenceText = myPresence.querySelector("span:last-child");
+  const peerPresenceLabel = peerPresence.querySelector("b");
+  const peerPresenceText = peerPresence.querySelector("span:last-child");
+  peerPresenceLabel.textContent = user.role === "admin" ? `${connection.title}:` : "Admin:";
 
   if (user.role === "admin") {
     roomInviteBox.hidden = false;
@@ -149,11 +159,27 @@ async function initRoom(lessonId) {
   const socketRole = user.role === "admin" ? "teacher" : "student";
   const socket = io({ auth: { role: socketRole, lessonId, clientId: realtimeClientId } });
 
+  function setPresenceRow(row, online, text) {
+    row.classList.toggle("online", online);
+    row.classList.toggle("offline", !online);
+    row.querySelector("span:last-child").textContent = text;
+  }
+
   socket.on("connect", () => {
-    roomStatus.textContent = "Онлайн";
+    setPresenceRow(myPresence, true, "онлайн");
   });
   socket.on("disconnect", () => {
-    roomStatus.textContent = "Переподключаемся…";
+    setPresenceRow(myPresence, false, "переподключаемся…");
+    setPresenceRow(peerPresence, false, "статус неизвестен");
+  });
+  socket.on("connection:presence", (presence = {}) => {
+    const me = socketRole === "teacher" ? presence.teacher : presence.student;
+    const peer = socketRole === "teacher" ? presence.student : presence.teacher;
+    setPresenceRow(myPresence, Boolean(me?.online), me?.online ? "онлайн" : "не в сети");
+    setPresenceRow(peerPresence, Boolean(peer?.online), peer?.online ? "онлайн" : "не в сети");
+    if (user.role !== "admin" && peer?.displayName) {
+      peerPresenceLabel.textContent = `${peer.displayName}:`;
+    }
   });
 
   initLessonComms({

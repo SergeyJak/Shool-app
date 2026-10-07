@@ -439,6 +439,35 @@ function rtc2UniquePeersForLesson(lessonId, excludeClientId = null) {
   return [...peersByClientId.values()];
 }
 
+function connectionPresenceForLesson(lessonId) {
+  const latestBySide = new Map();
+  for (const peer of io.sockets.sockets.values()) {
+    if (peer.data.lessonId !== lessonId || peer.data.role === "observer") continue;
+    const side = peer.data.role === "teacher" ? "teacher" : "student";
+    const current = latestBySide.get(side);
+    if (!current || Number(peer.data.connectedAt || 0) > Number(current.data.connectedAt || 0)) {
+      latestBySide.set(side, peer);
+    }
+  }
+
+  const teacher = latestBySide.get("teacher");
+  const student = latestBySide.get("student");
+  return {
+    teacher: {
+      online: Boolean(teacher),
+      displayName: teacher?.data.user?.displayName || teacher?.data.user?.username || "Admin",
+    },
+    student: {
+      online: Boolean(student),
+      displayName: student?.data.user?.displayName || student?.data.user?.username || null,
+    },
+  };
+}
+
+function emitConnectionPresence(lessonId) {
+  io.to(lessonRoom(lessonId)).emit("connection:presence", connectionPresenceForLesson(lessonId));
+}
+
 function rtc2SessionForLesson(lessonId) {
   const session = rtc2CallsByLesson.get(lessonId);
   if (!session) return null;
@@ -2203,6 +2232,9 @@ io.on("connection", (socket) => {
   const controllerKey = role === "teacher" ? followControllerKey(socket) : null;
   socket.data.followControllerKey = controllerKey;
   socket.join(room);
+  if (socket.data.lesson?.type === "connection") {
+    emitConnectionPresence(lessonId);
+  }
 
   const waitingCall = activeRtcCall(lessonId);
   if (waitingCall && waitingCall.callerId !== socket.id && role !== "observer") {
@@ -2763,6 +2795,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    if (socket.data.lesson?.type === "connection") {
+      setTimeout(() => emitConnectionPresence(lessonId), 0);
+    }
     if (socket.data.rtcReady === true && socket.data.rtcCallId) {
       rememberDisconnectedRtcPeer(socket);
     }
