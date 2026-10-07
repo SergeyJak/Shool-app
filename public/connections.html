@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>School App · Связь</title>
+  <link rel="stylesheet" href="/landing.css?v=20261002-archive1" />
+  <link rel="stylesheet" href="/lesson-comms.css?v=20261004-assets3" />
+  <link rel="stylesheet" href="/connections.css?v=20261007-1" />
+</head>
+<body class="landing-body connections-page">
+  <header class="connections-header">
+    <a class="connections-brand" href="/cabinet" aria-label="School App">
+      <span>🦉</span><span>School <b>App</b></span>
+    </a>
+    <div class="connections-header-actions">
+      <span id="accountName"></span>
+      <a id="backLink" href="/cabinet">Кабинет</a>
+    </div>
+  </header>
+
+  <main class="connections-shell">
+    <section id="managerView" class="connections-manager" hidden>
+      <div class="connections-hero">
+        <div>
+          <span class="connections-kicker">ПОСТОЯННАЯ СВЯЗЬ</span>
+          <h1>Личные подключения</h1>
+          <p>Создай отдельную комнату для каждого человека. Ссылка постоянная, чат сохраняется, видеозвонок доступен в той же комнате.</p>
+        </div>
+        <div class="connections-count-card">
+          <strong id="connectionCount">0</strong>
+          <span>активных<br>подключений</span>
+        </div>
+      </div>
+
+      <section class="connection-create-card">
+        <form id="connectionCreateForm">
+          <label>
+            <span>Имя или название контакта</span>
+            <input id="connectionTitle" maxlength="120" autocomplete="off" placeholder="Например, Алиса" required />
+          </label>
+          <button type="submit">＋ Создать подключение</button>
+        </form>
+        <div id="createStatus" class="connection-status"></div>
+      </section>
+
+      <section class="connections-list-card">
+        <div class="connections-list-heading">
+          <div>
+            <span class="connections-list-icon">💬</span>
+            <div><small>МОИ КОНТАКТЫ</small><h2>Постоянные комнаты</h2></div>
+          </div>
+        </div>
+        <div id="connectionsList" class="connections-list"></div>
+        <div id="connectionsEmpty" class="connections-empty" hidden>Пока нет подключений. Создай первое выше.</div>
+      </section>
+    </section>
+
+    <section id="roomView" class="connection-room" hidden>
+      <div class="connection-room-top">
+        <div>
+          <span class="connections-kicker">ЛИЧНАЯ КОМНАТА</span>
+          <h1 id="roomTitle">Связь</h1>
+          <p id="roomStatus">Подключаемся…</p>
+        </div>
+        <div id="roomInviteBox" class="room-invite" hidden>
+          <span>Постоянная ссылка</span>
+          <div>
+            <input id="roomInviteUrl" readonly />
+            <button id="copyRoomInvite" type="button">Копировать</button>
+          </div>
+        </div>
+      </div>
+      <div class="connection-comms-host">
+        <div class="connection-help">
+          <strong>Чат и видеосвязь</strong>
+          <span>Сообщения сохраняются. Звонок можно начать в любой момент, когда второй человек онлайн.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/connections.js?v=20261007-1"></script>
+</body>
+</html>
