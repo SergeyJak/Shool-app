@@ -741,3 +741,12 @@ test("persistent connection room broadcasts both sides presence", () => {
   assert.match(client, /presence-peer/);
   assert.match(client, /socket\.on\("connection:presence"/);
 });
+
+
+test("persistent connection switcher is embedded below the panel header", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "public", "connections.css"), "utf8");
+  assert.match(source, /head\.insertAdjacentElement\("afterend", launcher\)/);
+  assert.match(source, /embedded-top-switcher/);
+  assert.match(css, /embedded-top-switcher[\s\S]{0,240}position:static/);
+});
