@@ -147,7 +147,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     </div>
   `;
   document.body.append(launcher, panel);
-  if (isConnection) {
+  if (context === "connection") {
     const head = panel.querySelector(".lesson-comms-head");
     head.insertAdjacentElement("afterend", launcher);
     launcher.classList.add("embedded-top-switcher");
