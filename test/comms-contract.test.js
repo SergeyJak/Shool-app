@@ -785,3 +785,12 @@ test("connection room serves the current client bundle after compact-room DOM ch
   const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
   assert.match(html, /connections\.js\?v=20261007-room2/);
 });
+
+
+test("permanent connection link never asks counterpart name", () => {
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /guestName = String\(lesson\.title \|\| "Собеседник"\)/);
+  assert.match(server, /req\.path\.startsWith\("\/connect\/"\)/);
+  assert.match(server, /return res\.redirect\(`\/connection\?lesson=/);
+  assert.match(server, /guestCookie\(guestToken/);
+});
