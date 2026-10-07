@@ -258,3 +258,15 @@ test("admin session always wins over matching guest room cookie", async () => {
   assert.equal(identity.role, "admin");
   assert.equal(identity.guest, undefined);
 });
+
+
+test("guest cookie is Lax so permanent links work from messaging apps", () => {
+  const { guestCookie, sessionCookie } = require("../lib/auth");
+  const guest = guestCookie("token", { secure: true, maxAge: 3600 });
+  const session = sessionCookie("token", { secure: true, maxAge: 3600 });
+
+  assert.match(guest, /SameSite=Lax/);
+  assert.match(guest, /HttpOnly/);
+  assert.match(guest, /Secure/);
+  assert.match(session, /SameSite=Strict/);
+});
