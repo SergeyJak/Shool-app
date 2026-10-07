@@ -147,6 +147,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     </div>
   `;
   document.body.append(launcher, panel);
+  if (isConnection) {
+    const head = panel.querySelector(".lesson-comms-head");
+    head.insertAdjacentElement("afterend", launcher);
+    launcher.classList.add("embedded-top-switcher");
+  }
 
   const videoButton = launcher.querySelector(".lesson-comms-video-button");
   const chatButton = launcher.querySelector(".lesson-comms-chat-button");
@@ -310,12 +315,6 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     if (isConnection && !isVideo) titleEl.textContent = "Чат";
     minimizeButton.hidden = !isVideo;
     launcher.classList.toggle("chat-open", !isVideo);
-    launcher.classList.toggle("embedded-chat-switcher", isConnection && !isVideo);
-    if (isConnection && !isVideo) {
-      chatView.insertBefore(launcher, chatForm);
-    } else if (launcher.parentElement !== document.body) {
-      document.body.appendChild(launcher);
-    }
     videoButton.classList.toggle("active", isVideo);
     chatButton.classList.toggle("active", !isVideo);
     if (!isVideo) {
@@ -327,8 +326,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   function closePanel() {
     panel.hidden = true;
     panel.classList.remove("mini-video");
-    launcher.classList.remove("chat-open", "embedded-chat-switcher");
-    if (launcher.parentElement !== document.body) document.body.appendChild(launcher);
+    launcher.classList.remove("chat-open");
     closeMessageMenu();
     currentView = null;
     videoButton.classList.remove("active");
