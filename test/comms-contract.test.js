@@ -771,3 +771,11 @@ test("persistent connection guest session lasts thirty days", () => {
   assert.match(server, /persistentConnection \? connectionGuestTtlSeconds : undefined/);
   assert.match(server, /persistentConnection \? \{ maxAge: connectionGuestTtlSeconds \} : \{\}/);
 });
+
+
+test("persistent room omits redundant invite and help cards", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
+  assert.doesNotMatch(html, /id="roomInviteBox"/);
+  assert.doesNotMatch(html, /class="connection-comms-host"/);
+  assert.doesNotMatch(html, /Чат и видеосвязь/);
+});
