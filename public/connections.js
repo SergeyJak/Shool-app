@@ -11,9 +11,6 @@ const list = document.getElementById("connectionsList");
 const empty = document.getElementById("connectionsEmpty");
 const roomTitle = document.getElementById("roomTitle");
 const roomStatus = document.getElementById("roomStatus");
-const roomInviteBox = document.getElementById("roomInviteBox");
-const roomInviteUrl = document.getElementById("roomInviteUrl");
-const copyRoomInvite = document.getElementById("copyRoomInvite");
 
 function absoluteUrl(path) {
   return new URL(path, location.origin).toString();
@@ -145,12 +142,6 @@ async function initRoom(lessonId) {
   const peerPresenceLabel = peerPresence.querySelector("b");
   const peerPresenceText = peerPresence.querySelector("span:last-child");
   peerPresenceLabel.textContent = user.role === "admin" ? `${connection.title}:` : "Admin:";
-
-  if (user.role === "admin") {
-    roomInviteBox.hidden = false;
-    roomInviteUrl.value = absoluteUrl(connection.inviteUrl);
-    copyRoomInvite.addEventListener("click", () => copyText(roomInviteUrl.value, copyRoomInvite));
-  }
 
   const realtimeClientId =
     sessionStorage.getItem("school:realtimeClientId") || crypto.randomUUID();
