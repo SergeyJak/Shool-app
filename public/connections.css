@@ -628,3 +628,49 @@ body.connections-page{min-height:100vh;background:linear-gradient(180deg,#f7f9ff
     gap:6px;
   }
 }
+
+
+/* v6: permanent connection mode switcher sits directly below the panel header. */
+.connections-page .connection-comms + .lesson-comms-launcher.embedded-top-switcher,
+.connections-page .lesson-comms-panel .lesson-comms-launcher.embedded-top-switcher{
+  position:static!important;
+  inset:auto!important;
+  z-index:auto!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  gap:8px!important;
+  padding:8px 12px 10px!important;
+  border-bottom:1px solid #edf0f5!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.connections-page .lesson-comms-launcher.embedded-top-switcher button{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  min-height:42px!important;
+  padding:0 15px!important;
+  border:1px solid #e0e3ec!important;
+  border-radius:15px!important;
+  background:#fff!important;
+  color:#3b4258!important;
+  box-shadow:none!important;
+  font:800 14px/1 system-ui,sans-serif!important;
+}
+.connections-page .lesson-comms-launcher.embedded-top-switcher button.active{
+  border-color:#293247!important;
+  background:#293247!important;
+  color:#fff!important;
+}
+.connections-page .connection-comms .lesson-comms-form{
+  padding-top:10px!important;
+}
+@media(max-width:760px){
+  .connections-page .lesson-comms-launcher.embedded-top-switcher{
+    padding:7px 10px 9px!important;
+    justify-content:stretch!important;
+  }
+  .connections-page .lesson-comms-launcher.embedded-top-switcher button{
+    flex:1 1 0!important;
+    min-width:0!important;
+  }
+}
