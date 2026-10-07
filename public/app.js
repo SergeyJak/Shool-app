@@ -177,7 +177,7 @@ function measureSocketRtt() {
 }
 
 function sendPerformanceLog() {
-  if (isObserver) return;
+  if (isObserver || document.hidden) return;
   const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
   const payload = {
     role,
@@ -206,24 +206,57 @@ function sendPerformanceLog() {
   });
 }
 
-socket.on("connect", () => {
-  statusEl.textContent = "онлайн";
-  if (hasConnectedOnce) reconnects += 1;
-  hasConnectedOnce = true;
-  clearInterval(pingTimer);
-  measureSocketRtt();
-  pingTimer = setInterval(measureSocketRtt, 5000);
+const BACKGROUND_SOCKET_IDLE_MS = 5 * 60 * 1000;
+let backgroundDisconnectTimer = null;
 
-  clearInterval(perfLogTimer);
-  perfLogTimer = setInterval(sendPerformanceLog, 20000);
-});
-socket.on("disconnect", () => {
-  statusEl.textContent = "нет связи";
-  disconnects += 1;
+function stopPerformanceTimers() {
   clearInterval(pingTimer);
   pingTimer = null;
   clearInterval(perfLogTimer);
   perfLogTimer = null;
+}
+
+function startPerformanceTimers() {
+  stopPerformanceTimers();
+  if (document.hidden || !socket.connected) return;
+  measureSocketRtt();
+  pingTimer = setInterval(measureSocketRtt, 5000);
+  perfLogTimer = setInterval(sendPerformanceLog, 20000);
+}
+
+function scheduleBackgroundDisconnect() {
+  clearTimeout(backgroundDisconnectTimer);
+  backgroundDisconnectTimer = setTimeout(() => {
+    if (!document.hidden || !socket.connected) return;
+    stopPerformanceTimers();
+    socket.disconnect();
+  }, BACKGROUND_SOCKET_IDLE_MS);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopPerformanceTimers();
+    scheduleBackgroundDisconnect();
+    return;
+  }
+
+  clearTimeout(backgroundDisconnectTimer);
+  backgroundDisconnectTimer = null;
+
+  if (!socket.connected) socket.connect();
+  else startPerformanceTimers();
+});
+
+socket.on("connect", () => {
+  statusEl.textContent = "онлайн";
+  if (hasConnectedOnce) reconnects += 1;
+  hasConnectedOnce = true;
+  startPerformanceTimers();
+});
+socket.on("disconnect", () => {
+  statusEl.textContent = "нет связи";
+  disconnects += 1;
+  stopPerformanceTimers();
   sendPerformanceLog();
 });
 
