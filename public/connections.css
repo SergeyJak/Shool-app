@@ -674,3 +674,12 @@ body.connections-page{min-height:100vh;background:linear-gradient(180deg,#f7f9ff
     min-width:0!important;
   }
 }
+
+
+/* Compact permanent connection room: no redundant link/info cards inside room. */
+.connection-room .connection-room-top{
+  padding-bottom:22px!important;
+}
+.connection-room .connection-room-top>div:first-child{
+  width:100%;
+}
