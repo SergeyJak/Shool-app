@@ -722,3 +722,12 @@ test("persistent connection chat supports edit delete and emoji picker", () => {
   assert.match(source, /lesson-comms-emoji-picker/);
   assert.match(source, /Редактирование сообщения/);
 });
+
+
+test("connection chat embeds switcher and portals message menu", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
+  assert.match(source, /embedded-chat-switcher/);
+  assert.match(source, /chatView\.insertBefore\(launcher, chatForm\)/);
+  assert.match(source, /connection-menu-portal/);
+  assert.match(source, /document\.body\.appendChild\(menu\)/);
+});
