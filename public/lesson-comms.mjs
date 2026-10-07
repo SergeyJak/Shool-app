@@ -1086,6 +1086,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   });
 
   socket.on("connect", () => {
+    if (currentView === "chat") {
+      historyLoaded = false;
+      loadChatHistory();
+    }
     if (callAccepted && activeCallId) {
       resumeRtc2Session("socket-reconnect");
     } else if (outgoingCall && activeCallId) {
