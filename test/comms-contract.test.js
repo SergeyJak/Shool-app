@@ -750,3 +750,9 @@ test("persistent connection switcher is embedded below the panel header", () => 
   assert.match(source, /embedded-top-switcher/);
   assert.match(css, /embedded-top-switcher[\s\S]{0,240}position:static/);
 });
+
+
+test("connections page cache-busts presence client", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
+  assert.match(html, /connections\.js\?v=20261007-presence1/);
+});
