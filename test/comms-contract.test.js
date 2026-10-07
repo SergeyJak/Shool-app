@@ -758,10 +758,10 @@ test("connections page cache-busts presence client", () => {
 });
 
 
-test("persistent connect skips name screen when guest session already matches room", () => {
+test("persistent connect skips name screen and reuses matching guest when present", () => {
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(server, /req\.path\.startsWith\("\/connect\/"\)/);
-  assert.match(server, /identity\?\.guest && identity\.lessonId === lesson\._id/);
+  assert.match(server, /existingIdentity\?\.guest && existingIdentity\.lessonId === lesson\._id/);
   assert.match(server, /res\.redirect\(`\/connection\?lesson=/);
 });
 
@@ -784,4 +784,13 @@ test("persistent room omits redundant invite and help cards", () => {
 test("connection room serves the current client bundle after compact-room DOM changes", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
   assert.match(html, /connections\.js\?v=20261007-room2/);
+});
+
+
+test("permanent connection link never asks counterpart name", () => {
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /guestName = String\(lesson\.title \|\| "Собеседник"\)/);
+  assert.match(server, /req\.path\.startsWith\("\/connect\/"\)/);
+  assert.match(server, /return res\.redirect\(`\/connection\?lesson=/);
+  assert.match(server, /guestCookie\(guestToken/);
 });

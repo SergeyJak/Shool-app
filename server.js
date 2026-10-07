@@ -1528,10 +1528,33 @@ app.get(["/join/:token", "/connect/:token"], async (req, res, next) => {
     }
 
     if (req.path.startsWith("/connect/") && lesson.type === "connection") {
-      const identity = await userFromCookieHeader(req.headers.cookie, lesson._id);
-      if (identity?.guest && identity.lessonId === lesson._id) {
+      const existingIdentity = await userFromCookieHeader(req.headers.cookie, lesson._id);
+      if (existingIdentity?.guest && existingIdentity.lessonId === lesson._id) {
         return res.redirect(`/connection?lesson=${encodeURIComponent(lesson._id)}`);
       }
+
+      // A permanent 1:1 connection already has the counterpart name in its title.
+      // Do not ask for it again. Create the guest identity directly from the link.
+      const guestName = String(lesson.title || "Собеседник").trim().slice(0, 80) || "Собеседник";
+      const connectionGuestTtlSeconds = 60 * 60 * 24 * 30;
+      const guestToken = createGuestToken(
+        { lessonId: lesson._id, name: guestName },
+        AUTH_SECRET,
+        connectionGuestTtlSeconds
+      );
+      const now = new Date();
+      await lessons.updateOne(
+        { _id: lesson._id },
+        { $set: { lastParticipantName: guestName, lastParticipantAt: now, updatedAt: now } }
+      );
+      res.setHeader(
+        "Set-Cookie",
+        guestCookie(guestToken, {
+          secure: requestIsSecure(req),
+          maxAge: connectionGuestTtlSeconds,
+        })
+      );
+      return res.redirect(`/connection?lesson=${encodeURIComponent(lesson._id)}`);
     }
 
     res.sendFile(path.join(__dirname, "public", "join.html"));
