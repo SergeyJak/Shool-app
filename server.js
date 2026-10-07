@@ -1096,7 +1096,7 @@ app.post("/api/join/:token", async (req, res, next) => {
 
 
 
-app.get("/api/connections", requireApiRole("teacher"), async (req, res, next) => {
+app.get("/api/connections", requireApiRole("admin"), async (req, res, next) => {
   try {
     const rows = await lessons.find({
       type: "connection",
@@ -1121,7 +1121,7 @@ app.get("/api/connections", requireApiRole("teacher"), async (req, res, next) =>
   }
 });
 
-app.post("/api/connections", requireApiRole("teacher"), async (req, res, next) => {
+app.post("/api/connections", requireApiRole("admin"), async (req, res, next) => {
   try {
     if (req.user.guest) return res.status(403).json({ error: "FORBIDDEN" });
     const title = String(req.body?.title || "").trim();
@@ -1160,7 +1160,7 @@ app.post("/api/connections", requireApiRole("teacher"), async (req, res, next) =
   }
 });
 
-app.get("/api/connections/:id", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res) => {
+app.get("/api/connections/:id", requireApiRole("student"), requireLessonAccess, async (req, res) => {
   if (req.lesson.type !== "connection") {
     return res.status(404).json({ error: "CONNECTION_NOT_FOUND" });
   }
@@ -1176,7 +1176,7 @@ app.get("/api/connections/:id", requireApiRole("teacher", "student"), requireLes
   });
 });
 
-app.post("/api/connections/:id/archive", requireApiRole("teacher"), async (req, res, next) => {
+app.post("/api/connections/:id/archive", requireApiRole("admin"), async (req, res, next) => {
   try {
     const id = normalizeLessonId(req.params.id);
     if (!id) return res.status(400).json({ error: "INVALID_CONNECTION" });
@@ -1448,7 +1448,7 @@ app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
   res.setHeader("Set-Cookie", clearGuestCookie({ secure: requestIsSecure(req) }));
   res.sendFile(path.join(__dirname, "public", "teacher.html"));
 });
-app.get("/connections.html", requirePageAuth("teacher"), (_req, res) =>
+app.get("/connections.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "connections.html"))
 );
 app.get("/student.html", requirePageAuth("student"), (_req, res) =>
@@ -1503,10 +1503,10 @@ app.get("/teacher", requirePageAuth("teacher"), (req, res) => {
   res.setHeader("Set-Cookie", clearGuestCookie({ secure: requestIsSecure(req) }));
   res.sendFile(path.join(__dirname, "public", "teacher.html"));
 });
-app.get("/connections", requirePageAuth("teacher"), (_req, res) =>
+app.get("/connections", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "connections.html"))
 );
-app.get("/connection", requirePageAuth("teacher", "student"), (_req, res) =>
+app.get("/connection", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "connections.html"))
 );
 app.get("/student", requirePageAuth("student"), (_req, res) =>
