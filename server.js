@@ -349,7 +349,16 @@ function publicChatMessage(row) {
     role: row.role,
     text: row.text,
     createdAt: row.createdAt,
+    editedAt: row.editedAt || null,
   };
+}
+
+function canManageChatMessage({ message, socket, lesson, role }) {
+  if (!message || !socket?.data?.user) return false;
+  if (lesson?.type === "connection") {
+    return message.role === role;
+  }
+  return String(message.userId || "") === String(socket.data.user._id || "");
 }
 
 function rtcPeer(socket) {
@@ -2651,6 +2660,54 @@ io.on("connection", (socket) => {
     } catch (error) {
       console.error("Chat send failed", error);
       ack?.({ ok: false, error: "CHAT_SAVE_FAILED" });
+    }
+  });
+
+  socket.on("chat:edit", async ({ id, text } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const messageId = String(id || "").trim();
+    const normalizedText = normalizeChatMessage(text);
+    if (!messageId || !normalizedText) {
+      return ack?.({ ok: false, error: "INVALID_MESSAGE" });
+    }
+
+    try {
+      const message = await lessonMessages.findOne({ _id: messageId, lessonId });
+      if (!canManageChatMessage({ message, socket, lesson: socket.data.lesson, role })) {
+        return ack?.({ ok: false, error: "FORBIDDEN" });
+      }
+
+      const editedAt = new Date();
+      await lessonMessages.updateOne(
+        { _id: messageId, lessonId },
+        { $set: { text: normalizedText, editedAt } }
+      );
+      const updated = { ...message, text: normalizedText, editedAt };
+      io.to(room).emit("chat:edited", publicChatMessage(updated));
+      ack?.({ ok: true, message: publicChatMessage(updated) });
+    } catch (error) {
+      console.error("Chat edit failed", error);
+      ack?.({ ok: false, error: "CHAT_EDIT_FAILED" });
+    }
+  });
+
+  socket.on("chat:delete", async ({ id } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    const messageId = String(id || "").trim();
+    if (!messageId) return ack?.({ ok: false, error: "INVALID_MESSAGE" });
+
+    try {
+      const message = await lessonMessages.findOne({ _id: messageId, lessonId });
+      if (!canManageChatMessage({ message, socket, lesson: socket.data.lesson, role })) {
+        return ack?.({ ok: false, error: "FORBIDDEN" });
+      }
+
+      await lessonMessages.deleteOne({ _id: messageId, lessonId });
+      io.to(room).emit("chat:deleted", { id: messageId });
+      ack?.({ ok: true });
+    } catch (error) {
+      console.error("Chat delete failed", error);
+      ack?.({ ok: false, error: "CHAT_DELETE_FAILED" });
     }
   });
 
