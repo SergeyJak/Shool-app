@@ -324,15 +324,14 @@ test("send button does not steal focus from the chat input on touch devices", ()
 });
 
 
-test("mobile chat hides its launcher so the composer stays usable", () => {
+test("mobile chat keeps its switcher embedded so the composer stays usable", () => {
   const client = read("public/lesson-comms.mjs");
-  const css = read("public/lesson-comms.css");
+  const connectionCss = read("public/connections.css");
 
-  assert.match(client, /launcher\.classList\.toggle\("chat-open", !isVideo\)/);
-  assert.match(client, /launcher\.classList\.remove\("chat-open"\)/);
-  assert.match(css, /lesson-comms-launcher\.chat-open[\s\S]{0,100}display: none/);
-  assert.match(css, /--lesson-viewport-height/);
-  assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(client, /launcher\.classList\.toggle\("embedded-chat-switcher", isConnection && !isVideo\)/);
+  assert.match(client, /chatView\.insertBefore\(launcher, chatForm\)/);
+  assert.match(connectionCss, /lesson-comms-launcher\.embedded-chat-switcher[\s\S]{0,240}position:static/);
+  assert.match(connectionCss, /env\(safe-area-inset-bottom\)/);
 });
 
 
@@ -721,4 +720,13 @@ test("persistent connection chat supports edit delete and emoji picker", () => {
   assert.match(source, /chat:delete/);
   assert.match(source, /lesson-comms-emoji-picker/);
   assert.match(source, /Редактирование сообщения/);
+});
+
+
+test("connection chat embeds switcher and portals message menu", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
+  assert.match(source, /embedded-chat-switcher/);
+  assert.match(source, /chatView\.insertBefore\(launcher, chatForm\)/);
+  assert.match(source, /connection-menu-portal/);
+  assert.match(source, /document\.body\.appendChild\(menu\)/);
 });

@@ -517,3 +517,68 @@ body.connections-page{min-height:100vh;background:linear-gradient(180deg,#f7f9ff
     bottom:max(10px,env(safe-area-inset-bottom))!important;
   }
 }
+
+
+/* v5: chat switcher lives inside chat, context menu is portalled above scroll containers. */
+.connections-page .connection-comms .lesson-comms-launcher.embedded-chat-switcher{
+  position:static!important;
+  inset:auto!important;
+  z-index:auto!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  gap:8px!important;
+  padding:10px 12px 8px!important;
+  border-top:1px solid #edf0f5!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.connections-page .connection-comms .lesson-comms-launcher.embedded-chat-switcher button{
+  min-height:42px!important;
+  padding:0 15px!important;
+  border-radius:15px!important;
+  box-shadow:none!important;
+}
+.connections-page .connection-comms .lesson-comms-form{
+  border-top:0!important;
+  padding-top:6px!important;
+}
+.connections-page .connection-menu-portal{
+  position:fixed!important;
+  right:auto!important;
+  bottom:auto!important;
+  z-index:5000!important;
+  display:grid!important;
+  min-width:178px!important;
+  padding:6px!important;
+  border:1px solid #e7e9f0!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:0 14px 38px rgba(27,34,65,.24)!important;
+}
+.connections-page .connection-menu-portal button{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  min-height:42px!important;
+  padding:10px 12px!important;
+  border:0!important;
+  border-radius:11px!important;
+  background:transparent!important;
+  color:#2f374f!important;
+  box-shadow:none!important;
+  text-align:left!important;
+  font:700 14px/1.25 system-ui,sans-serif!important;
+}
+.connections-page .connection-menu-portal button+button{margin-top:2px!important}
+.connections-page .connection-menu-portal button:active{background:#f4f5f8!important}
+.connections-page .connection-menu-portal button.danger{color:#c84646!important}
+@media(max-width:760px){
+  .connections-page .lesson-comms-panel.connection-comms:not(.mini-video){
+    margin-bottom:24px!important;
+  }
+  .connections-page .connection-comms .lesson-comms-launcher.embedded-chat-switcher{
+    padding:9px 10px 7px!important;
+  }
+}
