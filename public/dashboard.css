@@ -182,3 +182,4 @@ body[data-role="student"] .materials-card{display:none!important}
   .tip-content{grid-template-columns:90px 1fr}
   .tip-content img{width:90px;height:90px}
 }
+.admin-nav .admin-connections-link{display:flex;align-items:center;justify-content:center;text-decoration:none;color:inherit}
