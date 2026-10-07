@@ -754,7 +754,7 @@ test("persistent connection switcher is embedded below the panel header", () => 
 
 test("connections page cache-busts presence client", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
-  assert.match(html, /connections\.js\?v=20261007-presence1/);
+  assert.match(html, /connections\.js\?v=20261007-room2/);
 });
 
 
@@ -778,4 +778,10 @@ test("persistent room omits redundant invite and help cards", () => {
   assert.doesNotMatch(html, /id="roomInviteBox"/);
   assert.doesNotMatch(html, /class="connection-comms-host"/);
   assert.doesNotMatch(html, /Чат и видеосвязь/);
+});
+
+
+test("connection room serves the current client bundle after compact-room DOM changes", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
+  assert.match(html, /connections\.js\?v=20261007-room2/);
 });
