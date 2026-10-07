@@ -148,6 +148,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   const minimizeButton = panel.querySelector(".lesson-comms-minimize");
   const closeButton = panel.querySelector(".lesson-comms-close");
   const titleEl = panel.querySelector(".lesson-comms-title");
+  const subtitleEl = panel.querySelector(".lesson-comms-subtitle");
   const liveEl = panel.querySelector(".lesson-comms-live");
   const durationEl = panel.querySelector(".lesson-comms-duration");
   const videoView = panel.querySelector(".lesson-comms-video");
@@ -182,6 +183,13 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   syncChatViewportHeight();
 
   const isConnection = context === "connection";
+  if (isConnection) {
+    subtitleEl.textContent = "Личная переписка";
+    chatInput.placeholder = "Сообщение";
+    chatSubmitButton.textContent = "➤";
+    chatSubmitButton.setAttribute("aria-label", "Отправить сообщение");
+    panel.classList.add("connection-comms");
+  }
   const counterpartLabel = isConnection ? "Собеседник" : (role === "teacher" ? "Ученик" : "Учитель");
   placeholderTitle.textContent = `${counterpartLabel} скоро подключится`;
   startButtonLabel.textContent = isConnection ? "Позвонить" : `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
@@ -1142,7 +1150,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     const meta = document.createElement("span");
     meta.className = "lesson-comms-message-meta";
     const time = message.createdAt ? new Date(message.createdAt) : new Date();
-    meta.textContent = `${message.displayName || (message.role === "teacher" ? "Учитель" : "Ученик")} · ${time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    const timeLabel = time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const senderLabel = message.displayName || (message.role === "teacher" ? "Учитель" : "Ученик");
+    meta.textContent = isConnection && message.userId === currentUserId
+      ? timeLabel
+      : `${senderLabel} · ${timeLabel}`;
 
     const text = document.createElement("div");
     text.className = "lesson-comms-message-text";
