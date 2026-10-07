@@ -699,3 +699,12 @@ test("video call live-review polish keeps the primary CTA purple and separates p
   assert.match(css, /call-active \.lesson-comms-remote-fallback/);
   assert.match(css, /transform: scale\(1\.6\)/);
 });
+
+
+test("chat history reloads after socket connects when chat is already open", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
+  assert.match(
+    source,
+    /socket\.on\("connect", \(\) => \{[\s\S]*?currentView === "chat"[\s\S]*?historyLoaded = false;[\s\S]*?loadChatHistory\(\)/
+  );
+});
