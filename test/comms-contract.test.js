@@ -756,3 +756,18 @@ test("connections page cache-busts presence client", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
   assert.match(html, /connections\.js\?v=20261007-presence1/);
 });
+
+
+test("persistent connect skips name screen when guest session already matches room", () => {
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /req\.path\.startsWith\("\/connect\/"\)/);
+  assert.match(server, /identity\?\.guest && identity\.lessonId === lesson\._id/);
+  assert.match(server, /res\.redirect\(`\/connection\?lesson=/);
+});
+
+test("persistent connection guest session lasts thirty days", () => {
+  const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  assert.match(server, /connectionGuestTtlSeconds = 60 \* 60 \* 24 \* 30/);
+  assert.match(server, /persistentConnection \? connectionGuestTtlSeconds : undefined/);
+  assert.match(server, /persistentConnection \? \{ maxAge: connectionGuestTtlSeconds \} : \{\}/);
+});
