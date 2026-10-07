@@ -582,3 +582,49 @@ body.connections-page{min-height:100vh;background:linear-gradient(180deg,#f7f9ff
     padding:9px 10px 7px!important;
   }
 }
+
+
+/* Two-sided presence for permanent 1:1 rooms. */
+.connection-room-top .connection-presence{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px 14px;
+  margin-top:10px;
+}
+.connection-room-top .presence-row{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  margin:0;
+  color:#7b8498;
+  font-size:14px;
+  line-height:1.3;
+}
+.connection-room-top .presence-row i{
+  width:9px;
+  height:9px;
+  flex:0 0 9px;
+  border-radius:50%;
+  background:#aab1bf;
+  box-shadow:0 0 0 3px rgba(170,177,191,.13);
+}
+.connection-room-top .presence-row b{
+  color:#566078;
+  font-weight:750;
+}
+.connection-room-top .presence-row.online i{
+  background:#35bd77;
+  box-shadow:0 0 0 3px rgba(53,189,119,.14);
+}
+.connection-room-top .presence-row.online span:last-child{
+  color:#398560;
+}
+.connection-room-top .presence-row.offline span:last-child{
+  color:#8d95a7;
+}
+@media(max-width:600px){
+  .connection-room-top .connection-presence{
+    display:grid;
+    gap:6px;
+  }
+}
