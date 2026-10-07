@@ -1277,13 +1277,13 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
 
     const edit = document.createElement("button");
     edit.type = "button";
-    edit.textContent = "Редактировать";
+    edit.textContent = "✏️  Редактировать";
     edit.addEventListener("click", () => startEditing(message, item));
 
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "danger";
-    remove.textContent = "Удалить";
+    remove.textContent = "🗑️  Удалить";
     remove.addEventListener("click", () => {
       closeMessageMenu();
       if (!confirm("Удалить это сообщение?")) return;
@@ -1329,7 +1329,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
       action.type = "button";
       action.className = "lesson-comms-message-action";
       action.setAttribute("aria-label", "Действия с сообщением");
-      action.textContent = "⋯";
+      action.textContent = "⌄";
       action.addEventListener("click", (event) => {
         event.stopPropagation();
         if (activeMessageMenu?.parentElement === item) closeMessageMenu();
