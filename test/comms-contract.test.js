@@ -758,10 +758,10 @@ test("connections page cache-busts presence client", () => {
 });
 
 
-test("persistent connect skips name screen when guest session already matches room", () => {
+test("persistent connect skips name screen and reuses matching guest when present", () => {
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(server, /req\.path\.startsWith\("\/connect\/"\)/);
-  assert.match(server, /identity\?\.guest && identity\.lessonId === lesson\._id/);
+  assert.match(server, /existingIdentity\?\.guest && existingIdentity\.lessonId === lesson\._id/);
   assert.match(server, /res\.redirect\(`\/connection\?lesson=/);
 });
 
