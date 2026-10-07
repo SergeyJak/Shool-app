@@ -324,13 +324,13 @@ test("send button does not steal focus from the chat input on touch devices", ()
 });
 
 
-test("mobile chat keeps its switcher embedded so the composer stays usable", () => {
+test("mobile connection switcher stays embedded at the top so composer stays usable", () => {
   const client = read("public/lesson-comms.mjs");
   const connectionCss = read("public/connections.css");
 
-  assert.match(client, /launcher\.classList\.toggle\("embedded-chat-switcher", isConnection && !isVideo\)/);
-  assert.match(client, /chatView\.insertBefore\(launcher, chatForm\)/);
-  assert.match(connectionCss, /lesson-comms-launcher\.embedded-chat-switcher[\s\S]{0,240}position:static/);
+  assert.match(client, /head\.insertAdjacentElement\("afterend", launcher\)/);
+  assert.match(client, /launcher\.classList\.add\("embedded-top-switcher"\)/);
+  assert.match(connectionCss, /lesson-comms-launcher\.embedded-top-switcher[\s\S]{0,260}position:static/);
   assert.match(connectionCss, /env\(safe-area-inset-bottom\)/);
 });
 
@@ -723,10 +723,10 @@ test("persistent connection chat supports edit delete and emoji picker", () => {
 });
 
 
-test("connection chat embeds switcher and portals message menu", () => {
+test("connection chat portals its message menu and keeps switcher in panel header area", () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
-  assert.match(source, /embedded-chat-switcher/);
-  assert.match(source, /chatView\.insertBefore\(launcher, chatForm\)/);
+  assert.match(source, /embedded-top-switcher/);
+  assert.match(source, /head\.insertAdjacentElement\("afterend", launcher\)/);
   assert.match(source, /connection-menu-portal/);
   assert.match(source, /document\.body\.appendChild\(menu\)/);
 });
@@ -740,4 +740,13 @@ test("persistent connection room broadcasts both sides presence", () => {
   assert.match(client, /presence-me/);
   assert.match(client, /presence-peer/);
   assert.match(client, /socket\.on\("connection:presence"/);
+});
+
+
+test("persistent connection switcher is embedded below the panel header", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "public", "connections.css"), "utf8");
+  assert.match(source, /head\.insertAdjacentElement\("afterend", launcher\)/);
+  assert.match(source, /embedded-top-switcher/);
+  assert.match(css, /embedded-top-switcher[\s\S]{0,240}position:static/);
 });
