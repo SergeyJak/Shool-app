@@ -324,15 +324,14 @@ test("send button does not steal focus from the chat input on touch devices", ()
 });
 
 
-test("mobile chat hides its launcher so the composer stays usable", () => {
+test("mobile chat keeps its switcher embedded so the composer stays usable", () => {
   const client = read("public/lesson-comms.mjs");
-  const css = read("public/lesson-comms.css");
+  const connectionCss = read("public/connections.css");
 
-  assert.match(client, /launcher\.classList\.toggle\("chat-open", !isVideo\)/);
-  assert.match(client, /launcher\.classList\.remove\("chat-open"\)/);
-  assert.match(css, /lesson-comms-launcher\.chat-open[\s\S]{0,100}display: none/);
-  assert.match(css, /--lesson-viewport-height/);
-  assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(client, /launcher\.classList\.toggle\("embedded-chat-switcher", isConnection && !isVideo\)/);
+  assert.match(client, /chatView\.insertBefore\(launcher, chatForm\)/);
+  assert.match(connectionCss, /lesson-comms-launcher\.embedded-chat-switcher[\s\S]{0,240}position:static/);
+  assert.match(connectionCss, /env\(safe-area-inset-bottom\)/);
 });
 
 
