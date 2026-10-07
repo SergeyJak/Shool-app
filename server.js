@@ -1113,13 +1113,25 @@ app.post("/api/join/:token", async (req, res, next) => {
     const lesson = await lessons.findOne({ inviteToken: token, active: true });
     if (!lesson) return res.status(404).json({ error: "INVITE_NOT_FOUND" });
 
-    const guestToken = createGuestToken({ lessonId: lesson._id, name }, AUTH_SECRET);
+    const persistentConnection = lesson.type === "connection";
+    const connectionGuestTtlSeconds = 60 * 60 * 24 * 30;
+    const guestToken = createGuestToken(
+      { lessonId: lesson._id, name },
+      AUTH_SECRET,
+      persistentConnection ? connectionGuestTtlSeconds : undefined
+    );
     const joinedAt = new Date();
     await lessons.updateOne(
       { _id: lesson._id },
       { $set: { lastParticipantName: name, lastParticipantAt: joinedAt, updatedAt: joinedAt } }
     );
-    res.setHeader("Set-Cookie", guestCookie(guestToken, { secure: requestIsSecure(req) }));
+    res.setHeader(
+      "Set-Cookie",
+      guestCookie(guestToken, {
+        secure: requestIsSecure(req),
+        ...(persistentConnection ? { maxAge: connectionGuestTtlSeconds } : {}),
+      })
+    );
     res.setHeader("Cache-Control", "no-store");
     res.json({
       ok: true,
@@ -1508,9 +1520,20 @@ app.get("/", (req, res) => {
 app.get(["/join/:token", "/connect/:token"], async (req, res, next) => {
   try {
     const token = normalizeInviteToken(req.params.token);
-    if (!token || !await lessons.findOne({ inviteToken: token, active: true })) {
+    const lesson = token
+      ? await lessons.findOne({ inviteToken: token, active: true })
+      : null;
+    if (!lesson) {
       return res.status(404).send("Ссылка недействительна или сессия завершена.");
     }
+
+    if (req.path.startsWith("/connect/") && lesson.type === "connection") {
+      const identity = await userFromCookieHeader(req.headers.cookie, lesson._id);
+      if (identity?.guest && identity.lessonId === lesson._id) {
+        return res.redirect(`/connection?lesson=${encodeURIComponent(lesson._id)}`);
+      }
+    }
+
     res.sendFile(path.join(__dirname, "public", "join.html"));
   } catch (error) {
     next(error);
