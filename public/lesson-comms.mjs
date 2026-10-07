@@ -135,8 +135,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     <div class="lesson-comms-view lesson-comms-chat" hidden>
       <div class="lesson-comms-messages" aria-live="polite"></div>
       <form class="lesson-comms-form">
+        <div class="lesson-comms-editing" hidden>
+          <span>Редактирование сообщения</span>
+          <button class="lesson-comms-edit-cancel" type="button" aria-label="Отменить редактирование">×</button>
+        </div>
+        <button class="lesson-comms-emoji-button" type="button" aria-label="Смайлы">☺</button>
         <textarea maxlength="2000" rows="2" placeholder="Сообщение…" aria-label="Сообщение"></textarea>
         <button type="submit">Отправить</button>
+        <section class="lesson-comms-emoji-picker" hidden aria-label="Смайлы"></section>
       </form>
     </div>
   `;
@@ -172,6 +178,13 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   const chatForm = panel.querySelector(".lesson-comms-form");
   const chatInput = chatForm.querySelector("textarea");
   const chatSubmitButton = chatForm.querySelector('button[type="submit"]');
+  const emojiButton = chatForm.querySelector(".lesson-comms-emoji-button");
+  const emojiPicker = chatForm.querySelector(".lesson-comms-emoji-picker");
+  const editingBox = chatForm.querySelector(".lesson-comms-editing");
+  const editCancelButton = chatForm.querySelector(".lesson-comms-edit-cancel");
+  let editingMessageId = null;
+  let activeMessageMenu = null;
+  let longPressTimer = null;
 
   function syncChatViewportHeight() {
     const viewportHeight = window.visualViewport?.height || window.innerHeight;
@@ -190,6 +203,88 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     chatSubmitButton.setAttribute("aria-label", "Отправить сообщение");
     panel.classList.add("connection-comms");
   }
+
+  const emojiCategories = [
+    ["🕘", ["😀","😃","😄","😁","😂","🤣","😊","😍","🥰","😘","😎","🤔","🙄","😴","😭","😡","👍","❤️","🔥","🎉"]],
+    ["😀", ["😀","😃","😄","😁","😆","😅","😂","🤣","😊","😇","🙂","🙃","😉","😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","🤪","🤨","🧐","🤓","😎","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫","😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪"]],
+    ["👋", ["👋","🤚","🖐️","✋","🖖","👌","🤌","🤏","✌️","🤞","🤟","🤘","🤙","👈","👉","👆","👇","☝️","👍","👎","✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏","💪","🦾","🫶","👀","👁️","🧠","👶","👧","🧒","👦","👩","🧑","👨"]],
+    ["🐻", ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🦄","🐝","🦋","🐌","🐞","🐠","🐬","🐳","🦖"]],
+    ["🍕", ["🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🥑","🍞","🥐","🧀","🥚","🍳","🥞","🍔","🍟","🍕","🌭","🥪","🌮","🍝","🍣","🍦","🍩","🍪","🎂","☕","🥤"]],
+    ["⚽", ["⚽","🏀","🏈","⚾","🎾","🏐","🏉","🥏","🎱","🏓","🏸","🥅","⛳","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🚲","⛷️","🏂","🏋️","🤸","🏊","🚴","🏆","🥇"]],
+    ["🚗", ["🚗","🚕","🚌","🚎","🏎️","🚓","🚑","🚒","🚚","🚲","✈️","🚀","🚁","⛵","🚤","🗺️","🏖️","🏝️","🏔️","⛰️","🏕️","🏠","🏡","🏢","🏰","🗼","🗽","🌅","🌄","🌃"]],
+    ["💡", ["⌚","📱","💻","⌨️","🖥️","🖨️","📷","🎥","📺","📻","🎙️","⏰","💡","🔦","📚","📖","✏️","🖊️","📌","📎","🔒","🔑","🧸","🎁","🎈","🎵","🎧","🎮","🧩","🛒"]],
+    ["❤️", ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","✅","❌","⭕","❗","❓","‼️","💯","🔥","✨","⭐","🌟","⚡","💥","💫","🎉","🎊"]],
+    ["🏳️", ["🏳️","🏴","🏁","🚩","🇱🇻","🇪🇪","🇱🇹","🇫🇮","🇸🇪","🇩🇰","🇳🇴","🇵🇱","🇩🇪","🇫🇷","🇮🇹","🇪🇸","🇬🇧","🇺🇦","🇺🇸","🇨🇦","🇯🇵","🇰🇷","🇨🇳","🇧🇬","🇨🇾","🇬🇷"]]
+  ];
+
+  function recentEmoji() {
+    try {
+      return JSON.parse(localStorage.getItem("school:recentEmoji") || "[]").slice(0, 28);
+    } catch {
+      return [];
+    }
+  }
+
+  function rememberEmoji(emoji) {
+    const next = [emoji, ...recentEmoji().filter((item) => item !== emoji)].slice(0, 28);
+    localStorage.setItem("school:recentEmoji", JSON.stringify(next));
+  }
+
+  function insertEmoji(emoji) {
+    const start = chatInput.selectionStart ?? chatInput.value.length;
+    const end = chatInput.selectionEnd ?? start;
+    chatInput.value = chatInput.value.slice(0, start) + emoji + chatInput.value.slice(end);
+    chatInput.focus();
+    const caret = start + emoji.length;
+    chatInput.setSelectionRange(caret, caret);
+    rememberEmoji(emoji);
+  }
+
+  function renderEmojiPicker(categoryIndex = 0) {
+    if (!emojiPicker) return;
+    const categories = emojiCategories.map((category, index) =>
+      index === 0 ? [category[0], recentEmoji().length ? recentEmoji() : category[1]] : category
+    );
+    emojiPicker.replaceChildren();
+
+    const tabs = document.createElement("div");
+    tabs.className = "lesson-comms-emoji-tabs";
+    categories.forEach(([icon], index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = icon;
+      button.className = index === categoryIndex ? "active" : "";
+      button.addEventListener("click", () => renderEmojiPicker(index));
+      tabs.appendChild(button);
+    });
+
+    const grid = document.createElement("div");
+    grid.className = "lesson-comms-emoji-grid";
+    for (const emoji of categories[categoryIndex][1]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = emoji;
+      button.addEventListener("click", () => {
+        insertEmoji(emoji);
+        if (categoryIndex === 0) renderEmojiPicker(0);
+      });
+      grid.appendChild(button);
+    }
+    emojiPicker.append(tabs, grid);
+  }
+
+  emojiButton?.addEventListener("click", () => {
+    if (!isConnection) return;
+    const opening = emojiPicker.hidden;
+    emojiPicker.hidden = !opening;
+    if (opening) renderEmojiPicker(0);
+  });
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!emojiPicker || emojiPicker.hidden) return;
+    if (chatForm.contains(event.target)) return;
+    emojiPicker.hidden = true;
+  });
   const counterpartLabel = isConnection ? "Собеседник" : (role === "teacher" ? "Ученик" : "Учитель");
   placeholderTitle.textContent = `${counterpartLabel} скоро подключится`;
   startButtonLabel.textContent = isConnection ? "Позвонить" : `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
@@ -1144,29 +1239,128 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   window.addEventListener("online", rtc2Online);
   window.addEventListener("offline", rtc2Offline);
 
+  function isMineMessage(message) {
+    if (!message) return false;
+    if (isConnection) return message.role === role;
+    return Boolean(message.userId && message.userId === currentUserId);
+  }
+
+  function closeMessageMenu() {
+    activeMessageMenu?.remove();
+    activeMessageMenu = null;
+  }
+
+  function stopEditing() {
+    editingMessageId = null;
+    editingBox.hidden = true;
+    chatInput.value = "";
+    if (isConnection) chatSubmitButton.textContent = "➤";
+  }
+
+  function startEditing(message, item) {
+    if (!isMineMessage(message)) return;
+    editingMessageId = message.id;
+    editingBox.hidden = false;
+    chatInput.value = message.text || "";
+    chatSubmitButton.textContent = "✓";
+    chatInput.focus();
+    chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
+    closeMessageMenu();
+    item?.scrollIntoView?.({ block: "nearest" });
+  }
+
+  function openMessageMenu(message, item) {
+    if (!isConnection || !isMineMessage(message)) return;
+    closeMessageMenu();
+    const menu = document.createElement("div");
+    menu.className = "lesson-comms-message-menu";
+
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.textContent = "Редактировать";
+    edit.addEventListener("click", () => startEditing(message, item));
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "danger";
+    remove.textContent = "Удалить";
+    remove.addEventListener("click", () => {
+      closeMessageMenu();
+      if (!confirm("Удалить это сообщение?")) return;
+      socket.emit("chat:delete", { id: message.id }, (result) => {
+        if (!result?.ok) {
+          showSnackbar?.({ title: "Чат", message: "Не удалось удалить сообщение.", type: "error" });
+        }
+      });
+    });
+
+    menu.append(edit, remove);
+    item.appendChild(menu);
+    activeMessageMenu = menu;
+  }
+
   function appendMessage(message) {
     if (!message?.id || messagesEl.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`)) return;
     const item = document.createElement("div");
     item.className = "lesson-comms-message";
     item.dataset.messageId = message.id;
-    if (message.userId && message.userId === currentUserId) item.classList.add("mine");
+    item._chatMessage = message;
+    const mine = isMineMessage(message);
+    if (mine) item.classList.add("mine");
 
     const meta = document.createElement("span");
     meta.className = "lesson-comms-message-meta";
     const time = message.createdAt ? new Date(message.createdAt) : new Date();
     const timeLabel = time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const senderLabel = message.displayName || (message.role === "teacher" ? "Учитель" : "Ученик");
-    meta.textContent = isConnection && message.userId === currentUserId
-      ? timeLabel
-      : `${senderLabel} · ${timeLabel}`;
+    const senderLabel = message.displayName || (message.role === "teacher" ? "Admin" : "Собеседник");
+    const editedLabel = message.editedAt ? " · изменено" : "";
+    meta.textContent = isConnection && mine
+      ? `${timeLabel}${editedLabel}`
+      : `${senderLabel} · ${timeLabel}${editedLabel}`;
 
     const text = document.createElement("div");
     text.className = "lesson-comms-message-text";
     text.textContent = message.text || "";
 
     item.append(meta, text);
+
+    if (isConnection && mine) {
+      const action = document.createElement("button");
+      action.type = "button";
+      action.className = "lesson-comms-message-action";
+      action.setAttribute("aria-label", "Действия с сообщением");
+      action.textContent = "⋯";
+      action.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (activeMessageMenu?.parentElement === item) closeMessageMenu();
+        else openMessageMenu(message, item);
+      });
+      item.appendChild(action);
+
+      item.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse") return;
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => openMessageMenu(message, item), 520);
+      });
+      item.addEventListener("pointerup", () => clearTimeout(longPressTimer));
+      item.addEventListener("pointercancel", () => clearTimeout(longPressTimer));
+      item.addEventListener("pointermove", () => clearTimeout(longPressTimer));
+    }
+
     messagesEl.appendChild(item);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function updateRenderedMessage(message) {
+    const item = messagesEl.querySelector(`[data-message-id="${CSS.escape(message.id)}"]`);
+    if (!item) {
+      appendMessage(message);
+      return;
+    }
+    const wasEditing = editingMessageId === message.id;
+    item.remove();
+    appendMessage(message);
+    if (wasEditing) stopEditing();
   }
 
   async function loadChatHistory() {
@@ -1191,21 +1385,27 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     if (!text || chatSubmitButton?.disabled) return;
 
     if (chatSubmitButton) chatSubmitButton.disabled = true;
+    const eventName = editingMessageId ? "chat:edit" : "chat:send";
+    const payload = editingMessageId ? { id: editingMessageId, text } : { text };
 
-    socket.emit("chat:send", { text }, (result) => {
+    socket.emit(eventName, payload, (result) => {
       if (chatSubmitButton) chatSubmitButton.disabled = false;
 
       if (result?.ok) {
-        chatInput.value = "";
+        if (editingMessageId) stopEditing();
+        else chatInput.value = "";
+        emojiPicker.hidden = true;
       } else {
         showSnackbar?.({
           title: "Чат",
-          message: "Не удалось отправить сообщение.",
+          message: editingMessageId ? "Не удалось изменить сообщение." : "Не удалось отправить сообщение.",
           type: "error",
         });
       }
     });
   });
+
+  editCancelButton?.addEventListener("click", stopEditing);
 
   chatInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -1217,6 +1417,23 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   socket.on("chat:message", (message) => {
     appendMessage(message);
     if (currentView !== "chat") setUnread(unread + 1);
+  });
+
+  socket.on("chat:edited", (message) => {
+    updateRenderedMessage(message);
+  });
+
+  socket.on("chat:deleted", ({ id } = {}) => {
+    if (!id) return;
+    messagesEl.querySelector(`[data-message-id="${CSS.escape(id)}"]`)?.remove();
+    if (editingMessageId === id) stopEditing();
+    closeMessageMenu();
+  });
+
+  document.addEventListener("click", (event) => {
+    if (activeMessageMenu && !activeMessageMenu.contains(event.target) && !event.target.closest?.(".lesson-comms-message-action")) {
+      closeMessageMenu();
+    }
   });
 
   window.addEventListener("beforeunload", () => {
