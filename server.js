@@ -694,7 +694,7 @@ app.get("/api/auth/me", requireAuth, (req, res) => {
 app.get("/api/lessons", requireAuth, async (req, res, next) => {
   try {
     const archived = req.user.role === "teacher" && req.query.archive === "1";
-    const query = { active: archived ? false : true, _id: { $ne: "default" } };
+    const query = { active: archived ? false : true, _id: { $ne: "default" }, type: { $ne: "connection" } };
     if (req.user.role === "teacher") {
       query.$or = [{ ownerId: req.user._id }, { teacherIds: req.user._id }];
     }
@@ -1083,12 +1083,119 @@ app.post("/api/join/:token", async (req, res, next) => {
     );
     res.setHeader("Set-Cookie", guestCookie(guestToken, { secure: requestIsSecure(req) }));
     res.setHeader("Cache-Control", "no-store");
-    res.json({ ok: true, redirect: `/student?lesson=${encodeURIComponent(lesson._id)}` });
+    res.json({
+      ok: true,
+      redirect: lesson.type === "connection"
+        ? `/connection?lesson=${encodeURIComponent(lesson._id)}`
+        : `/student?lesson=${encodeURIComponent(lesson._id)}`,
+    });
   } catch (error) {
     next(error);
   }
 });
 
+
+
+app.get("/api/connections", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const rows = await lessons.find({
+      type: "connection",
+      active: true,
+      $or: [{ ownerId: req.user._id }, { teacherIds: req.user._id }],
+    }).sort({ updatedAt: -1, createdAt: -1 }).toArray();
+
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      connections: rows.map((row) => ({
+        id: row._id,
+        title: row.title,
+        inviteUrl: row.inviteToken ? `/connect/${row.inviteToken}` : null,
+        lastParticipantName: row.lastParticipantName || null,
+        lastParticipantAt: row.lastParticipantAt || null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/connections", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    if (req.user.guest) return res.status(403).json({ error: "FORBIDDEN" });
+    const title = String(req.body?.title || "").trim();
+    if (!title || title.length > 120) {
+      return res.status(400).json({ error: "INVALID_CONNECTION" });
+    }
+
+    const now = new Date();
+    const row = {
+      _id: `connection_${crypto.randomUUID()}`,
+      title,
+      type: "connection",
+      status: "active",
+      ownerId: req.user._id,
+      teacherIds: [req.user._id],
+      studentIds: [],
+      inviteToken: newInviteToken(),
+      active: true,
+      createdAt: now,
+      updatedAt: now,
+      schemaVersion: 1,
+    };
+    await lessons.insertOne(row);
+
+    res.status(201).json({
+      connection: {
+        id: row._id,
+        title: row.title,
+        inviteUrl: `/connect/${row.inviteToken}`,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/connections/:id", requireApiRole("teacher", "student"), requireLessonAccess, async (req, res) => {
+  if (req.lesson.type !== "connection") {
+    return res.status(404).json({ error: "CONNECTION_NOT_FOUND" });
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    connection: {
+      id: req.lesson._id,
+      title: req.lesson.title,
+      inviteUrl: req.lesson.inviteToken ? `/connect/${req.lesson.inviteToken}` : null,
+      lastParticipantName: req.lesson.lastParticipantName || null,
+      lastParticipantAt: req.lesson.lastParticipantAt || null,
+    },
+  });
+});
+
+app.post("/api/connections/:id/archive", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const id = normalizeLessonId(req.params.id);
+    if (!id) return res.status(400).json({ error: "INVALID_CONNECTION" });
+
+    const row = await lessons.findOne({ _id: id, type: "connection", active: true });
+    if (!row || (req.user.role !== "admin" && row.ownerId !== req.user._id && !row.teacherIds?.includes(req.user._id))) {
+      return res.status(404).json({ error: "CONNECTION_NOT_FOUND" });
+    }
+
+    const now = new Date();
+    await lessons.updateOne(
+      { _id: id },
+      { $set: { active: false, status: "archived", archivedAt: now, updatedAt: now } }
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get("/api/admin/registrations", requireApiRole("admin"), async (_req, res, next) => {
   try {
@@ -1341,6 +1448,9 @@ app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
   res.setHeader("Set-Cookie", clearGuestCookie({ secure: requestIsSecure(req) }));
   res.sendFile(path.join(__dirname, "public", "teacher.html"));
 });
+app.get("/connections.html", requirePageAuth("teacher"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "connections.html"))
+);
 app.get("/student.html", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
 );
@@ -1357,11 +1467,11 @@ app.get("/", (req, res) => {
   if (req.user && !req.user.guest) return res.redirect(homeForRole(req.user.role));
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-app.get("/join/:token", async (req, res, next) => {
+app.get(["/join/:token", "/connect/:token"], async (req, res, next) => {
   try {
     const token = normalizeInviteToken(req.params.token);
     if (!token || !await lessons.findOne({ inviteToken: token, active: true })) {
-      return res.status(404).send("Ссылка на занятие недействительна или занятие завершено.");
+      return res.status(404).send("Ссылка недействительна или сессия завершена.");
     }
     res.sendFile(path.join(__dirname, "public", "join.html"));
   } catch (error) {
@@ -1393,6 +1503,12 @@ app.get("/teacher", requirePageAuth("teacher"), (req, res) => {
   res.setHeader("Set-Cookie", clearGuestCookie({ secure: requestIsSecure(req) }));
   res.sendFile(path.join(__dirname, "public", "teacher.html"));
 });
+app.get("/connections", requirePageAuth("teacher"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "connections.html"))
+);
+app.get("/connection", requirePageAuth("teacher", "student"), (_req, res) =>
+  res.sendFile(path.join(__dirname, "public", "connections.html"))
+);
 app.get("/student", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
 );
