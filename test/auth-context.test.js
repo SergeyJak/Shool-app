@@ -75,17 +75,18 @@ test("expired session and guest tokens are rejected", () => {
   assert.equal(parseGuestToken(guest, SECRET), null);
 });
 
-test("cookies are HttpOnly, SameSite strict, scoped to root, and secure by default", () => {
+test("cookies are HttpOnly, root-scoped, secure, with strict account and lax guest policy", () => {
   const session = sessionCookie("token");
   const guest = guestCookie("token");
 
   for (const value of [session, guest]) {
     assert.match(value, /Path=\//);
     assert.match(value, /HttpOnly/);
-    assert.match(value, /SameSite=Strict/);
     assert.match(value, /Secure/);
     assert.match(value, /Max-Age=/);
   }
+  assert.match(session, /SameSite=Strict/);
+  assert.match(guest, /SameSite=Lax/);
 });
 
 test("cookie parser handles encoded signed tokens", () => {
@@ -257,4 +258,16 @@ test("admin session always wins over matching guest room cookie", async () => {
   assert.equal(identity._id, "admin");
   assert.equal(identity.role, "admin");
   assert.equal(identity.guest, undefined);
+});
+
+
+test("guest cookie is Lax so permanent links work from messaging apps", () => {
+  const { guestCookie, sessionCookie } = require("../lib/auth");
+  const guest = guestCookie("token", { secure: true, maxAge: 3600 });
+  const session = sessionCookie("token", { secure: true, maxAge: 3600 });
+
+  assert.match(guest, /SameSite=Lax/);
+  assert.match(guest, /HttpOnly/);
+  assert.match(guest, /Secure/);
+  assert.match(session, /SameSite=Strict/);
 });
