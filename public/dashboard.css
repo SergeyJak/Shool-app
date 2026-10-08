@@ -531,3 +531,32 @@ body[data-role="student"] .materials-card{display:none!important}
     padding:8px;
   }
 }
+
+
+/* Keep both payment tabs visible on narrow screens */
+.payment-tabs{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+.payment-tab{
+  min-width:0;
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+  white-space:normal;
+  text-align:center;
+  overflow-wrap:anywhere;
+}
+@media(max-width:520px){
+  .payment-tabs{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .payment-tab{
+    font-size:12px;
+    line-height:1.2;
+    padding:8px 6px;
+  }
+}
