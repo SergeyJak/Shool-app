@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>School App · Кабинет учителя</title>
   <link rel="stylesheet" href="/landing.css?v=20261002-archive1" />
-  <link rel="stylesheet" href="/dashboard.css?v=20261008-payments-tabs4" />
+  <link rel="stylesheet" href="/dashboard.css?v=20261008-payments-tabs5" />
 </head>
 <body class="landing-body dashboard-page">
   <header class="dashboard-header">
@@ -230,9 +230,9 @@
           </div>
         </div>
 
-        <nav class="payment-tabs" aria-label="Разделы оплат">
-          <button type="button" class="payment-tab active" data-payment-view="lessons">Занятия и учителя</button>
-          <button type="button" class="payment-tab" data-payment-view="brother">Пополнения брату</button>
+        <nav class="payment-switcher" aria-label="Разделы оплат">
+          <button id="paymentLessonsTab" type="button" class="payment-switch active" data-payment-view="lessons">Занятия и учителя</button>
+          <button id="paymentBrotherTab" type="button" class="payment-switch" data-payment-view="brother">Пополнения брату</button>
         </nav>
 
         <div class="payment-summary-grid">
