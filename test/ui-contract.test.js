@@ -730,3 +730,30 @@ test("MongoDB database name is configurable per environment", () => {
   assert.match(server, /const MONGODB_DB_NAME = String\(process\.env\.MONGODB_DB_NAME \|\| "school_app"\)\.trim\(\)/);
   assert.match(server, /db = client\.db\(MONGODB_DB_NAME\)/);
 });
+
+
+test("admin payment ledger exposes deposits, teacher allocation, balances and lesson calendar", () => {
+  const html = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const server = read("server.js");
+
+  assert.match(html, /data-admin-view="payments"/);
+  assert.match(html, /id="paymentDepositForm"/);
+  assert.match(html, /id="paymentAccountForm"/);
+  assert.match(html, /id="paymentAllocationForm"/);
+  assert.match(html, /id="paymentAccountsList"/);
+  assert.match(html, /id="paymentDepositsBody"/);
+
+  assert.match(cabinet, /function buildPaymentCalendar/);
+  assert.match(cabinet, /fullLessonsLeft/);
+  assert.match(cabinet, /remainderAfterLessons/);
+  assert.match(cabinet, /\/api\/admin\/payments\/accounts\/\$\{encodeURIComponent\(account\.id\)\}\/lessons/);
+
+  assert.match(server, /payment_accounts/);
+  assert.match(server, /payment_entries/);
+  assert.match(server, /app\.get\("\/api\/admin\/payments"/);
+  assert.match(server, /app\.post\("\/api\/admin\/payments\/deposits"/);
+  assert.match(server, /app\.post\("\/api\/admin\/payments\/allocations"/);
+  assert.match(server, /INSUFFICIENT_BROTHER_BALANCE/);
+  assert.match(server, /INSUFFICIENT_TEACHER_BALANCE/);
+});
