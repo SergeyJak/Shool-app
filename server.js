@@ -1510,6 +1510,36 @@ app.patch("/api/admin/payments/accounts/:id", requireApiRole("admin"), async (re
   }
 });
 
+
+app.delete("/api/admin/payments/allocations/:id", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    const transfer = await paymentEntries.findOne({ _id: id, type: "allocation" });
+    if (!transfer) return res.status(404).json({ error: "ALLOCATION_NOT_FOUND" });
+
+    const totals = await paymentEntries.aggregate([
+      { $match: { accountId: transfer.accountId, type: { $in: ["allocation", "lesson"] } } },
+      { $group: { _id: "$type", amount: { $sum: "$amount" } } },
+    ]).toArray();
+    const byType = Object.fromEntries(totals.map((item) => [item._id, item.amount]));
+    const allocatedAfterDelete = Number(byType.allocation || 0) - Number(transfer.amount || 0);
+    const spent = Number(byType.lesson || 0);
+
+    if (allocatedAfterDelete < spent) {
+      return res.status(409).json({
+        error: "ALLOCATION_ALREADY_SPENT",
+        spent,
+        allocatedAfterDelete,
+      });
+    }
+
+    await paymentEntries.deleteOne({ _id: id, type: "allocation" });
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/api/admin/payments/allocations", requireApiRole("admin"), async (req, res, next) => {
   try {
     const accountId = String(req.body?.accountId || "").trim();
