@@ -215,6 +215,15 @@ function normalizePaymentAmount(value) {
   return Number.isInteger(amount) && amount > 0 && amount <= 10_000_000 ? amount : null;
 }
 
+function normalizePaymentSubject(value) {
+  const subject = String(value || "").trim().replace(/\s+/g, " ").slice(0, 80);
+  if (!subject) return null;
+  return {
+    subject,
+    subjectKey: subject.toLocaleLowerCase("ru-RU"),
+  };
+}
+
 function normalizePaymentDate(value) {
   const date = String(value || "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
@@ -1460,17 +1469,32 @@ app.delete("/api/admin/payments/deposits/:id", requireApiRole("admin"), async (r
 app.post("/api/admin/payments/accounts", requireApiRole("admin"), async (req, res, next) => {
   try {
     const teacherId = normalizeManagedUsername(req.body?.teacherId);
-    const subject = String(req.body?.subject || "").trim().slice(0, 80);
+    const normalizedSubject = normalizePaymentSubject(req.body?.subject);
     const lessonPrice = normalizePaymentAmount(req.body?.lessonPrice);
-    if (!teacherId || !subject || !lessonPrice) return res.status(400).json({ error: "INVALID_PAYMENT_ACCOUNT" });
+    if (!teacherId || !normalizedSubject || !lessonPrice) {
+      return res.status(400).json({ error: "INVALID_PAYMENT_ACCOUNT" });
+    }
 
     const teacher = await users.findOne({ _id: teacherId, role: "teacher", active: true });
     if (!teacher) return res.status(400).json({ error: "INVALID_TEACHER" });
 
+    const existing = await paymentAccounts.findOne({
+      teacherId,
+      subjectKey: normalizedSubject.subjectKey,
+      active: true,
+    });
+    if (existing) {
+      return res.status(409).json({
+        error: "PAYMENT_ACCOUNT_EXISTS",
+        accountId: existing._id,
+      });
+    }
+
     const row = {
       _id: `payacc_${crypto.randomUUID()}`,
       teacherId,
-      subject,
+      subject: normalizedSubject.subject,
+      subjectKey: normalizedSubject.subjectKey,
       lessonPrice,
       active: true,
       createdAt: new Date(),
@@ -1479,6 +1503,9 @@ app.post("/api/admin/payments/accounts", requireApiRole("admin"), async (req, re
     await paymentAccounts.insertOne(row);
     res.status(201).json({ account: publicPaymentAccount(row) });
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ error: "PAYMENT_ACCOUNT_EXISTS" });
+    }
     next(error);
   }
 });
@@ -1491,9 +1518,17 @@ app.patch("/api/admin/payments/accounts/:id", requireApiRole("admin"), async (re
 
     const changes = { updatedAt: new Date() };
     if (typeof req.body?.subject === "string") {
-      const subject = req.body.subject.trim().slice(0, 80);
-      if (!subject) return res.status(400).json({ error: "INVALID_SUBJECT" });
-      changes.subject = subject;
+      const normalizedSubject = normalizePaymentSubject(req.body.subject);
+      if (!normalizedSubject) return res.status(400).json({ error: "INVALID_SUBJECT" });
+      const duplicate = await paymentAccounts.findOne({
+        _id: { $ne: id },
+        teacherId: current.teacherId,
+        subjectKey: normalizedSubject.subjectKey,
+        active: true,
+      });
+      if (duplicate) return res.status(409).json({ error: "PAYMENT_ACCOUNT_EXISTS" });
+      changes.subject = normalizedSubject.subject;
+      changes.subjectKey = normalizedSubject.subjectKey;
     }
     if (req.body?.lessonPrice !== undefined) {
       const lessonPrice = normalizePaymentAmount(req.body.lessonPrice);
@@ -3415,6 +3450,72 @@ async function start() {
     );
   }
 
+  // Normalize payment account subjects and remove empty duplicate calendars.
+  const activePaymentAccounts = await paymentAccounts.find({ active: { $ne: false } }).toArray();
+  for (const account of activePaymentAccounts) {
+    const normalizedSubject = normalizePaymentSubject(account.subject);
+    if (normalizedSubject && account.subjectKey !== normalizedSubject.subjectKey) {
+      await paymentAccounts.updateOne(
+        { _id: account._id },
+        { $set: {
+          subject: normalizedSubject.subject,
+          subjectKey: normalizedSubject.subjectKey,
+          updatedAt: new Date(),
+        } }
+      );
+      account.subject = normalizedSubject.subject;
+      account.subjectKey = normalizedSubject.subjectKey;
+    }
+  }
+
+  const groupedPaymentAccounts = new Map();
+  for (const account of activePaymentAccounts) {
+    const subjectKey = account.subjectKey || normalizePaymentSubject(account.subject)?.subjectKey;
+    if (!subjectKey) continue;
+    const key = `${account.teacherId}::${subjectKey}`;
+    const group = groupedPaymentAccounts.get(key) || [];
+    group.push(account);
+    groupedPaymentAccounts.set(key, group);
+  }
+
+  for (const group of groupedPaymentAccounts.values()) {
+    if (group.length < 2) continue;
+
+    const ids = group.map((account) => account._id);
+    const activity = await paymentEntries.aggregate([
+      { $match: { accountId: { $in: ids } } },
+      { $group: { _id: "$accountId", count: { $sum: 1 }, amount: { $sum: "$amount" } } },
+    ]).toArray();
+    const activityById = new Map(activity.map((item) => [item._id, item]));
+
+    group.sort((a, b) => {
+      const aCount = Number(activityById.get(a._id)?.count || 0);
+      const bCount = Number(activityById.get(b._id)?.count || 0);
+      if (bCount !== aCount) return bCount - aCount;
+      return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+    });
+
+    const canonical = group[0];
+    for (const duplicate of group.slice(1)) {
+      const duplicateActivity = Number(activityById.get(duplicate._id)?.count || 0);
+      if (duplicateActivity > 0) {
+        console.warn(
+          `Payment duplicate retained because it has activity: ${duplicate._id} -> ${canonical._id}`
+        );
+        continue;
+      }
+      await paymentAccounts.updateOne(
+        { _id: duplicate._id },
+        { $set: {
+          active: false,
+          duplicateOf: canonical._id,
+          updatedAt: new Date(),
+        } }
+      );
+      console.log(`Deactivated empty payment duplicate: ${duplicate._id} -> ${canonical._id}`);
+    }
+  }
+
   await users.createIndex({ role: 1, active: 1 });
   await users.createIndex({ approvalStatus: 1, registrationSubmittedAt: -1 });
   await users.createIndex({ email: 1 }, { unique: true, sparse: true });
@@ -3429,6 +3530,10 @@ async function start() {
   await notebooks.createIndex({ lessonId: 1, userId: 1 }, { unique: true });
   await notebookAnnotations.createIndex({ lessonId: 1, userId: 1, page: 1, createdAt: 1 });
   await paymentAccounts.createIndex({ teacherId: 1, active: 1 });
+  await paymentAccounts.createIndex(
+    { teacherId: 1, subjectKey: 1 },
+    { unique: true, partialFilterExpression: { active: true, subjectKey: { $type: "string" } } }
+  );
   await paymentEntries.createIndex({ type: 1, date: -1 });
   await paymentEntries.createIndex({ accountId: 1, type: 1, date: -1 });
   await paymentEntries.createIndex({ accountId: 1, date: 1, type: 1 }, { unique: true, partialFilterExpression: { type: "lesson" } });
