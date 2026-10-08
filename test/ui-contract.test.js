@@ -757,3 +757,21 @@ test("admin payment ledger exposes deposits, teacher allocation, balances and le
   assert.match(server, /INSUFFICIENT_BROTHER_BALANCE/);
   assert.match(server, /INSUFFICIENT_TEACHER_BALANCE/);
 });
+
+
+test("admin payment calendar supports multi-year navigation and teacher color filters", () => {
+  const html = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const css = read("public/dashboard.css");
+
+  assert.match(html, /id="paymentMasterCalendar"/);
+  assert.match(cabinet, /type = "month"/);
+  assert.match(cabinet, /paymentMasterCursor/);
+  assert.match(cabinet, /paymentAccountCursors/);
+  assert.match(cabinet, /paymentVisibleTeachers/);
+  assert.match(cabinet, /function renderPaymentMasterCalendar/);
+  assert.match(cabinet, /paymentTeacherColorClass/);
+  assert.match(css, /\.payment-teacher-filter/);
+  assert.match(css, /\.payment-master-marker/);
+  assert.match(css, /\.teacher-color-0/);
+});
