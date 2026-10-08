@@ -50,6 +50,7 @@ const paymentAccountId = document.getElementById("paymentAccountId");
 const paymentDepositDate = document.getElementById("paymentDepositDate");
 const paymentAllocationDate = document.getElementById("paymentAllocationDate");
 const paymentAccountsList = document.getElementById("paymentAccountsList");
+const paymentMasterCalendar = document.getElementById("paymentMasterCalendar");
 const paymentDepositsBody = document.getElementById("paymentDepositsBody");
 const paymentTransfersBody = document.getElementById("paymentTransfersBody");
 
@@ -69,6 +70,10 @@ let paymentData = {
   allocations: [],
   lessons: [],
 };
+let paymentMasterCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+const paymentAccountCursors = new Map();
+const paymentVisibleTeachers = new Set();
+let paymentVisibleTeachersReady = false;
 
 document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
 dialog.addEventListener("click", (event) => {
@@ -789,21 +794,101 @@ function fillPaymentSelects() {
   }
 }
 
-function buildPaymentCalendar(account) {
-  const wrapper = document.createElement("div");
-  wrapper.className = "payment-calendar";
+function paymentAccountForLesson(lesson) {
+  return paymentData.accounts.find((account) => account.id === lesson.accountId) || null;
+}
 
-  const monthCursor = new Date();
-  monthCursor.setDate(1);
+function paymentTeacherIds() {
+  return [...new Set(paymentData.accounts.filter((account) => account.active).map((account) => account.teacherId))];
+}
 
+function syncPaymentTeacherVisibility() {
+  const ids = paymentTeacherIds();
+  if (!paymentVisibleTeachersReady) {
+    ids.forEach((id) => paymentVisibleTeachers.add(id));
+    paymentVisibleTeachersReady = true;
+    return;
+  }
+  const known = new Set(ids);
+  for (const id of [...paymentVisibleTeachers]) {
+    if (!known.has(id)) paymentVisibleTeachers.delete(id);
+  }
+  for (const id of ids) {
+    if (!paymentVisibleTeachers.has(id) && !paymentData.lessons.some((lesson) => {
+      const account = paymentAccountForLesson(lesson);
+      return account?.teacherId === id;
+    })) {
+      paymentVisibleTeachers.add(id);
+    }
+  }
+}
+
+function paymentTeacherColorIndex(teacherId) {
+  const ids = paymentTeacherIds().sort();
+  const index = ids.indexOf(teacherId);
+  return index < 0 ? 0 : index % 6;
+}
+
+function paymentTeacherColorClass(teacherId) {
+  return `teacher-color-${paymentTeacherColorIndex(teacherId)}`;
+}
+
+function monthValue(cursor) {
+  return `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function setCursorFromMonthValue(cursor, value) {
+  if (!/^\d{4}-\d{2}$/.test(value || "")) return cursor;
+  const [year, month] = value.split("-").map(Number);
+  return new Date(year, month - 1, 1);
+}
+
+function buildCalendarHeader(cursor, onChange, { hint = "" } = {}) {
   const header = document.createElement("div");
-  header.className = "payment-calendar-header";
-  const title = document.createElement("strong");
-  title.textContent = monthCursor.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
-  const hint = document.createElement("span");
-  hint.textContent = "Нажмите на день, чтобы отметить или отменить занятие";
-  header.append(title, hint);
+  header.className = "payment-calendar-header payment-calendar-nav";
 
+  const previous = document.createElement("button");
+  previous.type = "button";
+  previous.className = "payment-calendar-arrow";
+  previous.textContent = "‹";
+  previous.setAttribute("aria-label", "Предыдущий месяц");
+
+  const picker = document.createElement("input");
+  picker.type = "month";
+  picker.className = "payment-month-picker";
+  picker.value = monthValue(cursor);
+  picker.setAttribute("aria-label", "Месяц и год");
+
+  const next = document.createElement("button");
+  next.type = "button";
+  next.className = "payment-calendar-arrow";
+  next.textContent = "›";
+  next.setAttribute("aria-label", "Следующий месяц");
+
+  previous.addEventListener("click", () => {
+    onChange(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+  });
+  next.addEventListener("click", () => {
+    onChange(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
+  });
+  picker.addEventListener("change", () => {
+    onChange(setCursorFromMonthValue(cursor, picker.value));
+  });
+
+  const controls = document.createElement("div");
+  controls.className = "payment-calendar-nav-controls";
+  controls.append(previous, picker, next);
+  header.append(controls);
+
+  if (hint) {
+    const copy = document.createElement("span");
+    copy.textContent = hint;
+    header.append(copy);
+  }
+  return header;
+}
+
+function appendCalendarWeekdays(wrapper) {
   const weekdays = document.createElement("div");
   weekdays.className = "payment-calendar-weekdays";
   for (const day of ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]) {
@@ -811,6 +896,119 @@ function buildPaymentCalendar(account) {
     cell.textContent = day;
     weekdays.append(cell);
   }
+  wrapper.append(weekdays);
+}
+
+function renderPaymentMasterCalendar() {
+  if (!paymentMasterCalendar) return;
+  paymentMasterCalendar.innerHTML = "";
+  syncPaymentTeacherVisibility();
+
+  const activeAccounts = paymentData.accounts.filter((account) => account.active);
+  if (!activeAccounts.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = "Календарь появится после добавления первого учителя.";
+    paymentMasterCalendar.append(empty);
+    return;
+  }
+
+  paymentMasterCalendar.append(
+    buildCalendarHeader(paymentMasterCursor, (cursor) => {
+      paymentMasterCursor = cursor;
+      renderPaymentMasterCalendar();
+    }, { hint: "Архив можно листать по месяцам и годам" })
+  );
+
+  const filters = document.createElement("div");
+  filters.className = "payment-teacher-filters";
+  for (const teacherId of paymentTeacherIds()) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `payment-teacher-filter ${paymentTeacherColorClass(teacherId)}`;
+    button.classList.toggle("is-active", paymentVisibleTeachers.has(teacherId));
+
+    const dot = document.createElement("span");
+    dot.className = "payment-teacher-dot";
+    const label = document.createElement("span");
+    label.textContent = teacherName(teacherId);
+    button.append(dot, label);
+
+    button.addEventListener("click", () => {
+      if (paymentVisibleTeachers.has(teacherId)) {
+        paymentVisibleTeachers.delete(teacherId);
+      } else {
+        paymentVisibleTeachers.add(teacherId);
+      }
+      renderPaymentMasterCalendar();
+    });
+    filters.append(button);
+  }
+  paymentMasterCalendar.append(filters);
+  appendCalendarWeekdays(paymentMasterCalendar);
+
+  const grid = document.createElement("div");
+  grid.className = "payment-calendar-grid payment-master-grid";
+  const year = paymentMasterCursor.getFullYear();
+  const month = paymentMasterCursor.getMonth();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let i = 0; i < firstWeekday; i += 1) {
+    const spacer = document.createElement("span");
+    spacer.className = "payment-calendar-spacer";
+    grid.append(spacer);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const cell = document.createElement("div");
+    cell.className = "payment-master-day";
+
+    const number = document.createElement("span");
+    number.className = "payment-master-day-number";
+    number.textContent = String(day);
+    cell.append(number);
+
+    const events = paymentData.lessons
+      .filter((lesson) => lesson.date === date)
+      .map((lesson) => ({ lesson, account: paymentAccountForLesson(lesson) }))
+      .filter(({ account }) => account && paymentVisibleTeachers.has(account.teacherId));
+
+    if (events.length) cell.classList.add("has-lessons");
+
+    const markers = document.createElement("div");
+    markers.className = "payment-master-markers";
+    for (const { lesson, account } of events) {
+      const marker = document.createElement("span");
+      marker.className = `payment-master-marker ${paymentTeacherColorClass(account.teacherId)}`;
+      marker.title = `${teacherName(account.teacherId)} · ${account.subject} · ${formatRubles(lesson.amount || account.lessonPrice)}`;
+      markers.append(marker);
+    }
+    cell.append(markers);
+    grid.append(cell);
+  }
+
+  paymentMasterCalendar.append(grid);
+}
+
+function buildPaymentCalendar(account) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `payment-calendar ${paymentTeacherColorClass(account.teacherId)}`;
+
+  let monthCursor = paymentAccountCursors.get(account.id);
+  if (!monthCursor) {
+    monthCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    paymentAccountCursors.set(account.id, monthCursor);
+  }
+
+  wrapper.append(
+    buildCalendarHeader(monthCursor, (cursor) => {
+      paymentAccountCursors.set(account.id, cursor);
+      renderPaymentAccounts();
+    }, { hint: "Нажмите на день, чтобы отметить или отменить занятие" })
+  );
+  appendCalendarWeekdays(wrapper);
 
   const grid = document.createElement("div");
   grid.className = "payment-calendar-grid";
@@ -864,7 +1062,7 @@ function buildPaymentCalendar(account) {
     grid.append(button);
   }
 
-  wrapper.append(header, weekdays, grid);
+  wrapper.append(grid);
   return wrapper;
 }
 
@@ -993,6 +1191,7 @@ function renderPaymentData() {
   if (paymentTeacherBalance) paymentTeacherBalance.textContent = formatRubles(paymentData.summary?.teacherBalance);
   if (paymentSpentTotal) paymentSpentTotal.textContent = formatRubles(paymentData.summary?.spentTotal);
   fillPaymentSelects();
+  renderPaymentMasterCalendar();
   renderPaymentAccounts();
   renderPaymentTransfers();
   renderPaymentDeposits();
