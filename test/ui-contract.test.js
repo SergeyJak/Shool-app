@@ -787,3 +787,19 @@ test("admin payment history supports safe rollback with friendly errors", () => 
   assert.match(cabinet, /Сначала отмените соответствующие занятия в календаре/);
   assert.match(cabinet, /Сначала удалите соответствующий перевод/);
 });
+
+
+test("admin payments separate teacher lessons from brother top-ups", () => {
+  const html = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const css = read("public/dashboard.css");
+
+  assert.match(html, /data-payment-view="lessons"/);
+  assert.match(html, /data-payment-view="brother"/);
+  assert.match(html, /data-payment-section="brother"/);
+  assert.match(html, /<h3>Пополнение брату<\/h3>/);
+  assert.doesNotMatch(html, /id="paymentDepositForm"[\s\S]{0,900}>Комментарий</);
+  assert.match(cabinet, /function showPaymentView/);
+  assert.match(css, /\.payment-tabs/);
+  assert.match(css, /\.payment-brother-layout/);
+});
