@@ -775,3 +775,15 @@ test("admin payment calendar supports multi-year navigation and teacher color fi
   assert.match(css, /\.payment-master-marker/);
   assert.match(css, /\.teacher-color-0/);
 });
+
+
+test("admin payment history supports safe rollback with friendly errors", () => {
+  const cabinet = read("public/cabinet.js");
+  const server = read("server.js");
+
+  assert.match(server, /app\.delete\("\/api\/admin\/payments\/allocations\/:id"/);
+  assert.match(server, /ALLOCATION_ALREADY_SPENT/);
+  assert.match(cabinet, /Перевод учителю удалён, сумма возвращена брату/);
+  assert.match(cabinet, /Сначала отмените соответствующие занятия в календаре/);
+  assert.match(cabinet, /Сначала удалите соответствующий перевод/);
+});
