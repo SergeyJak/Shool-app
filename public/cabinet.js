@@ -51,6 +51,7 @@ const paymentDepositDate = document.getElementById("paymentDepositDate");
 const paymentAllocationDate = document.getElementById("paymentAllocationDate");
 const paymentAccountsList = document.getElementById("paymentAccountsList");
 const paymentDepositsBody = document.getElementById("paymentDepositsBody");
+const paymentTransfersBody = document.getElementById("paymentTransfersBody");
 
 let currentUser = null;
 let managedUsers = [];
@@ -914,6 +915,40 @@ function renderPaymentAccounts() {
   }
 }
 
+function renderPaymentTransfers() {
+  if (!paymentTransfersBody) return;
+  paymentTransfersBody.innerHTML = "";
+
+  if (!paymentData.allocations.length) {
+    const row = document.createElement("tr");
+    row.innerHTML = '<td colspan="4" class="payment-empty-cell">Переводов учителям пока нет</td>';
+    paymentTransfersBody.append(row);
+    return;
+  }
+
+  for (const transfer of paymentData.allocations) {
+    const account = paymentData.accounts.find((item) => item.id === transfer.accountId);
+    const row = document.createElement("tr");
+
+    const date = document.createElement("td");
+    date.textContent = new Date(`${transfer.date}T00:00:00`).toLocaleDateString("ru-RU");
+
+    const accountCell = document.createElement("td");
+    accountCell.textContent = account
+      ? `${account.subject} · ${teacherName(account.teacherId)}`
+      : "Счёт удалён";
+
+    const amount = document.createElement("td");
+    amount.innerHTML = `<strong>${formatRubles(transfer.amount)}</strong>`;
+
+    const note = document.createElement("td");
+    note.textContent = transfer.note || "—";
+
+    row.append(date, accountCell, amount, note);
+    paymentTransfersBody.append(row);
+  }
+}
+
 function renderPaymentDeposits() {
   if (!paymentDepositsBody) return;
   paymentDepositsBody.innerHTML = "";
@@ -959,6 +994,7 @@ function renderPaymentData() {
   if (paymentSpentTotal) paymentSpentTotal.textContent = formatRubles(paymentData.summary?.spentTotal);
   fillPaymentSelects();
   renderPaymentAccounts();
+  renderPaymentTransfers();
   renderPaymentDeposits();
 }
 
@@ -1107,11 +1143,11 @@ paymentAllocationForm?.addEventListener("submit", async (event) => {
     });
     paymentAllocationForm.reset();
     paymentAllocationDate.value = localIsoDate();
-    setAdminStatus("Сумма распределена учителю", "success");
+    setAdminStatus("Перевод учителю записан", "success");
     await loadPaymentData();
   } catch (error) {
     const message = error.message === "INSUFFICIENT_BROTHER_BALANCE"
-      ? "У брата недостаточно нераспределённых денег"
+      ? "У брата недостаточно денег для этого перевода"
       : error.message;
     setAdminStatus(`Ошибка: ${message}`, "error");
   }
