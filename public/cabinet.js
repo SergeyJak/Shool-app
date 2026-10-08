@@ -53,6 +53,8 @@ const paymentAccountsList = document.getElementById("paymentAccountsList");
 const paymentMasterCalendar = document.getElementById("paymentMasterCalendar");
 const paymentDepositsBody = document.getElementById("paymentDepositsBody");
 const paymentTransfersBody = document.getElementById("paymentTransfersBody");
+const paymentTabButtons = [...document.querySelectorAll("[data-payment-view]")];
+const paymentSections = [...document.querySelectorAll("[data-payment-section]")];
 
 let currentUser = null;
 let managedUsers = [];
@@ -109,6 +111,21 @@ for (const button of adminNavButtons) {
     }
   });
 }
+
+function showPaymentView(view) {
+  const selected = view === "brother" ? "brother" : "lessons";
+  for (const button of paymentTabButtons) {
+    button.classList.toggle("active", button.dataset.paymentView === selected);
+  }
+  for (const section of paymentSections) {
+    section.hidden = section.dataset.paymentSection !== selected;
+  }
+}
+
+for (const button of paymentTabButtons) {
+  button.addEventListener("click", () => showPaymentView(button.dataset.paymentView));
+}
+
 
 for (const button of userStateButtons) {
   button.addEventListener("click", () => {
@@ -1172,7 +1189,7 @@ function renderPaymentDeposits() {
   paymentDepositsBody.innerHTML = "";
   if (!paymentData.deposits.length) {
     const row = document.createElement("tr");
-    row.innerHTML = '<td colspan="4" class="payment-empty-cell">Взносов пока нет</td>';
+    row.innerHTML = '<td colspan="3" class="payment-empty-cell">Взносов пока нет</td>';
     paymentDepositsBody.append(row);
     return;
   }
@@ -1183,8 +1200,6 @@ function renderPaymentDeposits() {
     date.textContent = new Date(`${deposit.date}T00:00:00`).toLocaleDateString("ru-RU");
     const amount = document.createElement("td");
     amount.innerHTML = `<strong>${formatRubles(deposit.amount)}</strong>`;
-    const note = document.createElement("td");
-    note.textContent = deposit.note || "—";
     const actions = document.createElement("td");
     const del = document.createElement("button");
     del.type = "button";
@@ -1204,7 +1219,7 @@ function renderPaymentDeposits() {
       }
     });
     actions.append(del);
-    row.append(date, amount, note, actions);
+    row.append(date, amount, actions);
     paymentDepositsBody.append(row);
   }
 }
@@ -1318,7 +1333,6 @@ paymentDepositForm?.addEventListener("submit", async (event) => {
       body: JSON.stringify({
         amount: Number(form.get("amount")),
         date: form.get("date"),
-        note: form.get("note"),
       }),
     });
     paymentDepositForm.reset();
