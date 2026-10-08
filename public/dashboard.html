@@ -228,7 +228,7 @@
             <span class="admin-eyebrow">Учёт занятий</span>
             <h3>Оплаты и календарь</h3>
           </div>
-          <span class="admin-overview-note">Пополнения брату → распределение учителям → списания за занятия.</span>
+          <span class="admin-overview-note">Ты переводишь брату → брат переводит учителям → занятия списываются с баланса учителя.</span>
         </div>
 
         <div class="payment-summary-grid">
@@ -255,12 +255,12 @@
           </form>
 
           <form id="paymentAllocationForm" class="admin-card payment-form">
-            <h3>Распределить учителю</h3>
+            <h3>Брат перевёл учителю</h3>
             <label>Счёт<select id="paymentAccountId" name="accountId" required></select></label>
             <label>Сумма, ₽<input name="amount" type="number" min="1" step="1" required></label>
             <label>Дата<input id="paymentAllocationDate" name="date" type="date" required></label>
-            <label>Комментарий<input name="note" maxlength="180" placeholder="Передано учителю"></label>
-            <button type="submit">Распределить</button>
+            <label>Комментарий<input name="note" maxlength="180" placeholder="Например, перевод Анне за английский"></label>
+            <button type="submit">Записать перевод</button>
           </form>
         </div>
 
@@ -272,6 +272,21 @@
             </div>
           </div>
           <div id="paymentAccountsList" class="payment-accounts-list"></div>
+        </section>
+
+        <section class="payment-history-section">
+          <div class="admin-section-title">
+            <div>
+              <span class="admin-eyebrow">История</span>
+              <h3>Переводы брата учителям</h3>
+            </div>
+          </div>
+          <div class="payment-table-wrap">
+            <table class="payment-table">
+              <thead><tr><th>Дата</th><th>Учитель / предмет</th><th>Сумма</th><th>Комментарий</th></tr></thead>
+              <tbody id="paymentTransfersBody"></tbody>
+            </table>
+          </div>
         </section>
 
         <section class="payment-history-section">
