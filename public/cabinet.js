@@ -1360,7 +1360,10 @@ paymentAccountForm?.addEventListener("submit", async (event) => {
     setAdminStatus("Счёт учителя создан", "success");
     await loadPaymentData();
   } catch (error) {
-    setAdminStatus(`Ошибка: ${error.message}`, "error");
+    const message = error.message === "PAYMENT_ACCOUNT_EXISTS"
+      ? "Для этого учителя и предмета уже есть счёт. Используйте существующий календарь."
+      : error.message;
+    setAdminStatus(`Ошибка: ${message}`, "error");
   }
 });
 
