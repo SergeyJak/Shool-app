@@ -234,3 +234,81 @@ body[data-role="student"] .materials-card{display:none!important}
   .payment-account-balance{justify-items:start;text-align:left}
   .payment-calendar-day,.payment-calendar-spacer{min-height:30px}
 }
+
+
+/* Payment admin mobile overflow fix */
+.payments-view,
+.payment-summary-grid,
+.payment-forms-grid,
+.payment-accounts-section,
+.payment-history-section,
+.payment-account-card,
+.payment-form {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.payment-form label,
+.payment-form input,
+.payment-form select,
+.payment-form button,
+.payment-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media(max-width:720px){
+  .dashboard-page .admin-panel{
+    width:100%;
+    max-width:100%;
+    margin-left:0;
+    margin-right:0;
+    padding:16px 12px;
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+
+  .payments-view{
+    width:100%;
+    overflow:hidden;
+  }
+
+  .payment-summary-grid,
+  .payment-forms-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    width:100%;
+  }
+
+  .payment-summary-card,
+  .payment-form,
+  .payment-account-card{
+    width:100%;
+    min-width:0;
+    max-width:100%;
+  }
+
+  .payment-form{
+    padding:14px;
+  }
+
+  .payment-form input,
+  .payment-form select,
+  .payment-form button{
+    width:100%;
+  }
+
+  .payment-table-wrap{
+    width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .payment-calendar-weekdays,
+  .payment-calendar-grid{
+    grid-template-columns:repeat(7,minmax(0,1fr));
+    width:100%;
+  }
+}
