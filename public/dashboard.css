@@ -560,3 +560,49 @@ body[data-role="student"] .materials-card{display:none!important}
     padding:8px 6px;
   }
 }
+
+
+/* Isolated payment switcher: intentionally independent from old admin tab styles */
+.payment-switcher{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  gap:6px !important;
+  margin:2px 0 16px !important;
+  padding:4px !important;
+  box-sizing:border-box !important;
+  overflow:visible !important;
+  border:1px solid #e3e6ef;
+  border-radius:14px;
+  background:#f7f8fc;
+}
+.payment-switch{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:100% !important;
+  min-width:0 !important;
+  max-width:none !important;
+  min-height:46px !important;
+  margin:0 !important;
+  padding:8px 6px !important;
+  box-sizing:border-box !important;
+  border:0 !important;
+  border-radius:10px !important;
+  background:transparent !important;
+  color:#657087 !important;
+  font:inherit !important;
+  font-size:12px !important;
+  line-height:1.2 !important;
+  font-weight:850 !important;
+  text-align:center !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  cursor:pointer;
+}
+.payment-switch.active{
+  background:#182130 !important;
+  color:#fff !important;
+}
