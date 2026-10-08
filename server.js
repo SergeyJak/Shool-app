@@ -1437,8 +1437,20 @@ app.post("/api/admin/payments/deposits", requireApiRole("admin"), async (req, re
 app.delete("/api/admin/payments/deposits/:id", requireApiRole("admin"), async (req, res, next) => {
   try {
     const id = String(req.params.id || "").trim();
-    const result = await paymentEntries.deleteOne({ _id: id, type: "deposit" });
-    if (!result.deletedCount) return res.status(404).json({ error: "PAYMENT_NOT_FOUND" });
+    const deposit = await paymentEntries.findOne({ _id: id, type: "deposit" });
+    if (!deposit) return res.status(404).json({ error: "PAYMENT_NOT_FOUND" });
+
+    const aggregate = await paymentEntries.aggregate([
+      { $match: { type: { $in: ["deposit", "allocation"] } } },
+      { $group: { _id: "$type", amount: { $sum: "$amount" } } },
+    ]).toArray();
+    const byType = Object.fromEntries(aggregate.map((item) => [item._id, item.amount]));
+    const depositsAfterDelete = Number(byType.deposit || 0) - Number(deposit.amount || 0);
+    if (depositsAfterDelete < Number(byType.allocation || 0)) {
+      return res.status(409).json({ error: "DEPOSIT_ALREADY_ALLOCATED" });
+    }
+
+    await paymentEntries.deleteOne({ _id: id, type: "deposit" });
     res.json({ ok: true });
   } catch (error) {
     next(error);
