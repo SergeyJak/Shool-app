@@ -1142,7 +1142,27 @@ function renderPaymentTransfers() {
     const note = document.createElement("td");
     note.textContent = transfer.note || "—";
 
-    row.append(date, accountCell, amount, note);
+    const actions = document.createElement("td");
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "payment-delete";
+    del.textContent = "Удалить";
+    del.addEventListener("click", async () => {
+      if (!confirm(`Удалить перевод ${formatRubles(transfer.amount)} учителю?`)) return;
+      try {
+        await apiJson(`/api/admin/payments/allocations/${encodeURIComponent(transfer.id)}`, { method: "DELETE" });
+        setAdminStatus("Перевод учителю удалён, сумма возвращена брату", "success");
+        await loadPaymentData();
+      } catch (error) {
+        const message = error.message === "ALLOCATION_ALREADY_SPENT"
+          ? "Этот перевод уже покрывает проведённые занятия. Сначала отмените соответствующие занятия в календаре."
+          : error.message;
+        setAdminStatus(`Ошибка: ${message}`, "error");
+      }
+    });
+    actions.append(del);
+
+    row.append(date, accountCell, amount, note, actions);
     paymentTransfersBody.append(row);
   }
 }
@@ -1177,7 +1197,10 @@ function renderPaymentDeposits() {
         setAdminStatus("Взнос удалён", "success");
         await loadPaymentData();
       } catch (error) {
-        setAdminStatus(`Ошибка: ${error.message}`, "error");
+        const message = error.message === "DEPOSIT_ALREADY_ALLOCATED"
+          ? "Этот взнос уже использован для переводов учителям. Сначала удалите соответствующий перевод в таблице «Переводы брата учителям»."
+          : error.message;
+        setAdminStatus(`Ошибка: ${message}`, "error");
       }
     });
     actions.append(del);
