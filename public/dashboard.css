@@ -183,3 +183,54 @@ body[data-role="student"] .materials-card{display:none!important}
   .tip-content img{width:90px;height:90px}
 }
 .admin-nav .admin-connections-link{display:flex;align-items:center;justify-content:center;text-decoration:none;color:inherit}
+
+
+/* Admin payments */
+.payments-view{display:grid;gap:22px}
+.payments-heading{align-items:flex-end}
+.payment-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.payment-summary-card{display:grid;gap:8px;padding:16px;border:1px solid #e8e9f3;border-radius:16px;background:linear-gradient(180deg,#fff,#fafaff)}
+.payment-summary-card span{color:#8189a0;font-size:12px;font-weight:700}
+.payment-summary-card strong{font-size:24px;color:#272b3d}
+.payment-forms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.payment-form{display:grid;gap:10px}
+.payment-form h3{margin:0 0 2px}
+.payment-form label{display:grid;gap:5px;color:#606a80;font-size:12px;font-weight:750}
+.payment-form input,.payment-form select{width:100%;min-height:40px;padding:8px 10px;border:1px solid #dfe2ef;border-radius:10px;background:#fff;color:#2b3042}
+.payment-form button{min-height:40px;border:0;border-radius:10px;background:#675af0;color:#fff;font-weight:850;cursor:pointer}
+.payment-accounts-list{display:grid;gap:14px}
+.payment-account-card{padding:16px;border:1px solid #e7e9f3;border-radius:18px;background:#fff;box-shadow:0 8px 24px rgba(37,42,68,.05)}
+.payment-account-top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.payment-account-top h4{margin:0 0 4px;font-size:18px}
+.payment-account-top span{color:#848da3;font-size:12px}
+.payment-account-balance{display:grid;justify-items:end;gap:2px;text-align:right}
+.payment-account-balance strong{font-size:22px;color:#2d3348}
+.payment-account-stats{display:flex;flex-wrap:wrap;gap:8px 18px;margin:12px 0;color:#687189;font-size:12px}
+.payment-calendar{border-top:1px solid #edf0f7;padding-top:14px}
+.payment-calendar-header{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin-bottom:10px}
+.payment-calendar-header strong{text-transform:capitalize}
+.payment-calendar-header span{color:#9299aa;font-size:11px}
+.payment-calendar-weekdays,.payment-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.payment-calendar-weekdays{margin-bottom:6px}
+.payment-calendar-weekdays span{text-align:center;color:#9aa1b2;font-size:10px;font-weight:800}
+.payment-calendar-day,.payment-calendar-spacer{aspect-ratio:1/1;min-height:34px}
+.payment-calendar-day{border:1px solid #e3e6f0;border-radius:10px;background:#fafbff;color:#505971;font-weight:800;cursor:pointer}
+.payment-calendar-day:hover{border-color:#7d72ef;background:#f3f1ff}
+.payment-calendar-day.is-lesson{border-color:#5f58db;background:#665cf0;color:#fff;box-shadow:0 5px 12px rgba(102,92,240,.23)}
+.payment-calendar-day:disabled{opacity:.55;cursor:wait}
+.payment-table-wrap{overflow:auto;border:1px solid #e8eaf3;border-radius:14px}
+.payment-table{width:100%;border-collapse:collapse;min-width:560px}
+.payment-table th,.payment-table td{padding:11px 12px;border-bottom:1px solid #eef0f5;text-align:left;font-size:12px}
+.payment-table th{background:#fafbfe;color:#7b8499;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+.payment-table tr:last-child td{border-bottom:0}
+.payment-table td:last-child{text-align:right}
+.payment-delete{border:0;background:transparent;color:#aa6570;font-size:11px;font-weight:750;cursor:pointer}
+.payment-empty-cell{text-align:center!important;color:#9299aa;padding:20px!important}
+@media(max-width:900px){
+  .payment-summary-grid,.payment-forms-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .payment-account-top,.payment-calendar-header{display:grid}
+  .payment-account-balance{justify-items:start;text-align:left}
+  .payment-calendar-day,.payment-calendar-spacer{min-height:30px}
+}
