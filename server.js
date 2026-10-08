@@ -100,6 +100,8 @@ let homeworkSubmissions;
 let lessonMessages;
 let notebooks;
 let notebookAnnotations;
+let paymentAccounts;
+let paymentEntries;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 const rtcCallsByLesson = new Map();
@@ -206,6 +208,37 @@ function normalizeLessonId(value) {
 function normalizeInviteToken(value) {
   const token = String(value || "").trim();
   return /^[a-zA-Z0-9_-]{24,120}$/.test(token) ? token : null;
+}
+
+function normalizePaymentAmount(value) {
+  const amount = Number(value);
+  return Number.isInteger(amount) && amount > 0 && amount <= 10_000_000 ? amount : null;
+}
+
+function normalizePaymentDate(value) {
+  const date = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date ? null : date;
+}
+
+function publicPaymentAccount(account, totals = {}) {
+  const allocated = Number(totals.allocated || 0);
+  const spent = Number(totals.spent || 0);
+  const rate = Number(account.lessonPrice || 0);
+  const balance = allocated - spent;
+  return {
+    id: account._id,
+    teacherId: account.teacherId,
+    subject: account.subject,
+    lessonPrice: rate,
+    active: account.active !== false,
+    allocated,
+    spent,
+    balance,
+    fullLessonsLeft: rate > 0 ? Math.max(0, Math.floor(balance / rate)) : 0,
+    remainderAfterLessons: rate > 0 ? Math.max(0, balance % rate) : balance,
+  };
 }
 
 function newInviteToken() {
@@ -1319,6 +1352,234 @@ app.post("/api/admin/registrations/:id/reject", requireApiRole("admin"), async (
     );
     const updated = await users.findOne({ _id: id });
     res.json({ user: publicUser(updated) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+app.get("/api/admin/payments", requireApiRole("admin"), async (_req, res, next) => {
+  try {
+    const [accounts, entries, teachers] = await Promise.all([
+      paymentAccounts.find({}).sort({ active: -1, subject: 1 }).toArray(),
+      paymentEntries.find({}).sort({ date: -1, createdAt: -1 }).toArray(),
+      users.find({ role: "teacher", active: true }).sort({ displayName: 1 }).toArray(),
+    ]);
+
+    const totalsByAccount = new Map();
+    let depositsTotal = 0;
+    let allocationsTotal = 0;
+    let spentTotal = 0;
+
+    for (const entry of entries) {
+      if (entry.type === "deposit") depositsTotal += Number(entry.amount || 0);
+      if (!entry.accountId) continue;
+      const totals = totalsByAccount.get(entry.accountId) || { allocated: 0, spent: 0 };
+      if (entry.type === "allocation") {
+        totals.allocated += Number(entry.amount || 0);
+        allocationsTotal += Number(entry.amount || 0);
+      }
+      if (entry.type === "lesson") {
+        totals.spent += Number(entry.amount || 0);
+        spentTotal += Number(entry.amount || 0);
+      }
+      totalsByAccount.set(entry.accountId, totals);
+    }
+
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      summary: {
+        depositsTotal,
+        brotherBalance: depositsTotal - allocationsTotal,
+        teacherBalance: allocationsTotal - spentTotal,
+        spentTotal,
+      },
+      teachers: teachers.map(publicUser),
+      accounts: accounts.map((account) => publicPaymentAccount(account, totalsByAccount.get(account._id))),
+      deposits: entries
+        .filter((entry) => entry.type === "deposit")
+        .map((entry) => ({ id: entry._id, date: entry.date, amount: entry.amount, note: entry.note || "" })),
+      allocations: entries
+        .filter((entry) => entry.type === "allocation")
+        .map((entry) => ({ id: entry._id, accountId: entry.accountId, date: entry.date, amount: entry.amount, note: entry.note || "" })),
+      lessons: entries
+        .filter((entry) => entry.type === "lesson")
+        .map((entry) => ({ id: entry._id, accountId: entry.accountId, date: entry.date, amount: entry.amount })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/payments/deposits", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const amount = normalizePaymentAmount(req.body?.amount);
+    const date = normalizePaymentDate(req.body?.date);
+    const note = String(req.body?.note || "").trim().slice(0, 180);
+    if (!amount || !date) return res.status(400).json({ error: "INVALID_PAYMENT" });
+
+    const row = {
+      _id: `payment_${crypto.randomUUID()}`,
+      type: "deposit",
+      amount,
+      date,
+      note,
+      createdAt: new Date(),
+      createdBy: req.user._id,
+    };
+    await paymentEntries.insertOne(row);
+    res.status(201).json({ payment: { id: row._id, amount, date, note } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/admin/payments/deposits/:id", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    const result = await paymentEntries.deleteOne({ _id: id, type: "deposit" });
+    if (!result.deletedCount) return res.status(404).json({ error: "PAYMENT_NOT_FOUND" });
+    res.json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/payments/accounts", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const teacherId = normalizeManagedUsername(req.body?.teacherId);
+    const subject = String(req.body?.subject || "").trim().slice(0, 80);
+    const lessonPrice = normalizePaymentAmount(req.body?.lessonPrice);
+    if (!teacherId || !subject || !lessonPrice) return res.status(400).json({ error: "INVALID_PAYMENT_ACCOUNT" });
+
+    const teacher = await users.findOne({ _id: teacherId, role: "teacher", active: true });
+    if (!teacher) return res.status(400).json({ error: "INVALID_TEACHER" });
+
+    const row = {
+      _id: `payacc_${crypto.randomUUID()}`,
+      teacherId,
+      subject,
+      lessonPrice,
+      active: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    await paymentAccounts.insertOne(row);
+    res.status(201).json({ account: publicPaymentAccount(row) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch("/api/admin/payments/accounts/:id", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    const current = await paymentAccounts.findOne({ _id: id });
+    if (!current) return res.status(404).json({ error: "PAYMENT_ACCOUNT_NOT_FOUND" });
+
+    const changes = { updatedAt: new Date() };
+    if (typeof req.body?.subject === "string") {
+      const subject = req.body.subject.trim().slice(0, 80);
+      if (!subject) return res.status(400).json({ error: "INVALID_SUBJECT" });
+      changes.subject = subject;
+    }
+    if (req.body?.lessonPrice !== undefined) {
+      const lessonPrice = normalizePaymentAmount(req.body.lessonPrice);
+      if (!lessonPrice) return res.status(400).json({ error: "INVALID_LESSON_PRICE" });
+      changes.lessonPrice = lessonPrice;
+    }
+    if (typeof req.body?.active === "boolean") changes.active = req.body.active;
+
+    await paymentAccounts.updateOne({ _id: id }, { $set: changes });
+    const updated = await paymentAccounts.findOne({ _id: id });
+    res.json({ account: publicPaymentAccount(updated) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/payments/allocations", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const accountId = String(req.body?.accountId || "").trim();
+    const amount = normalizePaymentAmount(req.body?.amount);
+    const date = normalizePaymentDate(req.body?.date);
+    const note = String(req.body?.note || "").trim().slice(0, 180);
+    if (!accountId || !amount || !date) return res.status(400).json({ error: "INVALID_ALLOCATION" });
+
+    const account = await paymentAccounts.findOne({ _id: accountId, active: { $ne: false } });
+    if (!account) return res.status(404).json({ error: "PAYMENT_ACCOUNT_NOT_FOUND" });
+
+    const aggregate = await paymentEntries.aggregate([
+      { $match: { type: { $in: ["deposit", "allocation"] } } },
+      { $group: { _id: "$type", amount: { $sum: "$amount" } } },
+    ]).toArray();
+    const byType = Object.fromEntries(aggregate.map((item) => [item._id, item.amount]));
+    const available = Number(byType.deposit || 0) - Number(byType.allocation || 0);
+    if (amount > available) return res.status(409).json({ error: "INSUFFICIENT_BROTHER_BALANCE", available });
+
+    const row = {
+      _id: `payment_${crypto.randomUUID()}`,
+      type: "allocation",
+      accountId,
+      amount,
+      date,
+      note,
+      createdAt: new Date(),
+      createdBy: req.user._id,
+    };
+    await paymentEntries.insertOne(row);
+    res.status(201).json({ allocation: { id: row._id, accountId, amount, date, note } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/payments/accounts/:id/lessons", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const accountId = String(req.params.id || "").trim();
+    const date = normalizePaymentDate(req.body?.date);
+    if (!date) return res.status(400).json({ error: "INVALID_LESSON_DATE" });
+
+    const account = await paymentAccounts.findOne({ _id: accountId, active: { $ne: false } });
+    if (!account) return res.status(404).json({ error: "PAYMENT_ACCOUNT_NOT_FOUND" });
+    if (await paymentEntries.findOne({ type: "lesson", accountId, date })) {
+      return res.status(409).json({ error: "LESSON_ALREADY_MARKED" });
+    }
+
+    const totals = await paymentEntries.aggregate([
+      { $match: { accountId, type: { $in: ["allocation", "lesson"] } } },
+      { $group: { _id: "$type", amount: { $sum: "$amount" } } },
+    ]).toArray();
+    const byType = Object.fromEntries(totals.map((item) => [item._id, item.amount]));
+    const balance = Number(byType.allocation || 0) - Number(byType.lesson || 0);
+    if (account.lessonPrice > balance) {
+      return res.status(409).json({ error: "INSUFFICIENT_TEACHER_BALANCE", balance });
+    }
+
+    const row = {
+      _id: `payment_${crypto.randomUUID()}`,
+      type: "lesson",
+      accountId,
+      amount: account.lessonPrice,
+      date,
+      createdAt: new Date(),
+      createdBy: req.user._id,
+    };
+    await paymentEntries.insertOne(row);
+    res.status(201).json({ lesson: { id: row._id, accountId, date, amount: row.amount } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete("/api/admin/payments/accounts/:id/lessons/:date", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const accountId = String(req.params.id || "").trim();
+    const date = normalizePaymentDate(req.params.date);
+    if (!date) return res.status(400).json({ error: "INVALID_LESSON_DATE" });
+    const result = await paymentEntries.deleteOne({ type: "lesson", accountId, date });
+    if (!result.deletedCount) return res.status(404).json({ error: "LESSON_PAYMENT_NOT_FOUND" });
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }
@@ -3094,6 +3355,8 @@ async function start() {
   lessonMessages = db.collection(collectionName("lesson_messages"));
   notebooks = db.collection(collectionName("notebooks"));
   notebookAnnotations = db.collection(collectionName("notebook_annotations"));
+  paymentAccounts = db.collection(collectionName("payment_accounts"));
+  paymentEntries = db.collection(collectionName("payment_entries"));
 
   if (DATA_NAMESPACE && await users.countDocuments({}) === 0) {
     const sourceUsers = await db.collection("users").find({}).toArray();
@@ -3120,6 +3383,10 @@ async function start() {
   await lessonMessages.createIndex({ lessonId: 1, createdAt: -1 });
   await notebooks.createIndex({ lessonId: 1, userId: 1 }, { unique: true });
   await notebookAnnotations.createIndex({ lessonId: 1, userId: 1, page: 1, createdAt: 1 });
+  await paymentAccounts.createIndex({ teacherId: 1, active: 1 });
+  await paymentEntries.createIndex({ type: 1, date: -1 });
+  await paymentEntries.createIndex({ accountId: 1, type: 1, date: -1 });
+  await paymentEntries.createIndex({ accountId: 1, date: 1, type: 1 }, { unique: true, partialFilterExpression: { type: "lesson" } });
   await rtcDiagnostics.createIndex({ lessonId: 1, createdAt: -1 });
   await rtcDiagnostics.createIndex({ callId: 1, createdAt: 1 });
   await rtcDiagnostics.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
