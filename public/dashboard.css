@@ -606,3 +606,29 @@ body[data-role="student"] .materials-card{display:none!important}
   background:#182130 !important;
   color:#fff !important;
 }
+
+
+/* Prevent payment grid intrinsic content from widening the whole admin view */
+.payments-view{
+  grid-template-columns:minmax(0,1fr) !important;
+  width:100% !important;
+  min-width:0 !important;
+  max-width:100% !important;
+  overflow:hidden !important;
+}
+.payments-view > *,
+.payments-view [data-payment-section],
+.payment-brother-layout,
+.payment-accounts-section,
+.payment-history-section,
+.payment-forms-grid,
+.payment-summary-grid{
+  min-width:0 !important;
+  max-width:100% !important;
+  width:100% !important;
+  box-sizing:border-box !important;
+}
+.payment-switcher{
+  justify-self:stretch !important;
+  align-self:stretch !important;
+}
