@@ -228,8 +228,12 @@
             <span class="admin-eyebrow">Учёт занятий</span>
             <h3>Оплаты и календарь</h3>
           </div>
-          <span class="admin-overview-note">Ты переводишь брату → брат переводит учителям → занятия списываются с баланса учителя.</span>
         </div>
+
+        <nav class="payment-tabs" aria-label="Разделы оплат">
+          <button type="button" class="payment-tab active" data-payment-view="lessons">Занятия и учителя</button>
+          <button type="button" class="payment-tab" data-payment-view="brother">Пополнения брату</button>
+        </nav>
 
         <div class="payment-summary-grid">
           <article class="payment-summary-card"><span>У брата осталось</span><strong id="paymentBrotherBalance">0 ₽</strong></article>
@@ -237,82 +241,87 @@
           <article class="payment-summary-card"><span>Потрачено на занятия</span><strong id="paymentSpentTotal">0 ₽</strong></article>
         </div>
 
-        <div class="payment-forms-grid">
-          <form id="paymentDepositForm" class="admin-card payment-form">
-            <h3>Пополнение брату</h3>
-            <label>Сумма, ₽<input id="paymentDepositAmount" name="amount" type="number" min="1" step="1" required></label>
-            <label>Дата<input id="paymentDepositDate" name="date" type="date" required></label>
-            <label>Комментарий<input name="note" maxlength="180" placeholder="Например, английский на октябрь"></label>
-            <button type="submit">Добавить взнос</button>
-          </form>
+        <div data-payment-section="lessons">
+          <div class="payment-forms-grid payment-forms-grid-two">
+            <form id="paymentAccountForm" class="admin-card payment-form">
+              <h3>Учитель / предмет</h3>
+              <label>Учитель<select id="paymentTeacherId" name="teacherId" required></select></label>
+              <label>Предмет<input id="paymentSubject" name="subject" maxlength="80" required placeholder="Английский"></label>
+              <label>Цена занятия, ₽<input id="paymentLessonPrice" name="lessonPrice" type="number" min="1" step="1" required></label>
+              <button type="submit">Создать счёт</button>
+            </form>
 
-          <form id="paymentAccountForm" class="admin-card payment-form">
-            <h3>Учитель / предмет</h3>
-            <label>Учитель<select id="paymentTeacherId" name="teacherId" required></select></label>
-            <label>Предмет<input id="paymentSubject" name="subject" maxlength="80" required placeholder="Английский"></label>
-            <label>Цена занятия, ₽<input id="paymentLessonPrice" name="lessonPrice" type="number" min="1" step="1" required></label>
-            <button type="submit">Создать счёт</button>
-          </form>
+            <form id="paymentAllocationForm" class="admin-card payment-form">
+              <h3>Брат перевёл учителю</h3>
+              <label>Счёт<select id="paymentAccountId" name="accountId" required></select></label>
+              <label>Сумма, ₽<input name="amount" type="number" min="1" step="1" required></label>
+              <label>Дата<input id="paymentAllocationDate" name="date" type="date" required></label>
+              <label>Комментарий<input name="note" maxlength="180" placeholder="Например, перевод Анне за английский"></label>
+              <button type="submit">Записать перевод</button>
+            </form>
+          </div>
 
-          <form id="paymentAllocationForm" class="admin-card payment-form">
-            <h3>Брат перевёл учителю</h3>
-            <label>Счёт<select id="paymentAccountId" name="accountId" required></select></label>
-            <label>Сумма, ₽<input name="amount" type="number" min="1" step="1" required></label>
-            <label>Дата<input id="paymentAllocationDate" name="date" type="date" required></label>
-            <label>Комментарий<input name="note" maxlength="180" placeholder="Например, перевод Анне за английский"></label>
-            <button type="submit">Записать перевод</button>
-          </form>
+          <section class="payment-accounts-section">
+            <div class="admin-section-title">
+              <div>
+                <span class="admin-eyebrow">Архив занятий</span>
+                <h3>Календарь всех учителей</h3>
+              </div>
+            </div>
+            <div id="paymentMasterCalendar" class="payment-master-calendar"></div>
+          </section>
+
+          <section class="payment-accounts-section">
+            <div class="admin-section-title">
+              <div>
+                <span class="admin-eyebrow">По учителям</span>
+                <h3>Баланс и занятия</h3>
+              </div>
+            </div>
+            <div id="paymentAccountsList" class="payment-accounts-list"></div>
+          </section>
+
+          <section class="payment-history-section">
+            <div class="admin-section-title">
+              <div>
+                <span class="admin-eyebrow">История</span>
+                <h3>Переводы брата учителям</h3>
+              </div>
+            </div>
+            <div class="payment-table-wrap">
+              <table class="payment-table">
+                <thead><tr><th>Дата</th><th>Учитель / предмет</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
+                <tbody id="paymentTransfersBody"></tbody>
+              </table>
+            </div>
+          </section>
         </div>
 
-        <section class="payment-accounts-section">
-          <div class="admin-section-title">
-            <div>
-              <span class="admin-eyebrow">Архив занятий</span>
-              <h3>Календарь всех учителей</h3>
-            </div>
-          </div>
-          <div id="paymentMasterCalendar" class="payment-master-calendar"></div>
-        </section>
+        <div data-payment-section="brother" hidden>
+          <div class="payment-brother-layout">
+            <form id="paymentDepositForm" class="admin-card payment-form payment-deposit-form">
+              <h3>Пополнение брату</h3>
+              <label>Сумма, ₽<input id="paymentDepositAmount" name="amount" type="number" min="1" step="1" required></label>
+              <label>Дата<input id="paymentDepositDate" name="date" type="date" required></label>
+              <button type="submit">Добавить взнос</button>
+            </form>
 
-        <section class="payment-accounts-section">
-          <div class="admin-section-title">
-            <div>
-              <span class="admin-eyebrow">По учителям</span>
-              <h3>Баланс и занятия</h3>
-            </div>
+            <section class="payment-history-section payment-brother-history">
+              <div class="admin-section-title">
+                <div>
+                  <span class="admin-eyebrow">История</span>
+                  <h3>Взносы брату</h3>
+                </div>
+              </div>
+              <div class="payment-table-wrap">
+                <table class="payment-table">
+                  <thead><tr><th>Дата</th><th>Сумма</th><th></th></tr></thead>
+                  <tbody id="paymentDepositsBody"></tbody>
+                </table>
+              </div>
+            </section>
           </div>
-          <div id="paymentAccountsList" class="payment-accounts-list"></div>
-        </section>
-
-        <section class="payment-history-section">
-          <div class="admin-section-title">
-            <div>
-              <span class="admin-eyebrow">История</span>
-              <h3>Переводы брата учителям</h3>
-            </div>
-          </div>
-          <div class="payment-table-wrap">
-            <table class="payment-table">
-              <thead><tr><th>Дата</th><th>Учитель / предмет</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
-              <tbody id="paymentTransfersBody"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="payment-history-section">
-          <div class="admin-section-title">
-            <div>
-              <span class="admin-eyebrow">История</span>
-              <h3>Взносы брату</h3>
-            </div>
-          </div>
-          <div class="payment-table-wrap">
-            <table class="payment-table">
-              <thead><tr><th>Дата</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead>
-              <tbody id="paymentDepositsBody"></tbody>
-            </table>
-          </div>
-        </section>
+        </div>
       </section>
     </section>
   </main>
@@ -332,6 +341,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261008-payments2"></script>
+  <script src="/cabinet.js?v=20261008-payments3"></script>
 </body>
 </html>
