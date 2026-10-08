@@ -1794,9 +1794,10 @@ app.patch("/api/admin/lessons/:id", requireApiRole("admin"), async (req, res, ne
 });
 
 // Protect direct .html access too, not only friendly routes.
-app.get("/dashboard.html", requirePageAuth("teacher", "student"), (_req, res) =>
-  res.sendFile(path.join(__dirname, "public", "dashboard.html"))
-);
+app.get("/dashboard.html", requirePageAuth("teacher", "student"), (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
 app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
   res.setHeader("Set-Cookie", clearGuestCookie({ secure: requestIsSecure(req) }));
   res.sendFile(path.join(__dirname, "public", "teacher.html"));
@@ -1883,9 +1884,10 @@ app.get("/register/profile", async (req, res, next) => {
 app.get("/registration-pending", (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "registration-pending.html"))
 );
-app.get("/cabinet", requirePageAuth("teacher", "student"), (_req, res) =>
-  res.sendFile(path.join(__dirname, "public", "dashboard.html"))
-);
+app.get("/cabinet", requirePageAuth("teacher", "student"), (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
 app.get("/teacher", requirePageAuth("teacher"), (req, res) => {
   res.setHeader("Set-Cookie", clearGuestCookie({ secure: requestIsSecure(req) }));
   res.sendFile(path.join(__dirname, "public", "teacher.html"));
