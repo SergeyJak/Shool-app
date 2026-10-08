@@ -39,6 +39,18 @@ const activeUsersCount = document.getElementById("activeUsersCount");
 const inactiveUsersCount = document.getElementById("inactiveUsersCount");
 const activeLessonsCount = document.getElementById("activeLessonsCount");
 const inactiveLessonsCount = document.getElementById("inactiveLessonsCount");
+const paymentBrotherBalance = document.getElementById("paymentBrotherBalance");
+const paymentTeacherBalance = document.getElementById("paymentTeacherBalance");
+const paymentSpentTotal = document.getElementById("paymentSpentTotal");
+const paymentDepositForm = document.getElementById("paymentDepositForm");
+const paymentAccountForm = document.getElementById("paymentAccountForm");
+const paymentAllocationForm = document.getElementById("paymentAllocationForm");
+const paymentTeacherId = document.getElementById("paymentTeacherId");
+const paymentAccountId = document.getElementById("paymentAccountId");
+const paymentDepositDate = document.getElementById("paymentDepositDate");
+const paymentAllocationDate = document.getElementById("paymentAllocationDate");
+const paymentAccountsList = document.getElementById("paymentAccountsList");
+const paymentDepositsBody = document.getElementById("paymentDepositsBody");
 
 let currentUser = null;
 let managedUsers = [];
@@ -48,6 +60,14 @@ let teacherMaterials = [];
 let teacherView = "active";
 let adminUserState = "active";
 let adminLessonState = "active";
+let paymentData = {
+  summary: { depositsTotal: 0, brotherBalance: 0, teacherBalance: 0, spentTotal: 0 },
+  teachers: [],
+  accounts: [],
+  deposits: [],
+  allocations: [],
+  lessons: [],
+};
 
 document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
 dialog.addEventListener("click", (event) => {
@@ -72,7 +92,16 @@ function showAdminView(view) {
 }
 
 for (const button of adminNavButtons) {
-  button.addEventListener("click", () => showAdminView(button.dataset.adminView));
+  button.addEventListener("click", async () => {
+    showAdminView(button.dataset.adminView);
+    if (button.dataset.adminView === "payments") {
+      try {
+        await loadPaymentData();
+      } catch (error) {
+        setAdminStatus(`Ошибка оплат: ${error.message}`, "error");
+      }
+    }
+  });
 }
 
 for (const button of userStateButtons) {
@@ -702,6 +731,242 @@ function renderAdminLessons() {
   }
 }
 
+
+function formatRubles(value) {
+  return `${new Intl.NumberFormat("ru-RU").format(Number(value) || 0)} ₽`;
+}
+
+function localIsoDate(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function teacherName(teacherId) {
+  const teacher = paymentData.teachers.find((item) => item.id === teacherId)
+    || managedUsers.find((item) => item.id === teacherId);
+  return teacher?.displayName || teacher?.username || teacherId;
+}
+
+function paymentLessonDates(accountId) {
+  return new Set(
+    paymentData.lessons
+      .filter((lesson) => lesson.accountId === accountId)
+      .map((lesson) => lesson.date)
+  );
+}
+
+function fillPaymentSelects() {
+  if (paymentTeacherId) {
+    const selected = paymentTeacherId.value;
+    paymentTeacherId.innerHTML = "";
+    const teachers = paymentData.teachers.length
+      ? paymentData.teachers
+      : managedUsers.filter((user) => user.role === "teacher" && user.active);
+    for (const teacher of teachers) {
+      const option = document.createElement("option");
+      option.value = teacher.id;
+      option.textContent = teacher.displayName || teacher.username;
+      paymentTeacherId.append(option);
+    }
+    if ([...paymentTeacherId.options].some((option) => option.value === selected)) {
+      paymentTeacherId.value = selected;
+    }
+  }
+
+  if (paymentAccountId) {
+    const selected = paymentAccountId.value;
+    paymentAccountId.innerHTML = "";
+    for (const account of paymentData.accounts.filter((item) => item.active)) {
+      const option = document.createElement("option");
+      option.value = account.id;
+      option.textContent = `${account.subject} · ${teacherName(account.teacherId)} · ${formatRubles(account.lessonPrice)}`;
+      paymentAccountId.append(option);
+    }
+    if ([...paymentAccountId.options].some((option) => option.value === selected)) {
+      paymentAccountId.value = selected;
+    }
+  }
+}
+
+function buildPaymentCalendar(account) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "payment-calendar";
+
+  const monthCursor = new Date();
+  monthCursor.setDate(1);
+
+  const header = document.createElement("div");
+  header.className = "payment-calendar-header";
+  const title = document.createElement("strong");
+  title.textContent = monthCursor.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+  const hint = document.createElement("span");
+  hint.textContent = "Нажмите на день, чтобы отметить или отменить занятие";
+  header.append(title, hint);
+
+  const weekdays = document.createElement("div");
+  weekdays.className = "payment-calendar-weekdays";
+  for (const day of ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]) {
+    const cell = document.createElement("span");
+    cell.textContent = day;
+    weekdays.append(cell);
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "payment-calendar-grid";
+  const year = monthCursor.getFullYear();
+  const month = monthCursor.getMonth();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const marked = paymentLessonDates(account.id);
+
+  for (let i = 0; i < firstWeekday; i += 1) {
+    const spacer = document.createElement("span");
+    spacer.className = "payment-calendar-spacer";
+    grid.append(spacer);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "payment-calendar-day";
+    button.textContent = String(day);
+    button.classList.toggle("is-lesson", marked.has(date));
+    button.title = marked.has(date)
+      ? `Занятие ${formatRubles(account.lessonPrice)}. Нажмите, чтобы отменить.`
+      : `Отметить занятие за ${formatRubles(account.lessonPrice)}`;
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        if (marked.has(date)) {
+          await apiJson(`/api/admin/payments/accounts/${encodeURIComponent(account.id)}/lessons/${date}`, {
+            method: "DELETE",
+          });
+          setAdminStatus("Занятие отменено, сумма возвращена", "success");
+        } else {
+          await apiJson(`/api/admin/payments/accounts/${encodeURIComponent(account.id)}/lessons`, {
+            method: "POST",
+            body: JSON.stringify({ date }),
+          });
+          setAdminStatus(`Занятие отмечено: −${formatRubles(account.lessonPrice)}`, "success");
+        }
+        await loadPaymentData();
+      } catch (error) {
+        const message = error.message === "INSUFFICIENT_TEACHER_BALANCE"
+          ? "Недостаточно денег на счёте учителя"
+          : error.message;
+        setAdminStatus(`Ошибка: ${message}`, "error");
+        button.disabled = false;
+      }
+    });
+    grid.append(button);
+  }
+
+  wrapper.append(header, weekdays, grid);
+  return wrapper;
+}
+
+function renderPaymentAccounts() {
+  if (!paymentAccountsList) return;
+  paymentAccountsList.innerHTML = "";
+
+  if (!paymentData.accounts.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = "Сначала создайте счёт учителя / предмета.";
+    paymentAccountsList.append(empty);
+    return;
+  }
+
+  for (const account of paymentData.accounts.filter((item) => item.active)) {
+    const card = document.createElement("article");
+    card.className = "payment-account-card";
+
+    const top = document.createElement("div");
+    top.className = "payment-account-top";
+    const title = document.createElement("div");
+    const name = document.createElement("h4");
+    name.textContent = account.subject;
+    const meta = document.createElement("span");
+    meta.textContent = `${teacherName(account.teacherId)} · ${formatRubles(account.lessonPrice)} / занятие`;
+    title.append(name, meta);
+
+    const balance = document.createElement("div");
+    balance.className = "payment-account-balance";
+    const balanceValue = document.createElement("strong");
+    balanceValue.textContent = formatRubles(account.balance);
+    const balanceMeta = document.createElement("span");
+    balanceMeta.textContent = `${account.fullLessonsLeft} полных урока + ${formatRubles(account.remainderAfterLessons)}`;
+    balance.append(balanceValue, balanceMeta);
+    top.append(title, balance);
+
+    const stats = document.createElement("div");
+    stats.className = "payment-account-stats";
+    stats.innerHTML = `
+      <span>Передано <b>${formatRubles(account.allocated)}</b></span>
+      <span>Проведено <b>${Math.round(account.spent / account.lessonPrice) || 0}</b></span>
+      <span>Списано <b>${formatRubles(account.spent)}</b></span>
+    `;
+
+    card.append(top, stats, buildPaymentCalendar(account));
+    paymentAccountsList.append(card);
+  }
+}
+
+function renderPaymentDeposits() {
+  if (!paymentDepositsBody) return;
+  paymentDepositsBody.innerHTML = "";
+  if (!paymentData.deposits.length) {
+    const row = document.createElement("tr");
+    row.innerHTML = '<td colspan="4" class="payment-empty-cell">Взносов пока нет</td>';
+    paymentDepositsBody.append(row);
+    return;
+  }
+
+  for (const deposit of paymentData.deposits) {
+    const row = document.createElement("tr");
+    const date = document.createElement("td");
+    date.textContent = new Date(`${deposit.date}T00:00:00`).toLocaleDateString("ru-RU");
+    const amount = document.createElement("td");
+    amount.innerHTML = `<strong>${formatRubles(deposit.amount)}</strong>`;
+    const note = document.createElement("td");
+    note.textContent = deposit.note || "—";
+    const actions = document.createElement("td");
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "payment-delete";
+    del.textContent = "Удалить";
+    del.addEventListener("click", async () => {
+      if (!confirm(`Удалить взнос ${formatRubles(deposit.amount)} от ${date.textContent}?`)) return;
+      try {
+        await apiJson(`/api/admin/payments/deposits/${encodeURIComponent(deposit.id)}`, { method: "DELETE" });
+        setAdminStatus("Взнос удалён", "success");
+        await loadPaymentData();
+      } catch (error) {
+        setAdminStatus(`Ошибка: ${error.message}`, "error");
+      }
+    });
+    actions.append(del);
+    row.append(date, amount, note, actions);
+    paymentDepositsBody.append(row);
+  }
+}
+
+function renderPaymentData() {
+  if (paymentBrotherBalance) paymentBrotherBalance.textContent = formatRubles(paymentData.summary?.brotherBalance);
+  if (paymentTeacherBalance) paymentTeacherBalance.textContent = formatRubles(paymentData.summary?.teacherBalance);
+  if (paymentSpentTotal) paymentSpentTotal.textContent = formatRubles(paymentData.summary?.spentTotal);
+  fillPaymentSelects();
+  renderPaymentAccounts();
+  renderPaymentDeposits();
+}
+
+async function loadPaymentData() {
+  paymentData = await apiJson("/api/admin/payments");
+  renderPaymentData();
+}
+
 async function loadAdminData() {
   const [registrationsPayload, usersPayload, lessonsPayload] = await Promise.all([
     apiJson("/api/admin/registrations"),
@@ -778,6 +1043,77 @@ createLessonForm?.addEventListener("submit", async (event) => {
     await refreshVisibleLessons();
   } catch (error) {
     setAdminStatus(`Ошибка: ${error.message}`, "error");
+  }
+});
+
+
+for (const input of [paymentDepositDate, paymentAllocationDate]) {
+  if (input && !input.value) input.value = localIsoDate();
+}
+
+paymentDepositForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(paymentDepositForm);
+  try {
+    await apiJson("/api/admin/payments/deposits", {
+      method: "POST",
+      body: JSON.stringify({
+        amount: Number(form.get("amount")),
+        date: form.get("date"),
+        note: form.get("note"),
+      }),
+    });
+    paymentDepositForm.reset();
+    paymentDepositDate.value = localIsoDate();
+    setAdminStatus("Взнос добавлен", "success");
+    await loadPaymentData();
+  } catch (error) {
+    setAdminStatus(`Ошибка: ${error.message}`, "error");
+  }
+});
+
+paymentAccountForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(paymentAccountForm);
+  try {
+    await apiJson("/api/admin/payments/accounts", {
+      method: "POST",
+      body: JSON.stringify({
+        teacherId: form.get("teacherId"),
+        subject: form.get("subject"),
+        lessonPrice: Number(form.get("lessonPrice")),
+      }),
+    });
+    paymentAccountForm.reset();
+    setAdminStatus("Счёт учителя создан", "success");
+    await loadPaymentData();
+  } catch (error) {
+    setAdminStatus(`Ошибка: ${error.message}`, "error");
+  }
+});
+
+paymentAllocationForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(paymentAllocationForm);
+  try {
+    await apiJson("/api/admin/payments/allocations", {
+      method: "POST",
+      body: JSON.stringify({
+        accountId: form.get("accountId"),
+        amount: Number(form.get("amount")),
+        date: form.get("date"),
+        note: form.get("note"),
+      }),
+    });
+    paymentAllocationForm.reset();
+    paymentAllocationDate.value = localIsoDate();
+    setAdminStatus("Сумма распределена учителю", "success");
+    await loadPaymentData();
+  } catch (error) {
+    const message = error.message === "INSUFFICIENT_BROTHER_BALANCE"
+      ? "У брата недостаточно нераспределённых денег"
+      : error.message;
+    setAdminStatus(`Ошибка: ${message}`, "error");
   }
 });
 
