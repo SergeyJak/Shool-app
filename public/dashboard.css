@@ -472,3 +472,62 @@ body[data-role="student"] .materials-card{display:none!important}
     height:7px;
   }
 }
+
+
+/* Payment section tabs */
+.payment-tabs{
+  display:flex;
+  gap:8px;
+  margin:2px 0 16px;
+  padding:4px;
+  border:1px solid #e3e6ef;
+  border-radius:14px;
+  background:#f7f8fc;
+}
+.payment-tab{
+  flex:1;
+  min-height:42px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#657087;
+  font:inherit;
+  font-size:13px;
+  font-weight:850;
+  cursor:pointer;
+}
+.payment-tab.active{
+  background:#182130;
+  color:#fff;
+}
+.payment-forms-grid-two{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.payment-brother-layout{
+  display:grid;
+  grid-template-columns:minmax(0,360px) minmax(0,1fr);
+  gap:18px;
+  align-items:start;
+}
+.payment-deposit-form{
+  align-self:start;
+}
+.payment-brother-history{
+  margin:0;
+}
+@media(max-width:900px){
+  .payment-forms-grid-two,
+  .payment-brother-layout{
+    grid-template-columns:1fr;
+  }
+}
+@media(max-width:520px){
+  .payment-tabs{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  .payment-tab{
+    min-height:46px;
+    padding:8px;
+  }
+}
