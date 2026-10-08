@@ -3387,6 +3387,7 @@ async function start() {
   await client.connect();
 
   db = client.db(MONGODB_DB_NAME);
+  console.log(`Data context: db=${MONGODB_DB_NAME}, namespace=${DATA_NAMESPACE || "<base>"}`);
   bucket = new GridFSBucket(db, { bucketName: GRIDFS_BUCKET_NAME });
   annotations = db.collection(collectionName("annotations"));
   settings = db.collection(collectionName("settings"));
