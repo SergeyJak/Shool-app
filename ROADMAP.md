@@ -215,3 +215,34 @@ Session: 2026-10-01
 - [ ] Device selector.
 - [ ] Screen sharing.
 - [ ] Connection quality indicator in UI.
+
+
+## Phase 9 — Устанавливаемое PWA для Android, iPhone и iPad
+
+**Статус: запланировано (реализацию пока не начинать).** Цель: запуск School App с домашнего экрана отдельным приложением без Google Play/App Store. Нативные приложения остаются вне scope.
+
+### Подготовка
+- [ ] Аудит Express-маршрутов, HTML-страниц, HTTPS, login/session cookies, имеющихся manifest/service worker и WebRTC.
+- [ ] Валидный web manifest: `id`, `name`, `short_name`, `start_url`, `scope`, `display: standalone`, `theme_color`, `background_color`, `icons`, `prefer_related_applications: false`.
+- [ ] PNG-иконки 192×192, 512×512, maskable 512×512, Apple touch icon 180×180; добавить manifest и Apple meta-теги на нужные страницы.
+- [ ] Service Worker с versioned cache для статических ресурсов. Не кешировать API, персональные PDF, чат, токены, видеопотоки, страницы с приватными данными. Offline-уроки в scope не входят.
+- [ ] Учитывать standalone mode, навигацию между главной, логином, кабинетами, уроками и прямые ссылки-приглашения.
+- [ ] Android Chrome: полноценная установка (не обычный ярлык), собственное окно, понятная подсказка при отсутствии install prompt.
+- [ ] iOS/iPadOS Safari: инструкция «Поделиться → На экран Домой», standalone-запуск без `beforeinstallprompt`.
+- [ ] Авторизация, logout, восстановление сессии при перезапуске приложения; проверить особенности изоляции storage/cookies у iOS Home Screen apps.
+- [ ] Безопасные обновления после Railway deploy: SW cache versioning/cleanup; не перезагружать страницу во время активного занятия или звонка.
+
+### Совместимость и ограничения
+- [ ] Проверить Apple Safari/WebKit: камера, микрофон, разрешения, autoplay, WebRTC/Cloudflare TURN, возврат из фона, блокировка экрана, смена Wi-Fi/мобильной сети. Не обещать непрерывный звонок в фоне там, где iOS ограничивает его.
+- [ ] Проверить PDF, рисование/Apple Pencil/Android stylus, zoom, тетрадь, чат, ввод текста, клавиатуру и обе ориентации экрана.
+- [ ] Push-уведомления вынести в необязательный последующий этап (iOS/iPadOS 16.4+ для установленных Home Screen web apps; разрешение пользователя), не блокировать ими PWA.
+- [ ] Проверить HTTPS/mixed content, SW scope, cache-control и отсутствие личных данных в cache storage.
+
+### Критерии приёмки
+- [ ] На Android Chrome появляется «Установить приложение», School App запускается без адресной строки.
+- [ ] На iPhone/iPad через Safari приложение добавляется на экран Домой и запускается standalone.
+- [ ] Teacher, Student и Admin могут войти, выйти, открыть кабинет, принять приглашение и продолжить урок после перезапуска.
+- [ ] PDF, аннотации, тетрадь, чат, аудио и видео работают на реальных Android/iPhone/iPad; ограничения фона обработаны.
+- [ ] Обновление не теряет данные MongoDB/GridFS, не ломает активную сессию и не оставляет устаревший JS.
+- [ ] Автотесты manifest/SW/routes, браузерные smoke tests и ручная проверка на реальных устройствах.
+- [ ] Разработка через отдельный PR, CI и Railway preview; main/production только после проверок.
