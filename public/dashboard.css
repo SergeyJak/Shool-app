@@ -632,3 +632,9 @@ body[data-role="student"] .materials-card{display:none!important}
   justify-self:stretch !important;
   align-self:stretch !important;
 }
+
+/* Per-teacher balance overview */
+.payment-teacher-breakdown{display:grid;grid-column:1/-1;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;min-width:0}
+.payment-teacher-summary-card{min-width:0}
+.payment-teacher-summary-card .payment-teacher-summary-lessons{color:#263456;font-size:15px;font-weight:800}
+.payment-teacher-summary-card small{color:#7d869b;font-size:12px;overflow-wrap:anywhere}
