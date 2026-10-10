@@ -41,7 +41,7 @@ const activeLessonsCount = document.getElementById("activeLessonsCount");
 const inactiveLessonsCount = document.getElementById("inactiveLessonsCount");
 const paymentBrotherBalance = document.getElementById("paymentBrotherBalance");
 const paymentTeacherBalance = document.getElementById("paymentTeacherBalance");
-const paymentSpentTotal = document.getElementById("paymentSpentTotal");
+const paymentTeacherBreakdown = document.getElementById("paymentTeacherBreakdown");
 const paymentDepositForm = document.getElementById("paymentDepositForm");
 const paymentAccountForm = document.getElementById("paymentAccountForm");
 const paymentAllocationForm = document.getElementById("paymentAllocationForm");
@@ -1227,7 +1227,38 @@ function renderPaymentDeposits() {
 function renderPaymentData() {
   if (paymentBrotherBalance) paymentBrotherBalance.textContent = formatRubles(paymentData.summary?.brotherBalance);
   if (paymentTeacherBalance) paymentTeacherBalance.textContent = formatRubles(paymentData.summary?.teacherBalance);
-  if (paymentSpentTotal) paymentSpentTotal.textContent = formatRubles(paymentData.summary?.spentTotal);
+  if (paymentTeacherBreakdown) {
+    paymentTeacherBreakdown.replaceChildren();
+    const totals = new Map();
+    for (const account of paymentData.accounts.filter((item) => item.active)) {
+      const key = account.teacherId;
+      const current = totals.get(key) || { balance: 0, lessons: 0, remainder: 0, subjects: [] };
+      const balance = Number(account.balance) || 0;
+      const price = Number(account.lessonPrice) || 0;
+      current.balance += balance;
+      if (price > 0) {
+        current.lessons += Math.floor(Math.max(0, balance) / price);
+        current.remainder += Math.max(0, balance) % price;
+      }
+      current.subjects.push(account.subject);
+      totals.set(key, current);
+    }
+    for (const [teacherId, total] of totals) {
+      const card = document.createElement("article");
+      card.className = "payment-summary-card payment-teacher-summary-card";
+      const heading = document.createElement("span");
+      heading.textContent = teacherName(teacherId);
+      const balance = document.createElement("strong");
+      balance.textContent = formatRubles(total.balance);
+      const lessons = document.createElement("span");
+      lessons.className = "payment-teacher-summary-lessons";
+      lessons.textContent = `${total.lessons} полных занятий осталось`;
+      const subjects = document.createElement("small");
+      subjects.textContent = total.subjects.join(" · ");
+      card.append(heading, balance, lessons, subjects);
+      paymentTeacherBreakdown.append(card);
+    }
+  }
   fillPaymentSelects();
   renderPaymentMasterCalendar();
   renderPaymentAccounts();
