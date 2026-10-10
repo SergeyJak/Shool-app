@@ -31,7 +31,7 @@ function calendar(account,lessonDates) {
   right.setAttribute("aria-label","Следующий месяц");
   left.onclick=()=>{ months.set(account.id,new Date(cursor.getFullYear(),cursor.getMonth()-1,1));renderCalendar(); };
   right.onclick=()=>{ months.set(account.id,new Date(cursor.getFullYear(),cursor.getMonth()+1,1));renderCalendar(); };
-  picker.onchange=()=>{ if (/^\\d{4}-\\d{2}$/.test(picker.value)){const [y,m]=picker.value.split("-").map(Number);months.set(account.id,new Date(y,m-1,1));renderCalendar();}};
+  picker.onchange=()=>{ if (/^\d{4}-\d{2}$/.test(picker.value)){const [y,m]=picker.value.split("-").map(Number);months.set(account.id,new Date(y,m-1,1));renderCalendar();}};
   nav.append(left,picker,right);
   header.append(nav);
   container.append(header);
