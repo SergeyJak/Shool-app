@@ -1473,6 +1473,7 @@ async function loadAccount() {
 
   if (user.role === "teacher") {
     perfButton.hidden = true;
+    document.getElementById("teacherPaymentsLink").hidden = false;
     teacherPanel.hidden = false;
     materialPanel.hidden = false;
     teacherSessionTabs.hidden = false;
