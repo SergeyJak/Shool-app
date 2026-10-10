@@ -1367,6 +1367,35 @@ app.post("/api/admin/registrations/:id/reject", requireApiRole("admin"), async (
 });
 
 
+app.get("/api/teacher/payment-history", requireApiRole("teacher"), async (req, res, next) => {
+  try {
+    const accounts = await paymentAccounts.find({ teacherId: req.user._id }).sort({ subject: 1 }).toArray();
+    const accountIds = accounts.map((account) => account._id);
+    const entries = accountIds.length
+      ? await paymentEntries.find({ accountId: { $in: accountIds }, type: { $in: ["allocation", "lesson"] } }).sort({ date: -1, createdAt: -1 }).toArray()
+      : [];
+    const totals = new Map();
+    for (const entry of entries) {
+      const current = totals.get(entry.accountId) || { allocated: 0, spent: 0 };
+      if (entry.type === "allocation") current.allocated += Number(entry.amount || 0);
+      if (entry.type === "lesson") current.spent += Number(entry.amount || 0);
+      totals.set(entry.accountId, current);
+    }
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      accounts: accounts.map((account) => publicPaymentAccount(account, totals.get(account._id))),
+      lessons: entries.filter((entry) => entry.type === "lesson").map((entry) => ({
+        accountId: entry.accountId, date: entry.date, amount: entry.amount,
+      })),
+      transfers: entries.filter((entry) => entry.type === "allocation").map((entry) => ({
+        accountId: entry.accountId, date: entry.date, amount: entry.amount,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/admin/payments", requireApiRole("admin"), async (_req, res, next) => {
   try {
     const [accounts, entries, teachers] = await Promise.all([
@@ -1829,6 +1858,10 @@ app.patch("/api/admin/lessons/:id", requireApiRole("admin"), async (req, res, ne
 });
 
 // Protect direct .html access too, not only friendly routes.
+app.get("/teacher-payments", requirePageAuth("teacher"), (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(path.join(__dirname, "public", "teacher-payments.html"));
+});
 app.get("/dashboard.html", requirePageAuth("teacher", "student"), (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.sendFile(path.join(__dirname, "public", "dashboard.html"));
