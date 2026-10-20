@@ -1449,6 +1449,99 @@ app.get("/api/admin/payments", requireApiRole("admin"), async (_req, res, next) 
   }
 });
 
+// Financial migration: explicit admin-only snapshot, never overwrites an existing ledger.
+app.get("/api/admin/payments/backup", requireApiRole("admin"), async (_req, res, next) => {
+  try {
+    const [accounts, entries] = await Promise.all([
+      paymentAccounts.find({}).toArray(), paymentEntries.find({}).toArray(),
+    ]);
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Disposition", 'attachment; filename="school-payments-backup.json"');
+    res.json({
+      format: "school-payments-v1", exportedAt: new Date().toISOString(),
+      accounts: accounts.map(a => ({
+        id: a._id, teacherId: a.teacherId, subject: a.subject,
+        lessonPrice: a.lessonPrice, active: a.active !== false,
+      })),
+      entries: entries.map(e => ({
+        id: e._id, type: e.type, accountId: e.accountId || null,
+        date: e.date, amount: e.amount, note: e.note || "",
+      })),
+    });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/admin/payments/import", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const data = req.body;
+    if (data?.format !== "school-payments-v1" ||
+        !Array.isArray(data.accounts) || !Array.isArray(data.entries) ||
+        data.accounts.length > 1000 || data.entries.length > 10000)
+      return res.status(400).json({ error: "INVALID_BACKUP_FORMAT" });
+    const [existingAccounts, existingEntries] = await Promise.all([
+      paymentAccounts.countDocuments({}), paymentEntries.countDocuments({}),
+    ]);
+    if (existingAccounts || existingEntries)
+      return res.status(409).json({ error: "TARGET_LEDGER_NOT_EMPTY", existingAccounts, existingEntries });
+    const ids = new Set(), accountIds = new Set(), normalizedAccounts = [];
+    for (const a of data.accounts) {
+      if (!a || typeof a.id !== "string" || !/^payacc_[a-zA-Z0-9-]+$/.test(a.id) ||
+          accountIds.has(a.id) || typeof a.teacherId !== "string" ||
+          !normalizePaymentSubject(a.subject) || !normalizePaymentAmount(a.lessonPrice))
+        return res.status(400).json({ error: "INVALID_ACCOUNT" });
+      accountIds.add(a.id);
+      const subject = normalizePaymentSubject(a.subject);
+      normalizedAccounts.push({
+        _id: a.id, teacherId: a.teacherId, subject: subject.subject,
+        subjectKey: subject.subjectKey, lessonPrice: Number(a.lessonPrice),
+        active: a.active !== false, createdAt: new Date(), updatedAt: new Date(),
+      });
+    }
+    const teacherIds = [...new Set(normalizedAccounts.map(a => a.teacherId))];
+    const knownTeachers = await users.find({ _id: { $in: teacherIds }, role: "teacher" }).toArray();
+    if (knownTeachers.length !== teacherIds.length)
+      return res.status(409).json({ error: "TEACHER_MAPPING_MISSING", missing: teacherIds.filter(id => !knownTeachers.some(t => t._id === id)) });
+    const normalizedEntries = [];
+    const lessonKeys = new Set();
+    for (const e of data.entries) {
+      if (!e || typeof e.id !== "string" || !/^payment_[a-zA-Z0-9-]+$/.test(e.id) ||
+          ids.has(e.id) || !["deposit","allocation","lesson"].includes(e.type) ||
+          !normalizePaymentAmount(e.amount) || !normalizePaymentDate(e.date) ||
+          (e.type !== "deposit" && !accountIds.has(e.accountId)) ||
+          (e.type === "deposit" && e.accountId))
+        return res.status(400).json({ error: "INVALID_ENTRY" });
+      ids.add(e.id);
+      if (e.type === "lesson") {
+        const key = e.accountId + ":" + e.date;
+        if (lessonKeys.has(key)) return res.status(400).json({ error: "DUPLICATE_LESSON" });
+        lessonKeys.add(key);
+      }
+      normalizedEntries.push({
+        _id: e.id, type: e.type, ...(e.type !== "deposit" ? { accountId: e.accountId } : {}),
+        date: e.date, amount: Number(e.amount),
+        ...(e.type !== "lesson" ? { note: String(e.note || "").slice(0, 180) } : {}),
+        createdAt: new Date(), createdBy: req.user._id,
+      });
+    }
+    const total = type => normalizedEntries.filter(e => e.type === type).reduce((n,e) => n+e.amount,0);
+    if (total("allocation") > total("deposit") ||
+        normalizedAccounts.some(a => normalizedEntries.filter(e => e.accountId === a._id && e.type === "lesson")
+          .reduce((n,e) => n+e.amount,0) > normalizedEntries.filter(e => e.accountId === a._id && e.type === "allocation").reduce((n,e) => n+e.amount,0)))
+      return res.status(400).json({ error: "INCONSISTENT_BALANCES" });
+    // Fail closed if a concurrent import has begun.
+    if (await paymentAccounts.countDocuments({}) || await paymentEntries.countDocuments({}))
+      return res.status(409).json({ error: "TARGET_LEDGER_CHANGED" });
+    try {
+      if (normalizedAccounts.length) await paymentAccounts.insertMany(normalizedAccounts, { ordered: true });
+      if (normalizedEntries.length) await paymentEntries.insertMany(normalizedEntries, { ordered: true });
+    } catch (writeError) {
+      // No automated rollback: preserve partial writes for manual recovery.
+      return res.status(500).json({ error: "IMPORT_PARTIAL_FAILURE_REVIEW_REQUIRED" });
+    }
+    res.json({ imported: true, accounts: normalizedAccounts.length, entries: normalizedEntries.length });
+  } catch (error) { next(error); }
+});
+
 app.post("/api/admin/payments/deposits", requireApiRole("admin"), async (req, res, next) => {
   try {
     const amount = normalizePaymentAmount(req.body?.amount);

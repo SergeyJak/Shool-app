@@ -56,6 +56,26 @@ const paymentTransfersBody = document.getElementById("paymentTransfersBody");
 const paymentTabButtons = [...document.querySelectorAll("[data-payment-view]")];
 const paymentSections = [...document.querySelectorAll("[data-payment-section]")];
 
+const paymentImportForm = document.getElementById("paymentImportForm");
+paymentImportForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const status = document.getElementById("paymentImportStatus");
+  const file = document.getElementById("paymentImportFile")?.files?.[0];
+  if (!file) return;
+  if (!confirm("Импортировать финансовые данные? Только в пустую базу. Сначала сохраните резервную копию.")) return;
+  try {
+    const json = JSON.parse(await file.text());
+    const response = await fetch("/api/admin/payments/import", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(json),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "HTTP " + response.status);
+    status.textContent = "Импорт завершён: " + result.accounts + " счетов, " + result.entries + " записей";
+    await loadPaymentData();
+  } catch (error) { status.textContent = "Ошибка импорта: " + error.message; }
+});
+
 let currentUser = null;
 let managedUsers = [];
 let managedLessons = [];
