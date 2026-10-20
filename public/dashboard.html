@@ -231,6 +231,16 @@
           </div>
         </div>
 
+        <section class="admin-card" style="margin:12px 0;padding:16px">
+          <h3>Перенос финансовых данных</h3>
+          <p>Сначала скачайте резервную копию. Импорт разрешён только в пустой журнал и не удаляет существующие записи.</p>
+          <a href="/api/admin/payments/backup" download="school-payments-backup.json">Скачать финансовую базу (JSON)</a>
+          <form id="paymentImportForm" style="margin-top:12px">
+            <label>Импорт JSON <input type="file" id="paymentImportFile" accept=".json,application/json" required></label>
+            <button type="submit">Импортировать в пустую базу</button>
+          </form>
+          <p id="paymentImportStatus" role="status"></p>
+        </section>
         <nav class="payment-switcher" aria-label="Разделы оплат">
           <button id="paymentLessonsTab" type="button" class="payment-switch active" data-payment-view="lessons">Занятия и учителя</button>
           <button id="paymentBrotherTab" type="button" class="payment-switch" data-payment-view="brother">Пополнения брату</button>
