@@ -39,6 +39,22 @@ const activeUsersCount = document.getElementById("activeUsersCount");
 const inactiveUsersCount = document.getElementById("inactiveUsersCount");
 const activeLessonsCount = document.getElementById("activeLessonsCount");
 const inactiveLessonsCount = document.getElementById("inactiveLessonsCount");
+const paymentBrotherBalance = document.getElementById("paymentBrotherBalance");
+const paymentTeacherBalance = document.getElementById("paymentTeacherBalance");
+const paymentTeacherBreakdown = document.getElementById("paymentTeacherBreakdown");
+const paymentDepositForm = document.getElementById("paymentDepositForm");
+const paymentAccountForm = document.getElementById("paymentAccountForm");
+const paymentAllocationForm = document.getElementById("paymentAllocationForm");
+const paymentTeacherId = document.getElementById("paymentTeacherId");
+const paymentAccountId = document.getElementById("paymentAccountId");
+const paymentDepositDate = document.getElementById("paymentDepositDate");
+const paymentAllocationDate = document.getElementById("paymentAllocationDate");
+const paymentAccountsList = document.getElementById("paymentAccountsList");
+const paymentMasterCalendar = document.getElementById("paymentMasterCalendar");
+const paymentDepositsBody = document.getElementById("paymentDepositsBody");
+const paymentTransfersBody = document.getElementById("paymentTransfersBody");
+const paymentTabButtons = [...document.querySelectorAll("[data-payment-view]")];
+const paymentSections = [...document.querySelectorAll("[data-payment-section]")];
 
 let currentUser = null;
 let managedUsers = [];
@@ -48,6 +64,18 @@ let teacherMaterials = [];
 let teacherView = "active";
 let adminUserState = "active";
 let adminLessonState = "active";
+let paymentData = {
+  summary: { depositsTotal: 0, brotherBalance: 0, teacherBalance: 0, spentTotal: 0 },
+  teachers: [],
+  accounts: [],
+  deposits: [],
+  allocations: [],
+  lessons: [],
+};
+let paymentMasterCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+const paymentAccountCursors = new Map();
+const paymentVisibleTeachers = new Set();
+let paymentVisibleTeachersReady = false;
 
 document.getElementById("infoBtn").addEventListener("click", () => dialog.showModal());
 dialog.addEventListener("click", (event) => {
@@ -72,8 +100,32 @@ function showAdminView(view) {
 }
 
 for (const button of adminNavButtons) {
-  button.addEventListener("click", () => showAdminView(button.dataset.adminView));
+  button.addEventListener("click", async () => {
+    showAdminView(button.dataset.adminView);
+    if (button.dataset.adminView === "payments") {
+      try {
+        await loadPaymentData();
+      } catch (error) {
+        setAdminStatus(`Ошибка оплат: ${error.message}`, "error");
+      }
+    }
+  });
 }
+
+function showPaymentView(view) {
+  const selected = view === "brother" ? "brother" : "lessons";
+  for (const button of paymentTabButtons) {
+    button.classList.toggle("active", button.dataset.paymentView === selected);
+  }
+  for (const section of paymentSections) {
+    section.hidden = section.dataset.paymentSection !== selected;
+  }
+}
+
+for (const button of paymentTabButtons) {
+  button.addEventListener("click", () => showPaymentView(button.dataset.paymentView));
+}
+
 
 for (const button of userStateButtons) {
   button.addEventListener("click", () => {
@@ -702,6 +754,523 @@ function renderAdminLessons() {
   }
 }
 
+
+function formatRubles(value) {
+  return `${new Intl.NumberFormat("ru-RU").format(Number(value) || 0)} ₽`;
+}
+
+function localIsoDate(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function teacherName(teacherId) {
+  const teacher = paymentData.teachers.find((item) => item.id === teacherId)
+    || managedUsers.find((item) => item.id === teacherId);
+  return teacher?.displayName || teacher?.username || teacherId;
+}
+
+function paymentLessonDates(accountId) {
+  return new Set(
+    paymentData.lessons
+      .filter((lesson) => lesson.accountId === accountId)
+      .map((lesson) => lesson.date)
+  );
+}
+
+function fillPaymentSelects() {
+  if (paymentTeacherId) {
+    const selected = paymentTeacherId.value;
+    paymentTeacherId.innerHTML = "";
+    const teachers = paymentData.teachers.length
+      ? paymentData.teachers
+      : managedUsers.filter((user) => user.role === "teacher" && user.active);
+    for (const teacher of teachers) {
+      const option = document.createElement("option");
+      option.value = teacher.id;
+      option.textContent = teacher.displayName || teacher.username;
+      paymentTeacherId.append(option);
+    }
+    if ([...paymentTeacherId.options].some((option) => option.value === selected)) {
+      paymentTeacherId.value = selected;
+    }
+  }
+
+  if (paymentAccountId) {
+    const selected = paymentAccountId.value;
+    paymentAccountId.innerHTML = "";
+    for (const account of paymentData.accounts.filter((item) => item.active)) {
+      const option = document.createElement("option");
+      option.value = account.id;
+      option.textContent = `${account.subject} · ${teacherName(account.teacherId)} · ${formatRubles(account.lessonPrice)}`;
+      paymentAccountId.append(option);
+    }
+    if ([...paymentAccountId.options].some((option) => option.value === selected)) {
+      paymentAccountId.value = selected;
+    }
+  }
+}
+
+function paymentAccountForLesson(lesson) {
+  return paymentData.accounts.find((account) => account.id === lesson.accountId) || null;
+}
+
+function paymentTeacherIds() {
+  return [...new Set(paymentData.accounts.filter((account) => account.active).map((account) => account.teacherId))];
+}
+
+function syncPaymentTeacherVisibility() {
+  const ids = paymentTeacherIds();
+  if (!paymentVisibleTeachersReady) {
+    ids.forEach((id) => paymentVisibleTeachers.add(id));
+    paymentVisibleTeachersReady = true;
+    return;
+  }
+  const known = new Set(ids);
+  for (const id of [...paymentVisibleTeachers]) {
+    if (!known.has(id)) paymentVisibleTeachers.delete(id);
+  }
+  for (const id of ids) {
+    if (!paymentVisibleTeachers.has(id) && !paymentData.lessons.some((lesson) => {
+      const account = paymentAccountForLesson(lesson);
+      return account?.teacherId === id;
+    })) {
+      paymentVisibleTeachers.add(id);
+    }
+  }
+}
+
+function paymentTeacherColorIndex(teacherId) {
+  const ids = paymentTeacherIds().sort();
+  const index = ids.indexOf(teacherId);
+  return index < 0 ? 0 : index % 6;
+}
+
+function paymentTeacherColorClass(teacherId) {
+  return `teacher-color-${paymentTeacherColorIndex(teacherId)}`;
+}
+
+function monthValue(cursor) {
+  return `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function setCursorFromMonthValue(cursor, value) {
+  if (!/^\d{4}-\d{2}$/.test(value || "")) return cursor;
+  const [year, month] = value.split("-").map(Number);
+  return new Date(year, month - 1, 1);
+}
+
+function buildCalendarHeader(cursor, onChange, { hint = "" } = {}) {
+  const header = document.createElement("div");
+  header.className = "payment-calendar-header payment-calendar-nav";
+
+  const previous = document.createElement("button");
+  previous.type = "button";
+  previous.className = "payment-calendar-arrow";
+  previous.textContent = "‹";
+  previous.setAttribute("aria-label", "Предыдущий месяц");
+
+  const picker = document.createElement("input");
+  picker.type = "month";
+  picker.className = "payment-month-picker";
+  picker.value = monthValue(cursor);
+  picker.setAttribute("aria-label", "Месяц и год");
+
+  const next = document.createElement("button");
+  next.type = "button";
+  next.className = "payment-calendar-arrow";
+  next.textContent = "›";
+  next.setAttribute("aria-label", "Следующий месяц");
+
+  previous.addEventListener("click", () => {
+    onChange(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+  });
+  next.addEventListener("click", () => {
+    onChange(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
+  });
+  picker.addEventListener("change", () => {
+    onChange(setCursorFromMonthValue(cursor, picker.value));
+  });
+
+  const controls = document.createElement("div");
+  controls.className = "payment-calendar-nav-controls";
+  controls.append(previous, picker, next);
+  header.append(controls);
+
+  if (hint) {
+    const copy = document.createElement("span");
+    copy.textContent = hint;
+    header.append(copy);
+  }
+  return header;
+}
+
+function appendCalendarWeekdays(wrapper) {
+  const weekdays = document.createElement("div");
+  weekdays.className = "payment-calendar-weekdays";
+  for (const day of ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]) {
+    const cell = document.createElement("span");
+    cell.textContent = day;
+    weekdays.append(cell);
+  }
+  wrapper.append(weekdays);
+}
+
+function renderPaymentMasterCalendar() {
+  if (!paymentMasterCalendar) return;
+  paymentMasterCalendar.innerHTML = "";
+  syncPaymentTeacherVisibility();
+
+  const activeAccounts = paymentData.accounts.filter((account) => account.active);
+  if (!activeAccounts.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = "Календарь появится после добавления первого учителя.";
+    paymentMasterCalendar.append(empty);
+    return;
+  }
+
+  paymentMasterCalendar.append(
+    buildCalendarHeader(paymentMasterCursor, (cursor) => {
+      paymentMasterCursor = cursor;
+      renderPaymentMasterCalendar();
+    }, { hint: "Архив можно листать по месяцам и годам" })
+  );
+
+  const filters = document.createElement("div");
+  filters.className = "payment-teacher-filters";
+  for (const teacherId of paymentTeacherIds()) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `payment-teacher-filter ${paymentTeacherColorClass(teacherId)}`;
+    button.classList.toggle("is-active", paymentVisibleTeachers.has(teacherId));
+
+    const dot = document.createElement("span");
+    dot.className = "payment-teacher-dot";
+    const label = document.createElement("span");
+    label.textContent = teacherName(teacherId);
+    button.append(dot, label);
+
+    button.addEventListener("click", () => {
+      if (paymentVisibleTeachers.has(teacherId)) {
+        paymentVisibleTeachers.delete(teacherId);
+      } else {
+        paymentVisibleTeachers.add(teacherId);
+      }
+      renderPaymentMasterCalendar();
+    });
+    filters.append(button);
+  }
+  paymentMasterCalendar.append(filters);
+  appendCalendarWeekdays(paymentMasterCalendar);
+
+  const grid = document.createElement("div");
+  grid.className = "payment-calendar-grid payment-master-grid";
+  const year = paymentMasterCursor.getFullYear();
+  const month = paymentMasterCursor.getMonth();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let i = 0; i < firstWeekday; i += 1) {
+    const spacer = document.createElement("span");
+    spacer.className = "payment-calendar-spacer";
+    grid.append(spacer);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const cell = document.createElement("div");
+    cell.className = "payment-master-day";
+
+    const number = document.createElement("span");
+    number.className = "payment-master-day-number";
+    number.textContent = String(day);
+    cell.append(number);
+
+    const events = paymentData.lessons
+      .filter((lesson) => lesson.date === date)
+      .map((lesson) => ({ lesson, account: paymentAccountForLesson(lesson) }))
+      .filter(({ account }) => account && paymentVisibleTeachers.has(account.teacherId));
+
+    if (events.length) cell.classList.add("has-lessons");
+
+    const markers = document.createElement("div");
+    markers.className = "payment-master-markers";
+    for (const { lesson, account } of events) {
+      const marker = document.createElement("span");
+      marker.className = `payment-master-marker ${paymentTeacherColorClass(account.teacherId)}`;
+      marker.title = `${teacherName(account.teacherId)} · ${account.subject} · ${formatRubles(lesson.amount || account.lessonPrice)}`;
+      markers.append(marker);
+    }
+    cell.append(markers);
+    grid.append(cell);
+  }
+
+  paymentMasterCalendar.append(grid);
+}
+
+function buildPaymentCalendar(account) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `payment-calendar ${paymentTeacherColorClass(account.teacherId)}`;
+
+  let monthCursor = paymentAccountCursors.get(account.id);
+  if (!monthCursor) {
+    monthCursor = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    paymentAccountCursors.set(account.id, monthCursor);
+  }
+
+  wrapper.append(
+    buildCalendarHeader(monthCursor, (cursor) => {
+      paymentAccountCursors.set(account.id, cursor);
+      renderPaymentAccounts();
+    }, { hint: "Нажмите на день, чтобы отметить или отменить занятие" })
+  );
+  appendCalendarWeekdays(wrapper);
+
+  const grid = document.createElement("div");
+  grid.className = "payment-calendar-grid";
+  const year = monthCursor.getFullYear();
+  const month = monthCursor.getMonth();
+  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const marked = paymentLessonDates(account.id);
+
+  for (let i = 0; i < firstWeekday; i += 1) {
+    const spacer = document.createElement("span");
+    spacer.className = "payment-calendar-spacer";
+    grid.append(spacer);
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "payment-calendar-day";
+    button.textContent = String(day);
+    button.classList.toggle("is-lesson", marked.has(date));
+    button.title = marked.has(date)
+      ? `Занятие ${formatRubles(account.lessonPrice)}. Нажмите, чтобы отменить.`
+      : `Отметить занятие за ${formatRubles(account.lessonPrice)}`;
+
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        if (marked.has(date)) {
+          await apiJson(`/api/admin/payments/accounts/${encodeURIComponent(account.id)}/lessons/${date}`, {
+            method: "DELETE",
+          });
+          setAdminStatus("Занятие отменено, сумма возвращена", "success");
+        } else {
+          await apiJson(`/api/admin/payments/accounts/${encodeURIComponent(account.id)}/lessons`, {
+            method: "POST",
+            body: JSON.stringify({ date }),
+          });
+          setAdminStatus(`Занятие отмечено: −${formatRubles(account.lessonPrice)}`, "success");
+        }
+        await loadPaymentData();
+      } catch (error) {
+        const message = error.message === "INSUFFICIENT_TEACHER_BALANCE"
+          ? "Недостаточно денег на счёте учителя"
+          : error.message;
+        setAdminStatus(`Ошибка: ${message}`, "error");
+        button.disabled = false;
+      }
+    });
+    grid.append(button);
+  }
+
+  wrapper.append(grid);
+  return wrapper;
+}
+
+function renderPaymentAccounts() {
+  if (!paymentAccountsList) return;
+  paymentAccountsList.innerHTML = "";
+
+  if (!paymentData.accounts.length) {
+    const empty = document.createElement("p");
+    empty.className = "admin-overview-note";
+    empty.textContent = "Сначала создайте счёт учителя / предмета.";
+    paymentAccountsList.append(empty);
+    return;
+  }
+
+  for (const account of paymentData.accounts.filter((item) => item.active)) {
+    const card = document.createElement("article");
+    card.className = "payment-account-card";
+
+    const top = document.createElement("div");
+    top.className = "payment-account-top";
+    const title = document.createElement("div");
+    const name = document.createElement("h4");
+    name.textContent = account.subject;
+    const meta = document.createElement("span");
+    meta.textContent = `${teacherName(account.teacherId)} · ${formatRubles(account.lessonPrice)} / занятие`;
+    title.append(name, meta);
+
+    const balance = document.createElement("div");
+    balance.className = "payment-account-balance";
+    const balanceValue = document.createElement("strong");
+    balanceValue.textContent = formatRubles(account.balance);
+    const balanceMeta = document.createElement("span");
+    balanceMeta.textContent = `${account.fullLessonsLeft} полных урока + ${formatRubles(account.remainderAfterLessons)}`;
+    balance.append(balanceValue, balanceMeta);
+    top.append(title, balance);
+
+    const stats = document.createElement("div");
+    stats.className = "payment-account-stats";
+    stats.innerHTML = `
+      <span>Передано <b>${formatRubles(account.allocated)}</b></span>
+      <span>Проведено <b>${Math.round(account.spent / account.lessonPrice) || 0}</b></span>
+      <span>Списано <b>${formatRubles(account.spent)}</b></span>
+    `;
+
+    card.append(top, stats, buildPaymentCalendar(account));
+    paymentAccountsList.append(card);
+  }
+}
+
+function renderPaymentTransfers() {
+  if (!paymentTransfersBody) return;
+  paymentTransfersBody.innerHTML = "";
+
+  if (!paymentData.allocations.length) {
+    const row = document.createElement("tr");
+    row.innerHTML = '<td colspan="4" class="payment-empty-cell">Переводов учителям пока нет</td>';
+    paymentTransfersBody.append(row);
+    return;
+  }
+
+  for (const transfer of paymentData.allocations) {
+    const account = paymentData.accounts.find((item) => item.id === transfer.accountId);
+    const row = document.createElement("tr");
+
+    const date = document.createElement("td");
+    date.textContent = new Date(`${transfer.date}T00:00:00`).toLocaleDateString("ru-RU");
+
+    const accountCell = document.createElement("td");
+    accountCell.textContent = account
+      ? `${account.subject} · ${teacherName(account.teacherId)}`
+      : "Счёт удалён";
+
+    const amount = document.createElement("td");
+    amount.innerHTML = `<strong>${formatRubles(transfer.amount)}</strong>`;
+
+    const note = document.createElement("td");
+    note.textContent = transfer.note || "—";
+
+    const actions = document.createElement("td");
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "payment-delete";
+    del.textContent = "Удалить";
+    del.addEventListener("click", async () => {
+      if (!confirm(`Удалить перевод ${formatRubles(transfer.amount)} учителю?`)) return;
+      try {
+        await apiJson(`/api/admin/payments/allocations/${encodeURIComponent(transfer.id)}`, { method: "DELETE" });
+        setAdminStatus("Перевод учителю удалён, сумма возвращена брату", "success");
+        await loadPaymentData();
+      } catch (error) {
+        const message = error.message === "ALLOCATION_ALREADY_SPENT"
+          ? "Этот перевод уже покрывает проведённые занятия. Сначала отмените соответствующие занятия в календаре."
+          : error.message;
+        setAdminStatus(`Ошибка: ${message}`, "error");
+      }
+    });
+    actions.append(del);
+
+    row.append(date, accountCell, amount, note, actions);
+    paymentTransfersBody.append(row);
+  }
+}
+
+function renderPaymentDeposits() {
+  if (!paymentDepositsBody) return;
+  paymentDepositsBody.innerHTML = "";
+  if (!paymentData.deposits.length) {
+    const row = document.createElement("tr");
+    row.innerHTML = '<td colspan="3" class="payment-empty-cell">Взносов пока нет</td>';
+    paymentDepositsBody.append(row);
+    return;
+  }
+
+  for (const deposit of paymentData.deposits) {
+    const row = document.createElement("tr");
+    const date = document.createElement("td");
+    date.textContent = new Date(`${deposit.date}T00:00:00`).toLocaleDateString("ru-RU");
+    const amount = document.createElement("td");
+    amount.innerHTML = `<strong>${formatRubles(deposit.amount)}</strong>`;
+    const actions = document.createElement("td");
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "payment-delete";
+    del.textContent = "Удалить";
+    del.addEventListener("click", async () => {
+      if (!confirm(`Удалить взнос ${formatRubles(deposit.amount)} от ${date.textContent}?`)) return;
+      try {
+        await apiJson(`/api/admin/payments/deposits/${encodeURIComponent(deposit.id)}`, { method: "DELETE" });
+        setAdminStatus("Взнос удалён", "success");
+        await loadPaymentData();
+      } catch (error) {
+        const message = error.message === "DEPOSIT_ALREADY_ALLOCATED"
+          ? "Этот взнос уже использован для переводов учителям. Сначала удалите соответствующий перевод в таблице «Переводы брата учителям»."
+          : error.message;
+        setAdminStatus(`Ошибка: ${message}`, "error");
+      }
+    });
+    actions.append(del);
+    row.append(date, amount, actions);
+    paymentDepositsBody.append(row);
+  }
+}
+
+function renderPaymentData() {
+  if (paymentBrotherBalance) paymentBrotherBalance.textContent = formatRubles(paymentData.summary?.brotherBalance);
+  if (paymentTeacherBalance) paymentTeacherBalance.textContent = formatRubles(paymentData.summary?.teacherBalance);
+  if (paymentTeacherBreakdown) {
+    paymentTeacherBreakdown.replaceChildren();
+    const totals = new Map();
+    for (const account of paymentData.accounts.filter((item) => item.active)) {
+      const key = account.teacherId;
+      const current = totals.get(key) || { balance: 0, lessons: 0, remainder: 0, subjects: [] };
+      const balance = Number(account.balance) || 0;
+      const price = Number(account.lessonPrice) || 0;
+      current.balance += balance;
+      if (price > 0) {
+        current.lessons += Math.floor(Math.max(0, balance) / price);
+        current.remainder += Math.max(0, balance) % price;
+      }
+      current.subjects.push(account.subject);
+      totals.set(key, current);
+    }
+    for (const [teacherId, total] of totals) {
+      const card = document.createElement("article");
+      card.className = "payment-summary-card payment-teacher-summary-card";
+      const heading = document.createElement("span");
+      heading.textContent = teacherName(teacherId);
+      const balance = document.createElement("strong");
+      balance.textContent = formatRubles(total.balance);
+      const lessons = document.createElement("span");
+      lessons.className = "payment-teacher-summary-lessons";
+      lessons.textContent = `${total.lessons} полных занятий осталось`;
+      const subjects = document.createElement("small");
+      subjects.textContent = total.subjects.join(" · ");
+      card.append(heading, balance, lessons, subjects);
+      paymentTeacherBreakdown.append(card);
+    }
+  }
+  fillPaymentSelects();
+  renderPaymentMasterCalendar();
+  renderPaymentAccounts();
+  renderPaymentTransfers();
+  renderPaymentDeposits();
+}
+
+async function loadPaymentData() {
+  paymentData = await apiJson("/api/admin/payments");
+  renderPaymentData();
+}
+
 async function loadAdminData() {
   const [registrationsPayload, usersPayload, lessonsPayload] = await Promise.all([
     apiJson("/api/admin/registrations"),
@@ -781,6 +1350,79 @@ createLessonForm?.addEventListener("submit", async (event) => {
   }
 });
 
+
+for (const input of [paymentDepositDate, paymentAllocationDate]) {
+  if (input && !input.value) input.value = localIsoDate();
+}
+
+paymentDepositForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(paymentDepositForm);
+  try {
+    await apiJson("/api/admin/payments/deposits", {
+      method: "POST",
+      body: JSON.stringify({
+        amount: Number(form.get("amount")),
+        date: form.get("date"),
+      }),
+    });
+    paymentDepositForm.reset();
+    paymentDepositDate.value = localIsoDate();
+    setAdminStatus("Взнос добавлен", "success");
+    await loadPaymentData();
+  } catch (error) {
+    setAdminStatus(`Ошибка: ${error.message}`, "error");
+  }
+});
+
+paymentAccountForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(paymentAccountForm);
+  try {
+    await apiJson("/api/admin/payments/accounts", {
+      method: "POST",
+      body: JSON.stringify({
+        teacherId: form.get("teacherId"),
+        subject: form.get("subject"),
+        lessonPrice: Number(form.get("lessonPrice")),
+      }),
+    });
+    paymentAccountForm.reset();
+    setAdminStatus("Счёт учителя создан", "success");
+    await loadPaymentData();
+  } catch (error) {
+    const message = error.message === "PAYMENT_ACCOUNT_EXISTS"
+      ? "Для этого учителя и предмета уже есть счёт. Используйте существующий календарь."
+      : error.message;
+    setAdminStatus(`Ошибка: ${message}`, "error");
+  }
+});
+
+paymentAllocationForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = new FormData(paymentAllocationForm);
+  try {
+    await apiJson("/api/admin/payments/allocations", {
+      method: "POST",
+      body: JSON.stringify({
+        accountId: form.get("accountId"),
+        amount: Number(form.get("amount")),
+        date: form.get("date"),
+        note: form.get("note"),
+      }),
+    });
+    paymentAllocationForm.reset();
+    paymentAllocationDate.value = localIsoDate();
+    setAdminStatus("Перевод учителю записан", "success");
+    await loadPaymentData();
+  } catch (error) {
+    const message = error.message === "INSUFFICIENT_BROTHER_BALANCE"
+      ? "У брата недостаточно денег для этого перевода"
+      : error.message;
+    setAdminStatus(`Ошибка: ${message}`, "error");
+  }
+});
+
 createTeacherSessionForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(createTeacherSessionForm);
@@ -831,6 +1473,7 @@ async function loadAccount() {
 
   if (user.role === "teacher") {
     perfButton.hidden = true;
+    document.getElementById("teacherPaymentsLink").hidden = false;
     teacherPanel.hidden = false;
     materialPanel.hidden = false;
     teacherSessionTabs.hidden = false;

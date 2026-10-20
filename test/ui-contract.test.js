@@ -730,3 +730,76 @@ test("MongoDB database name is configurable per environment", () => {
   assert.match(server, /const MONGODB_DB_NAME = String\(process\.env\.MONGODB_DB_NAME \|\| "school_app"\)\.trim\(\)/);
   assert.match(server, /db = client\.db\(MONGODB_DB_NAME\)/);
 });
+
+
+test("admin payment ledger exposes deposits, teacher allocation, balances and lesson calendar", () => {
+  const html = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const server = read("server.js");
+
+  assert.match(html, /data-admin-view="payments"/);
+  assert.match(html, /id="paymentDepositForm"/);
+  assert.match(html, /id="paymentAccountForm"/);
+  assert.match(html, /id="paymentAllocationForm"/);
+  assert.match(html, /id="paymentAccountsList"/);
+  assert.match(html, /id="paymentDepositsBody"/);
+
+  assert.match(cabinet, /function buildPaymentCalendar/);
+  assert.match(cabinet, /fullLessonsLeft/);
+  assert.match(cabinet, /remainderAfterLessons/);
+  assert.match(cabinet, /\/api\/admin\/payments\/accounts\/\$\{encodeURIComponent\(account\.id\)\}\/lessons/);
+
+  assert.match(server, /payment_accounts/);
+  assert.match(server, /payment_entries/);
+  assert.match(server, /app\.get\("\/api\/admin\/payments"/);
+  assert.match(server, /app\.post\("\/api\/admin\/payments\/deposits"/);
+  assert.match(server, /app\.post\("\/api\/admin\/payments\/allocations"/);
+  assert.match(server, /INSUFFICIENT_BROTHER_BALANCE/);
+  assert.match(server, /INSUFFICIENT_TEACHER_BALANCE/);
+});
+
+
+test("admin payment calendar supports multi-year navigation and teacher color filters", () => {
+  const html = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const css = read("public/dashboard.css");
+
+  assert.match(html, /id="paymentMasterCalendar"/);
+  assert.match(cabinet, /type = "month"/);
+  assert.match(cabinet, /paymentMasterCursor/);
+  assert.match(cabinet, /paymentAccountCursors/);
+  assert.match(cabinet, /paymentVisibleTeachers/);
+  assert.match(cabinet, /function renderPaymentMasterCalendar/);
+  assert.match(cabinet, /paymentTeacherColorClass/);
+  assert.match(css, /\.payment-teacher-filter/);
+  assert.match(css, /\.payment-master-marker/);
+  assert.match(css, /\.teacher-color-0/);
+});
+
+
+test("admin payment history supports safe rollback with friendly errors", () => {
+  const cabinet = read("public/cabinet.js");
+  const server = read("server.js");
+
+  assert.match(server, /app\.delete\("\/api\/admin\/payments\/allocations\/:id"/);
+  assert.match(server, /ALLOCATION_ALREADY_SPENT/);
+  assert.match(cabinet, /Перевод учителю удалён, сумма возвращена брату/);
+  assert.match(cabinet, /Сначала отмените соответствующие занятия в календаре/);
+  assert.match(cabinet, /Сначала удалите соответствующий перевод/);
+});
+
+
+test("admin payments separate teacher lessons from brother top-ups", () => {
+  const html = read("public/dashboard.html");
+  const cabinet = read("public/cabinet.js");
+  const css = read("public/dashboard.css");
+
+  assert.match(html, /data-payment-view="lessons"/);
+  assert.match(html, /data-payment-view="brother"/);
+  assert.match(html, /data-payment-section="brother"/);
+  assert.match(html, /<h3>Пополнение брату<\/h3>/);
+  assert.doesNotMatch(html, /id="paymentDepositForm"[\s\S]{0,900}>Комментарий</);
+  assert.match(cabinet, /function showPaymentView/);
+  assert.match(css, /\.payment-tabs/);
+  assert.match(css, /\.payment-brother-layout/);
+});

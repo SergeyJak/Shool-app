@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>School App · Мои оплаты</title>
+<link rel="stylesheet" href="/landing.css"><link rel="stylesheet" href="/dashboard.css">
+<style>
+.teacher-payments-shell{max-width:1050px;margin:24px auto;padding:0 20px 50px;color:#1b2b50}
+.teacher-payments-shell h1{font-size:clamp(26px,5vw,38px)}
+.teacher-payments-shell h2{font-size:22px}
+.teacher-payments-shell .payment-account-card{margin:18px 0}
+.teacher-payments-shell .payment-calendar-day{cursor:default}
+.teacher-payments-shell .teacher-payments-history{background:white;border:1px solid #e7e9f3;padding:20px;border-radius:18px;margin-top:20px}
+.teacher-payments-shell table{width:100%;border-collapse:collapse}
+.teacher-payments-shell th,.teacher-payments-shell td{padding:12px;text-align:left;border-bottom:1px solid #e7e9f3}
+.teacher-payments-shell .payment-calendar{margin-top:20px}
+.teacher-payments-shell .payment-calendar-day.is-marked{background:#675af0;color:#fff}
+.teacher-payments-shell .teacher-payments-empty{color:#768098}
+.teacher-payments-shell .teacher-payments-account-summary{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.teacher-payments-shell .teacher-payments-number{font-size:24px;font-weight:800}
+.teacher-payments-shell .teacher-payments-muted{color:#768098}
+.teacher-payments-shell .teacher-payments-account-summary>div{display:grid;gap:5px}
+.teacher-payments-shell .teacher-payments-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.teacher-payments-shell .teacher-payments-header a{color:#574fe2;font-weight:700}
+@media(max-width:600px){.teacher-payments-shell{padding:0 14px 40px}.teacher-payments-shell .payment-account-card{padding:14px}.teacher-payments-shell th,.teacher-payments-shell td{padding:9px 4px;font-size:13px}}
+</style></head><body class="landing-body dashboard-page">
+<header class="dashboard-header"><a class="dashboard-brand" href="/cabinet"><span class="dashboard-brand-owl">🦉</span><span>School <b>App</b></span></a><nav class="dashboard-nav"><a href="/cabinet">Кабинет</a><a href="/teacher-payments" aria-current="page">Оплаты</a></nav></header>
+<main class="teacher-payments-shell">
+<div class="teacher-payments-header"><div><span class="admin-eyebrow">Личный кабинет учителя</span><h1>Мои оплаты и занятия</h1></div><a href="/cabinet">← Назад в кабинет</a></div>
+<p class="teacher-payments-muted">Просмотр без возможности изменения. Здесь видны только ваши занятия и переводы.</p>
+<p id="teacherPaymentsStatus" role="status">Загружаем…</p>
+<div id="teacherPaymentsAccounts"></div>
+<section class="teacher-payments-history"><h2>История переводов</h2><div class="payment-table-wrap"><table><thead><tr><th>Дата</th><th>Предмет</th><th>Сумма</th></tr></thead><tbody id="teacherPaymentsTransfers"></tbody></table></div></section>
+</main><script src="/teacher-payments.js"></script></body></html>
