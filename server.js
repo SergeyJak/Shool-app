@@ -1369,7 +1369,7 @@ app.post("/api/admin/registrations/:id/reject", requireApiRole("admin"), async (
 
 app.get("/api/teacher/payment-history", requireApiRole("teacher"), async (req, res, next) => {
   try {
-    const accounts = await paymentAccounts.find({ teacherId: req.user._id }).sort({ subject: 1 }).toArray();
+    const accounts = await paymentAccounts.find({ teacherId: req.user._id, active: { $ne: false } }).sort({ subject: 1 }).toArray();
     const accountIds = accounts.map((account) => account._id);
     const entries = accountIds.length
       ? await paymentEntries.find({ accountId: { $in: accountIds }, type: { $in: ["allocation", "lesson"] } }).sort({ date: -1, createdAt: -1 }).toArray()
