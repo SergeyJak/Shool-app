@@ -134,7 +134,8 @@ body[data-role="student"] .session-create-card,
 body[data-role="student"] .materials-card{display:none!important}
 @media(max-width:980px){
   /* Keep teacher payments reachable on phones and tablets. */
-  .dashboard-nav{display:flex;order:3;width:100%;margin:0;justify-content:flex-start}
+  .dashboard-header{flex-wrap:wrap;min-width:0;max-width:100%}
+  .dashboard-nav{display:flex;flex:0 0 100%;order:3;width:100%;min-width:0;margin:0;justify-content:flex-start}
   .dashboard-nav a:not(#teacherPaymentsLink),.dashboard-nav button{display:none}
   .teacher-dashboard-grid{grid-template-columns:1fr}
   .dashboard-sidebar{grid-template-columns:1fr 1fr}
@@ -144,7 +145,10 @@ body[data-role="student"] .materials-card{display:none!important}
   .session-decor{width:220px;opacity:.52}
 }
 @media(max-width:720px){
-  .dashboard-header{position:relative;padding:8px 12px;gap:10px}
+  .dashboard-header{position:relative;padding:8px 12px;gap:10px;flex-wrap:wrap;overflow-x:clip}
+  .dashboard-brand{min-width:0;flex:0 1 auto}
+  .dashboard-page .account-strip{min-width:0;flex:0 1 auto}
+  .dashboard-nav #teacherPaymentsLink{display:inline-flex;align-items:center;max-width:100%;padding:8px 12px;background:#f2f0ff;color:#5146c7;border-radius:10px}
   .dashboard-brand{font-size:20px}
   .dashboard-brand-owl{width:38px;height:38px;font-size:23px}
   .dashboard-page .account-strip{margin-left:auto;max-width:52%}
