@@ -640,3 +640,52 @@ body[data-role="student"] .materials-card{display:none!important}
 .payment-teacher-summary-card{min-width:0}
 .payment-teacher-summary-card .payment-teacher-summary-lessons{color:#263456;font-size:15px;font-weight:800}
 .payment-teacher-summary-card small{color:#7d869b;font-size:12px;overflow-wrap:anywhere}
+
+/* Teacher cabinet mobile header: payments live in a real second grid row. */
+@media (max-width: 980px) {
+  body[data-role="teacher"] .dashboard-header {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"brand account" "payments payments";
+    gap:10px 8px;
+    width:100%;
+    max-width:100vw;
+    min-width:0;
+    padding:10px 12px;
+  }
+  body[data-role="teacher"] .dashboard-header .dashboard-brand {
+    grid-area:brand;
+    min-width:0;
+    font-size:clamp(17px,4vw,22px);
+  }
+  body[data-role="teacher"] .dashboard-header .dashboard-brand-owl {width:36px;height:36px;font-size:22px;flex-shrink:0}
+  body[data-role="teacher"] .dashboard-header .account-strip {
+    grid-area:account;
+    margin:0;
+    min-width:0;
+    max-width:100%;
+    padding:5px;
+    gap:4px;
+  }
+  body[data-role="teacher"] .dashboard-header #accountName {max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  body[data-role="teacher"] .dashboard-header .account-strip button {padding:9px 11px}
+  body[data-role="teacher"] .dashboard-header .dashboard-nav {
+    grid-area:payments;
+    display:flex !important;
+    width:100%;
+    min-width:0;
+    margin:0;
+    padding:0;
+    justify-content:flex-start;
+  }
+  body[data-role="teacher"] .dashboard-header .dashboard-nav > :not(#teacherPaymentsLink) {display:none !important}
+  body[data-role="teacher"] .dashboard-header #teacherPaymentsLink:not([hidden]) {
+    display:inline-flex;
+    align-items:center;
+    background:#eeebff;
+    color:#5146c7;
+    border-radius:12px;
+    padding:10px 16px;
+    max-width:100%;
+  }
+}
