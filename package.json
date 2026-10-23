@@ -13,7 +13,8 @@
     "test:student-ui": "node scripts/student-dashboard-regression.mjs",
     "test:student-screenshots": "node scripts/student-dashboard-screenshots.mjs",
     "test:student-games": "node scripts/student-games-regression.mjs",
-    "test:student-interactions": "node scripts/student-game-interactions.mjs"
+    "test:student-interactions": "node scripts/student-game-interactions.mjs",
+    "test:student-diagnostic": "node scripts/student-diagnostic-adaptive-e2e.mjs"
   },
   "engines": {
     "node": ">=20"
