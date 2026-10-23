@@ -37,6 +37,7 @@ const {
 const { resolveIdentityFromCookies } = require("./lib/session-context");
 const { canAccessLesson } = require("./lib/lesson-access");
 const { validateAttempt } = require("./lib/math-assessment");
+const { buildSession } = require("./lib/math-adaptive");
 const {
   normalizeManagedUsername,
   validateRegistrationCredentials,
@@ -1968,6 +1969,13 @@ app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
 app.get("/connections.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "connections.html"))
 );
+app.get("/api/math/adaptive", requireApiRole("student"), async (req,res,next)=>{
+  try{
+    if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
+    const attempts=await mathAttempts.find({studentId:req.user._id},{projection:{_id:0}}).sort({createdAt:-1}).limit(20).toArray();
+    res.json(buildSession(attempts));
+  }catch(error){next(error);}
+});
 app.get("/api/math/progress", requireApiRole("student"), async (req,res,next)=>{
   try {
     if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
