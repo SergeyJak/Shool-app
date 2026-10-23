@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>School App · Математическая академия</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#182447;background:#f6f7ff}*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at top left,#e9f8ff,transparent 45%),#f7f7ff;min-height:100vh}
+header{max-width:860px;margin:auto;padding:22px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+a{color:#594de2;text-decoration:none;font-weight:700}main{max-width:860px;margin:12px auto;padding:0 18px 70px}
+h1{font-size:clamp(27px,5vw,42px);margin:8px 0}p{color:#56627a;line-height:1.55}
+.card{background:white;border-radius:25px;padding:clamp(20px,5vw,34px);box-shadow:0 12px 35px #3430a20d;margin:18px 0}
+.tag{font-size:13px;font-weight:800;letter-spacing:.04em;color:#6655ee}
+button{border:0;background:#6255eb;color:#fff;border-radius:15px;font:inherit;font-weight:750;padding:15px 20px;cursor:pointer;min-height:48px}
+button:focus-visible,a:focus-visible{outline:3px solid #00a7e1;outline-offset:3px}button.secondary{color:#493cc9;background:#edeafe}
+.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0}
+.option{background:#f4f2ff;color:#172449;border:2px solid transparent;font-size:22px}
+.option:hover{border-color:#9186f7}.option:disabled{opacity:.75;cursor:default}.option.correct{background:#d3f6e3;border-color:#249b60}.option.wrong{background:#ffe1e4;border-color:#df6076}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.meter{height:10px;border-radius:20px;background:#e9e9f4;overflow:hidden;margin:17px 0}.meter>div{height:100%;background:#6c61ed;transition:width .25s}
+.feedback{min-height:48px;font-weight:650}.small{font-size:14px}.skills{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.skill{border-radius:18px;padding:17px;background:#f5f4ff}.skill strong{display:block;margin-bottom:7px}
+.hidden{display:none!important}#question{font-size:clamp(23px,4vw,32px);font-weight:800;line-height:1.4}
+footer{text-align:center;color:#78829a;font-size:13px;margin:28px} @media(max-width:430px){.options{gap:8px}.option{font-size:20px;padding:14px 8px}}
+</style></head>
+<body><header><a href="/cabinet">← Мои занятия</a><strong>🦉 School App</strong></header>
+<main><div class="tag">МАТЕМАТИЧЕСКАЯ АКАДЕМИЯ · ПЕРВЫЙ ЭТАП</div><h1>Математические открытия ✨</h1>
+<p>Найдём твои сильные стороны и подберём интересные задания. Ошибаться можно: так мы понимаем, чему учиться дальше.</p>
+<section class="card" id="intro"><h2>Начнём с маленькой разведки знаний?</h2><p>12 заданий по четырём темам. Без таймера и оценок. После проверки откроются тренировки.</p><button id="start">Начать диагностику</button></section>
+<section class="card hidden" id="play" aria-live="polite">
+<div class="top"><span id="mode" class="tag"></span><strong id="progress"></strong></div><div class="meter"><div id="progressFill"></div></div>
+<div id="question"></div><div id="options" class="options"></div><p id="feedback" class="feedback" aria-live="polite"></p>
+<button id="next" class="hidden">Продолжить →</button></section>
+<section class="card hidden" id="results"><h2 id="resultTitle">Твоя карта знаний</h2><p id="resultLead"></p><div id="skills" class="skills"></div>
+<p class="small">Это ориентировочная диагностика, не школьная оценка. Уровень уточняется по следующим заданиям.</p>
+<button id="practice">Тренировать слабую тему</button> <button class="secondary" id="repeat">Пройти заново</button></section>
+<footer>Раздел в разработке · Данные первого этапа сохраняются в этом браузере</footer></main>
+<script src="/math-academy.js"></script></body></html>
