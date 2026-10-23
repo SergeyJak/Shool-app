@@ -1,0 +1,37 @@
+/* School App storybook mathematics: scoped to Math Academy. */
+body{background:linear-gradient(180deg,#dff5ff 0%,#faf5ff 48%,#fff6e6 100%);color:#202c57}
+header{max-width:1080px}
+main{max-width:1080px}
+.academy-hero{background:linear-gradient(90deg,#c9f3ffef 0%,#d6f5fff0 42%,#d6f5ff26 77%),url("/assets/student-worlds/owl-adventure.svg") center right/cover no-repeat;border:5px solid white;border-radius:34px;box-shadow:0 14px 27px #365dbd22;min-height:330px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;padding:clamp(24px,5vw,48px)}
+.academy-hero-copy{position:relative;z-index:1;max-width:530px}
+.academy-hero h1{font-size:clamp(30px,5.5vw,51px);line-height:1.1;font-weight:900;margin:18px 0 12px}
+.academy-hero p{font-size:clamp(16px,2vw,21px);font-weight:650;color:#344572;max-width:410px}
+.academy-pill{display:inline-block;background:#ffffffd9;border-radius:35px;padding:11px 17px;color:#5e47c8;font-weight:900;font-size:12px;letter-spacing:.06em}
+.academy-hero-owl{flex:0 1 30%;min-height:190px}
+.academy-hero-button{display:inline-flex;background:linear-gradient(#9076ff,#624deb);color:white!important;text-decoration:none;box-shadow:0 5px 0 #4032b9;border-radius:17px;padding:14px 19px;font-weight:900;margin-top:12px}
+.academy-worlds-title{font-size:clamp(25px,4vw,34px);font-weight:900;margin:33px 4px 18px}
+.academy-world-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.academy-world{display:flex;align-items:flex-end;position:relative;isolation:isolate;overflow:hidden;min-height:320px;border-radius:30px;border:5px solid white;box-shadow:0 12px 24px #293f7c20;text-decoration:none;color:#1f2d58}
+.academy-world:before{content:"";position:absolute;inset:0;z-index:-2;background-position:center;background-size:cover;transition:transform .2s}
+.academy-world:after{content:"";position:absolute;inset:34% 0 0;z-index:-1;background:linear-gradient(transparent,#ffffffdd 70%,#fffffff5)}
+.academy-world:hover:before{transform:scale(1.035)}
+.academy-numbers:before{background-image:url("/assets/student-worlds/number-trail.svg")}
+.academy-fractions:before{background-image:url("/assets/student-worlds/fraction-world.svg")}
+.academy-geometry:before{background-image:url("/assets/student-worlds/geometry-mountain.svg")}
+.academy-problems:before{background-image:url("/assets/student-worlds/puzzle-treasure.svg")}
+.academy-world-content{display:flex;flex-direction:column;align-items:flex-start;padding:22px;width:100%;gap:8px}
+.academy-world strong{font-size:clamp(22px,3vw,30px);font-weight:900;line-height:1.1}
+.academy-world small{font-size:16px;color:#3f4e77;font-weight:650}
+.academy-world b{margin-top:8px;background:#6655ed;color:#fff;padding:11px 18px;border-radius:15px;box-shadow:0 4px 0 #4733b7}
+.academy-fractions b{background:#f34b98;box-shadow:0 4px 0 #bd3674}
+.academy-geometry b{background:#2caf74;box-shadow:0 4px 0 #21885a}
+.academy-problems b{background:#ff9a38;box-shadow:0 4px 0 #c97620}
+.card{border:3px solid white;box-shadow:0 12px 30px #384f9e16;border-radius:30px;margin:24px 0}
+.card h2{font-weight:900;font-size:clamp(23px,3.4vw,30px);color:#26315c}
+.academy-progress{background:#fffdfc}
+.academy-practice{background:linear-gradient(130deg,#eee8ff,#fcfaff)}
+.skill{background:linear-gradient(145deg,#edecff,#fff8f6);border:1px solid #e2dbfa}
+button{box-shadow:0 4px 0 #4539b2}button.secondary{box-shadow:0 4px 0 #c4bfee}
+@media(max-width:560px){.academy-hero{min-height:285px;padding:20px;background-position:62% center}.academy-hero-copy{max-width:73%}.academy-hero-owl{flex:0 1 15%}.academy-world-grid{gap:12px}.academy-world{min-height:245px;border-radius:25px}.academy-world-content{padding:14px;gap:7px}.academy-world strong{font-size:19px}.academy-world small{font-size:13px}.academy-world b{padding:9px 13px;font-size:14px}.academy-hero h1{font-size:30px}.academy-pill{font-size:10px}.academy-hero p{font-size:15px}}
+@media(max-width:370px){.academy-world-grid{grid-template-columns:1fr}.academy-world{min-height:240px}}
+@media(prefers-reduced-motion:reduce){.academy-world:before{transition:none}}

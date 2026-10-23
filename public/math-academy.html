@@ -20,14 +20,20 @@ button:focus-visible,a:focus-visible{outline:3px solid #00a7e1;outline-offset:3p
 .skill{border-radius:18px;padding:17px;background:#f5f4ff}.skill strong{display:block;margin-bottom:7px}
 .hidden{display:none!important}#question{font-size:clamp(23px,4vw,32px);font-weight:800;line-height:1.4}
 footer{text-align:center;color:#78829a;font-size:13px;margin:28px} @media(max-width:430px){.options{gap:8px}.option{font-size:20px;padding:14px 8px}}
-</style></head>
+</style><link rel="stylesheet" href="/math-storybook.css?v=20261023-a1"></head>
 <body><header><a href="/cabinet">← Мои занятия</a><strong>🦉 School App</strong></header>
-<main><div class="tag">МАТЕМАТИЧЕСКАЯ АКАДЕМИЯ · ПЕРВЫЙ ЭТАП</div><h1>Математические открытия ✨</h1>
-<p>Найдём твои сильные стороны и подберём интересные задания. Ошибаться можно: так мы понимаем, чему учиться дальше.</p>
-<section class="card"><h2>Карта математических навыков</h2><p id="skillMapStatus" class="small">Загружаем карту знаний…</p><div class="skills" id="skillMap"></div><p id="mistakeCount" class="small"></p></section><section class="card"><h2>Мастерская дробей</h2><p>Собери часть пиццы и научись видеть дроби.</p><a href="/fraction-builder">Играть в «Мастерскую дробей» →</a></section><section class="card"><h2>Игровая мастерская</h2><p>Исследуй числа на интерактивной прямой: находи точки, складывай и вычитай.</p><a href="/number-lab" style="display:inline-block;padding:14px 20px;border-radius:15px;color:white;background:#6255eb;text-decoration:none;font-weight:750">Играть в «Числовую экспедицию» →</a></section><section class="card"><h2>Персональная тренировка</h2><p>Задания подбираются по твоим предыдущим результатам. Со временем их сложность меняется.</p>
+<main><section class="academy-hero"><div class="academy-hero-copy"><span class="academy-pill">ДОБРО ПОЖАЛОВАТЬ В СКАЗКУ</span><h1>Математические приключения!</h1><p>Выбирай мир и отправляйся в путь вместе с совёнком!</p><a href="#worlds" class="academy-hero-button">Выбрать приключение →</a></div><div class="academy-hero-owl" aria-hidden="true"></div></section>
+<h2 id="worlds" class="academy-worlds-title">Куда отправимся сегодня?</h2>
+<section class="academy-world-grid" aria-label="Математические миры">
+<a class="academy-world academy-numbers" href="/number-lab"><span class="academy-world-content"><strong>Тропа чисел</strong><small>Прыгай по числовой дорожке</small><b>В путь →</b></span></a>
+<a class="academy-world academy-fractions" href="/fraction-builder"><span class="academy-world-content"><strong>Мастерская дробей</strong><small>Собери волшебную пиццу</small><b>Играть →</b></span></a>
+<a class="academy-world academy-geometry" href="#practice"><span class="academy-world-content"><strong>Гора геометрии</strong><small>Разгадай секреты фигур</small><b>Исследовать →</b></span></a>
+<a class="academy-world academy-problems" href="#practice"><span class="academy-world-content"><strong>Страна задач</strong><small>Найди спрятанные ответы</small><b>Открыть →</b></span></a>
+</section>
+<section class="card academy-progress" id="progress-map"><h2>Твои суперспособности</h2><p id="skillMapStatus" class="small">Загружаем карту знаний…</p><div class="skills" id="skillMap"></div><p id="mistakeCount" class="small"></p></section><section class="card academy-practice" id="practice"><h2>Задание от совёнка</h2><p>Задания подбираются по твоим предыдущим результатам. Со временем их сложность меняется.</p>
 <p id="adaptiveHistory" class="small"></p><button id="adaptiveStart" type="button">Подобрать задания</button> <button id="reviewStart" class="secondary" type="button">Повторить ошибки</button><p id="adaptiveError" role="alert"></p>
 <div id="adaptivePanel" hidden><h3 id="adaptiveTitle"></h3><p id="adaptiveQuestion" style="font-size:23px;font-weight:750"></p><div id="adaptiveOptions" class="options"></div><p id="adaptiveFeedback" role="status"></p><button id="adaptiveNext" type="button" hidden>Следующее →</button></div>
-<p id="adaptiveSummary" role="status" hidden></p></section><section class="card" id="intro"><p id="history" class="small" aria-live="polite">Загружаем историю…</p><h2>Начнём с маленькой разведки знаний?</h2><p>12 заданий по четырём темам. Без таймера и оценок. После проверки откроются тренировки.</p><button id="start">Начать диагностику</button></section>
+<p id="adaptiveSummary" role="status" hidden></p></section><section class="card" id="intro"><p id="history" class="small" aria-live="polite">Загружаем историю…</p><h2>Откроем новые способности?</h2><p>12 заданий по четырём темам. Без таймера и оценок. После проверки откроются тренировки.</p><button id="start">Начать диагностику</button></section>
 <section class="card hidden" id="play" aria-live="polite">
 <div class="top"><span id="mode" class="tag"></span><strong id="progress"></strong></div><div class="meter"><div id="progressFill"></div></div>
 <div id="question"></div><div id="options" class="options"></div><p id="feedback" class="feedback" aria-live="polite"></p>
