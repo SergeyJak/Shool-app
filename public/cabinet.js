@@ -1503,6 +1503,19 @@ async function loadAccount() {
     renderLessons(user, lessons);
   } else if (user.role === "student") {
     document.getElementById("studentMathPanel").hidden = false;
+    void fetch("/api/math/progress", {credentials:"same-origin"}).then(async response=>{
+      if(!response.ok)return;
+      const {attempts=[]}=await response.json();
+      const completed=attempts.filter(item=>Number.isFinite(item.correct)&&Number.isFinite(item.total));
+      const stars=completed.reduce((sum,item)=>sum+Math.max(0,Math.min(item.correct,item.total)),0);
+      const trophies=completed.filter(item=>item.correct===item.total&&item.total>0).length;
+      const days=new Set(completed.map(item=>String(item.createdAt||"").slice(0,10)).filter(Boolean));
+      const today=new Date();let streak=0;
+      for(let i=0;i<days.size+1;i++){const day=new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate()-i)).toISOString().slice(0,10);if(!days.has(day))break;streak++;}
+      document.getElementById("studentStars").textContent=stars;
+      document.getElementById("studentTrophies").textContent=trophies;
+      document.getElementById("studentStreak").textContent=streak;
+    }).catch(()=>{});
     document.getElementById("studentFirstName").textContent = String(user.displayName || user.username || "друг").trim().split(/\s+/)[0].slice(0,32);
     document.getElementById("studentMathNav").hidden = false;
     perfButton.hidden = true;
