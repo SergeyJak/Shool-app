@@ -923,3 +923,21 @@ body[data-role="student"] .student-card-fractions .student-world-action::before{
 body[data-role="student"] .student-card-geometry .student-world-action::before{background-image:url("/assets/ui/btn-green.webp")!important}
 body[data-role="student"] .student-card-puzzles .student-world-action::before{background-image:url("/assets/ui/btn-orange.webp")!important}
 @media(max-width:520px){body[data-role="student"] .student-world-card .student-world-action{padding:8px 18px 12px!important;min-height:42px!important}}
+
+/* Render one glossy PNG per game button. No duplicated CSS pill underneath. */
+body[data-role="student"] .student-world-card .student-world-action,
+body[data-role="student"] .student-today-copy span{
+  background:transparent!important;background-image:none!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+  filter:none!important;overflow:visible!important;
+  padding:10px 23px 15px!important;min-height:45px!important;
+  background-repeat:no-repeat!important;background-position:center!important;
+  background-size:100% 100%!important;
+}
+body[data-role="student"] .student-world-card .student-world-action::before,
+body[data-role="student"] .student-today-copy span::before{content:none!important;display:none!important}
+body[data-role="student"] .student-card-numbers .student-world-action,
+body[data-role="student"] .student-today-copy span{background-image:url("/assets/ui/btn-purple.webp")!important}
+body[data-role="student"] .student-card-fractions .student-world-action{background-image:url("/assets/ui/btn-pink.webp")!important}
+body[data-role="student"] .student-card-geometry .student-world-action{background-image:url("/assets/ui/btn-green.webp")!important}
+body[data-role="student"] .student-card-puzzles .student-world-action{background-image:url("/assets/ui/btn-orange.webp")!important}
