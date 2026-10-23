@@ -751,3 +751,31 @@ body[data-role="student"] .sessions-card{border:3px solid #fff;border-radius:32p
 @media(max-width:640px){.student-welcome{min-height:230px;padding:22px;border-radius:26px}.student-owl{font-size:100px}.student-owl-star{font-size:24px}.student-welcome p{font-size:15px}.student-primary-action{font-size:15px;padding:12px 15px}.student-world-grid{gap:12px}.student-world-card{min-height:225px;padding:14px;border-radius:25px}.student-world-art{width:64px;height:62px;font-size:43px}.student-world-card strong{font-size:18px}.student-world-card small{font-size:13px}.student-world-action{font-size:13px!important;padding:9px 13px!important}.student-bottom-actions{grid-template-columns:1fr;gap:10px}.student-training-card{padding:14px}}
 @media(max-width:380px){.student-welcome{align-items:flex-start}.student-owl{font-size:72px}.student-world-grid{grid-template-columns:1fr}.student-world-card{min-height:190px}.student-world-art{float:right}}
 @media(prefers-reduced-motion:reduce){.student-world-card{transition:none}}
+
+
+/* Illustrated student worlds: scenic artwork replaces generic emoji tiles. */
+body[data-role="student"] .student-welcome{background:linear-gradient(90deg,#c7f2ff 0%,#c7f2ffed 48%,#b7eefe00 78%),url("/assets/student-worlds/owl-adventure.svg") center right / cover no-repeat; min-height:335px;}
+body[data-role="student"] .student-welcome:after{content:none}
+.student-owl-illustration{flex:0 1 38%;min-width:85px;min-height:190px}
+.student-world-card{position:relative;overflow:hidden;isolation:isolate;min-height:330px;justify-content:flex-end}
+.student-world-card::before{content:"";position:absolute;inset:0;z-index:-2;background-position:center top;background-size:cover;background-repeat:no-repeat;transition:transform .2s}
+.student-world-card::after{content:"";position:absolute;inset:25% 0 0;z-index:-1;background:linear-gradient(transparent 0%,#ffffffbf 62%,#fffffff5 100%)}
+.student-world-card:hover::before{transform:scale(1.03)}
+.student-card-numbers::before{background-image:url("/assets/student-worlds/number-trail.svg")}
+.student-card-fractions::before{background-image:url("/assets/student-worlds/fraction-world.svg")}
+.student-card-geometry::before{background-image:url("/assets/student-worlds/geometry-mountain.svg")}
+.student-card-puzzles::before{background-image:url("/assets/student-worlds/puzzle-treasure.svg")}
+.student-world-art{display:none}
+.student-world-card strong,.student-world-card small,.student-world-card .student-world-action{position:relative;z-index:1}
+.student-world-card strong{font-size:clamp(23px,3.1vw,30px);text-shadow:0 1px 2px #ffffffba}
+.student-world-card small{font-weight:650}
+@media(max-width:640px){
+ body[data-role="student"] .student-welcome{min-height:300px;background:linear-gradient(90deg,#b9ecffed 0%,#bfeeffcb 52%,#bfeeff00 100%),url("/assets/student-worlds/owl-adventure.svg") 64% center / cover no-repeat;}
+ .student-owl-illustration{flex:0 0 20%;min-width:30px;min-height:160px}
+ .student-world-card{min-height:260px}
+ .student-world-card::after{inset:32% 0 0}
+ .student-world-card strong{font-size:19px}
+ .student-world-card small{font-size:13px}
+}
+@media(max-width:380px){.student-world-card{min-height:265px}}
+@media(prefers-reduced-motion:reduce){.student-world-card::before{transition:none}}
