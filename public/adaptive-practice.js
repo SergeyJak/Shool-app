@@ -1,15 +1,15 @@
 "use strict";
 (()=>{
 const $=id=>document.getElementById(id);let session=null,index=0,answers=[],locked=false;
-async function begin(){
+async function begin(review=false){
  $("adaptiveError").textContent="";$("adaptiveStart").disabled=true;
- try{const r=await fetch("/api/math/adaptive");if(!r.ok)throw Error("LOAD_FAILED");session=await r.json();index=0;answers=[];$("adaptivePanel").hidden=false;$("adaptiveSummary").hidden=true;render();}
+ try{const r=await fetch(review?"/api/math/adaptive?review=1":"/api/math/adaptive");if(!r.ok)throw Error("LOAD_FAILED");session=await r.json();index=0;answers=[];$("adaptivePanel").hidden=false;$("adaptiveSummary").hidden=true;render();}
  catch(_){$("adaptiveError").textContent="Не удалось загрузить задания. Попробуй ещё раз.";}
  finally{$("adaptiveStart").disabled=false;}
 }
 function render(){
  const q=session.questions[index];locked=false;
- $("adaptiveTitle").textContent=session.skill+" · уровень "+session.level+" · "+(index+1)+"/"+session.questions.length;
+ $("adaptiveTitle").textContent=(session.review?"Работа над ошибками · ":"")+session.skill+" · уровень "+session.level+" · "+(index+1)+"/"+session.questions.length;
  $("adaptiveQuestion").textContent=q.q;$("adaptiveFeedback").textContent="";$("adaptiveNext").hidden=true;
  const wrap=$("adaptiveOptions");wrap.replaceChildren();
  for(const value of q.options){const btn=document.createElement("button");btn.type="button";btn.className="option";btn.textContent=String(value);btn.addEventListener("click",()=>select(value));wrap.append(btn);}
@@ -30,5 +30,5 @@ async function next(){
  finally{$("adaptiveNext").disabled=false;}
 }
 async function beginRefresh(){try{const r=await fetch("/api/math/progress");const data=await r.json();$("adaptiveHistory").textContent="Всего сохранённых занятий в истории: "+(data.attempts||[]).length+" (последние 30).";}catch(_){}}
-$("adaptiveStart").addEventListener("click",begin);$("adaptiveNext").addEventListener("click",next);void beginRefresh();
+$("adaptiveStart").addEventListener("click",()=>begin(false));$("reviewStart").addEventListener("click",()=>begin(true));$("adaptiveNext").addEventListener("click",next);void beginRefresh();
 })();
