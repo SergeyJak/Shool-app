@@ -36,6 +36,7 @@ const {
 } = require("./lib/auth");
 const { resolveIdentityFromCookies } = require("./lib/session-context");
 const { canAccessLesson } = require("./lib/lesson-access");
+const { validateAttempt } = require("./lib/math-assessment");
 const {
   normalizeManagedUsername,
   validateRegistrationCredentials,
@@ -94,6 +95,7 @@ let settings;
 let performanceLogs;
 let rtcDiagnostics;
 let users;
+let mathAttempts;
 let lessons;
 let materials;
 let homeworkSubmissions;
@@ -1966,6 +1968,23 @@ app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
 app.get("/connections.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "connections.html"))
 );
+app.get("/api/math/progress", requireApiRole("student"), async (req,res,next)=>{
+  try {
+    if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
+    const attempts=await mathAttempts.find({studentId:req.user._id},{projection:{_id:0,studentId:0}}).sort({createdAt:-1}).limit(30).toArray();
+    res.json({attempts});
+  } catch(error){next(error);}
+});
+app.post("/api/math/attempts", requireApiRole("student"), async (req,res,next)=>{
+  try {
+    if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
+    const attempt=validateAttempt(req.body);
+    if(!attempt)return res.status(400).json({error:"INVALID_MATH_ATTEMPT"});
+    const row={studentId:req.user._id,...attempt,createdAt:new Date()};
+    await mathAttempts.insertOne(row);
+    res.status(201).json({attempt:{mode:row.mode,answers:row.answers,scores:row.scores,correct:row.correct,total:row.total,createdAt:row.createdAt}});
+  }catch(error){next(error);}
+});
 app.get("/math-academy", requirePageAuth("student"), (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "math-academy.html"));
 });
@@ -3558,6 +3577,7 @@ async function start() {
   performanceLogs = db.collection(collectionName("performance_logs"));
   rtcDiagnostics = db.collection(collectionName("rtc_diagnostics"));
   users = db.collection(collectionName("users"));
+  mathAttempts = db.collection(collectionName("math_attempts"));
   lessons = db.collection(collectionName("lessons"));
   materials = db.collection(collectionName("materials"));
   homeworkSubmissions = db.collection(collectionName("homework_submissions"));
@@ -3645,6 +3665,7 @@ async function start() {
     }
   }
 
+  await mathAttempts.createIndex({ studentId: 1, createdAt: -1 });
   await users.createIndex({ role: 1, active: 1 });
   await users.createIndex({ approvalStatus: 1, registrationSubmittedAt: -1 });
   await users.createIndex({ email: 1 }, { unique: true, sparse: true });
