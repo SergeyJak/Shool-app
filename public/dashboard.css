@@ -963,3 +963,21 @@ body[data-role="student"] .student-today-copy span::before{display:none!importan
  }
  body[data-role="student"] .student-today-copy span{width:145px!important;font-size:14px!important}
 }
+
+/* Display only the shiny front face from supplied artwork.
+   The dark extrusion is already baked into its lower 22%; do not render it. */
+body[data-role="student"] .student-world-card .student-world-action,
+body[data-role="student"] .student-today-copy span{
+  background-size:100% 129%!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  height:45px!important;min-height:45px!important;
+  aspect-ratio:auto!important;
+  border-radius:999px!important;overflow:hidden!important;
+  padding:0 13px!important;line-height:1.1!important;
+}
+@media(max-width:520px){
+  body[data-role="student"] .student-world-card .student-world-action{
+    height:41px!important;min-height:41px!important;
+  }
+}
