@@ -1985,6 +1985,9 @@ app.post("/api/math/attempts", requireApiRole("student"), async (req,res,next)=>
     res.status(201).json({attempt:{mode:row.mode,answers:row.answers,scores:row.scores,correct:row.correct,total:row.total,createdAt:row.createdAt}});
   }catch(error){next(error);}
 });
+app.get("/number-lab", requirePageAuth("student"), (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "number-lab.html"));
+});
 app.get("/math-academy", requirePageAuth("student"), (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "math-academy.html"));
 });
