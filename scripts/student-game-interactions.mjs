@@ -36,6 +36,9 @@ try{
   assert.equal(await fractions.$eval("#next",el=>el.hidden),false);
   await fractions.$eval("#next",el=>el.click());
  }
+ assert.match(await fractions.$eval("#task",el=>el.textContent),/Уровень завершён/);
+ assert.match(await fractions.$eval("#feedback",el=>el.textContent),/Результат: 2 из 5/);
+ await fractions.$eval("#next",el=>el.click());
  assert.equal(await fractions.$eval("#round",el=>el.textContent),"Задание 1 / 5");
  await fractions.$eval("#check",el=>el.click());
  assert.match(await fractions.$eval("#feedback",el=>el.textContent),/Нужно 1 кусочков/);
@@ -70,6 +73,9 @@ try{
   assert.match(await numbers.$eval("#feedback",el=>el.textContent),/Точно в цель/);
   await numbers.$eval("#next",el=>el.click());
  }
+ assert.match(await numbers.$eval("#task",el=>el.textContent),/Уровень завершён/);
+ assert.match(await numbers.$eval("#feedback",el=>el.textContent),/Результат: 5 из 5/);
+ await numbers.$eval("#next",el=>el.click());
  assert.equal(await numbers.$eval("#round",el=>el.textContent),"Задание 1 / 5");
  assert.equal(await numbers.$eval("#score",el=>el.textContent),"Правильно: 0");
  await numbers.close();
