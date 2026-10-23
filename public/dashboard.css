@@ -820,27 +820,27 @@ body[data-role="student"] .student-world-card .student-world-action{font-size:13
 
 /* High fidelity illustrated assets. Each old SVG is a fallback until assets are uploaded. */
 body[data-role="student"] .student-welcome{
- background-image:linear-gradient(90deg,#c7f2ffed 0%,#c7f2ffcf 43%,transparent 76%),url("/assets/student-worlds/hero-owl.webp"),url("/assets/student-worlds/owl-adventure.svg");
+ background-image:linear-gradient(90deg,#c7f2ffed 0%,#c7f2ffcf 43%,transparent 76%),url("/assets/hero-owl.webp"),url("/assets/student-worlds/owl-adventure.svg");
  background-position:center,center,center;
  background-size:cover,cover,cover;
 }
 body[data-role="student"] .student-world-card:before{background-size:cover;background-position:center}
-body[data-role="student"] .student-card-numbers:before{background-image:url("/assets/student-worlds/number-trail.webp"),url("/assets/student-worlds/number-trail.svg")}
-body[data-role="student"] .student-card-fractions:before{background-image:url("/assets/student-worlds/fraction-world.webp"),url("/assets/student-worlds/fraction-world.svg")}
-body[data-role="student"] .student-card-geometry:before{background-image:url("/assets/student-worlds/geometry-world.webp"),url("/assets/student-worlds/geometry-mountain.svg")}
-body[data-role="student"] .student-card-puzzles:before{background-image:url("/assets/student-worlds/puzzle-world.webp"),url("/assets/student-worlds/puzzle-treasure.svg")}
-body[data-role="student"] .student-today-picture{background-image:url("/assets/student-worlds/today-fraction.webp"),url("/assets/student-worlds/fraction-world.svg")}
+body[data-role="student"] .student-card-numbers:before{background-image:url("/assets/number-trail.webp"),url("/assets/student-worlds/number-trail.svg")}
+body[data-role="student"] .student-card-fractions:before{background-image:url("/assets/fraction-world.webp"),url("/assets/student-worlds/fraction-world.svg")}
+body[data-role="student"] .student-card-geometry:before{background-image:url("/assets/geometry-world.webp"),url("/assets/student-worlds/geometry-mountain.svg")}
+body[data-role="student"] .student-card-puzzles:before{background-image:url("/assets/puzzle-world.webp"),url("/assets/student-worlds/puzzle-treasure.svg")}
+body[data-role="student"] .student-today-picture{background-image:url("/assets/today-fraction.webp"),url("/assets/student-worlds/fraction-world.svg")}
 body[data-role="student"] .student-world-card:before{inset:0 0 110px}
 body[data-role="student"] .student-today-copy span{
- background-image:url("/assets/ui/btn-purple.webp"),linear-gradient(#9771ff,#6447e6);
+ background-image:url("/assets/btn-purple.webp"),linear-gradient(#9771ff,#6447e6);
  background-position:center;
  background-size:100% 100%;box-shadow:none;
 }
 body[data-role="student"] .student-world-action{background-position:center;background-size:100% 100%;box-shadow:none!important}
-body[data-role="student"] .student-card-numbers .student-world-action{background-image:url("/assets/ui/btn-purple.webp"),linear-gradient(#8469ff,#6347ea)}
-body[data-role="student"] .student-card-fractions .student-world-action{background-image:url("/assets/ui/btn-pink.webp"),linear-gradient(#ff78b5,#f24696)}
-body[data-role="student"] .student-card-geometry .student-world-action{background-image:url("/assets/ui/btn-green.webp"),linear-gradient(#52d784,#23ae66)}
-body[data-role="student"] .student-card-puzzles .student-world-action{background-image:url("/assets/ui/btn-orange.webp"),linear-gradient(#ffb252,#ee8136)}
+body[data-role="student"] .student-card-numbers .student-world-action{background-image:url("/assets/btn-purple.webp"),linear-gradient(#8469ff,#6347ea)}
+body[data-role="student"] .student-card-fractions .student-world-action{background-image:url("/assets/btn-pink.webp"),linear-gradient(#ff78b5,#f24696)}
+body[data-role="student"] .student-card-geometry .student-world-action{background-image:url("/assets/btn-green.webp"),linear-gradient(#52d784,#23ae66)}
+body[data-role="student"] .student-card-puzzles .student-world-action{background-image:url("/assets/btn-orange.webp"),linear-gradient(#ffb252,#ee8136)}
 @media(max-width:520px){
  body[data-role="student"] .student-welcome{background-position:center,61% center,61% center}
  body[data-role="student"] .student-world-card:before{inset:0 0 103px}
