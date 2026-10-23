@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>School App · Кабинет учителя</title>
   <link rel="stylesheet" href="/landing.css?v=20261002-archive1" />
-  <link rel="stylesheet" href="/dashboard.css?v=20261023-illustrated-worlds" />
+  <link rel="stylesheet" href="/dashboard.css?v=20261023-mock-layout-v2" />
 </head>
 <body class="landing-body dashboard-page">
   <header class="dashboard-header">
@@ -73,11 +73,13 @@
         <div class="student-welcome-copy">
           <span class="student-kicker">ТВОЁ ПРИКЛЮЧЕНИЕ</span>
           <h1>Привет, <span id="studentFirstName">друг</span>! 👋</h1>
-          <p>Совёнок приглашает тебя в мир математики. Выбери приключение!</p>
+          <p>Сегодня тебя ждут новые математические приключения!</p>
           <a class="student-primary-action" href="/math-academy">Начать приключение →</a>
         </div>
         <div class="student-owl-illustration" role="img" aria-label="Совёнок в сказочном мире"></div>
       </div>
+      <div class="student-adventure-stats" aria-label="Твой прогресс"><div><span aria-hidden="true">⭐</span><b id="studentStars">0</b><small>звёзд</small></div><div><span aria-hidden="true">🏆</span><b id="studentTrophies">0</b><small>наград</small></div><div><span aria-hidden="true">🔥</span><b id="studentStreak">0</b><small>дней подряд</small></div></div>
+      <a class="student-today" href="/fraction-builder"><div class="student-today-picture" aria-hidden="true"></div><div class="student-today-copy"><strong>Сегодня тебя ждёт весёлая тренировка!</strong><p>Собери кусочки пиццы и узнай, как работают дроби.</p><span>Начать →</span></div></a>
       <div class="student-section-heading"><h2>Миры математики</h2><span>Выбирай, во что играть!</span></div>
       <div class="student-world-grid">
         <a class="student-world-card student-card-numbers" href="/number-lab"><span class="student-world-art" aria-hidden="true"><img src="/assets/student-worlds/number-trail.svg" alt="" loading="lazy"></span><strong>Тропа чисел</strong><small>Находи числа и решай примеры</small><span class="student-world-action">В путь →</span></a>
