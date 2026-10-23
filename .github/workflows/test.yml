@@ -16,4 +16,12 @@ jobs:
       - run: npm install
       - run: npm test
       - run: npm run test:layout
+      - run: npm run test:student-screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: student-dashboard-screenshots
+          path: artifacts/student-dashboard/
+          if-no-files-found: ignore
+          retention-days: 30
       - run: npm run test:rtc-browser
