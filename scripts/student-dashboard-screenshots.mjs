@@ -67,8 +67,8 @@ try {
   for(const [label,relativePath] of Object.entries(baselines.assets)){
     const asset=path.join(publicDir,relativePath);
     assert.ok(fs.existsSync(asset),`Missing visual asset ${label}`);
-    const digest=createHash("sha256").update(fs.readFileSync(asset)).digest("hex");
-    assert.equal(digest,baselines.sha256[label],`Artwork changed for ${label}; review and update its approved baseline intentionally`);
+    const digest=createHash("sha1").update(Buffer.concat([Buffer.from("blob "+fs.statSync(asset).size+"\\0".replace("\\0","\0")),fs.readFileSync(asset)])).digest("hex");
+    assert.equal(digest,baselines.gitSha1[label],`Artwork changed for ${label}; review and update its approved baseline intentionally`);
   }
   fs.writeFileSync(path.join(outDir,`student-${width}.json`),JSON.stringify(metrics,null,2));
   console.log(`✓ Screenshot and rendered checks: ${width}px`);
