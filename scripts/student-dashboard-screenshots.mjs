@@ -53,7 +53,7 @@ try {
   const labels=["В путь","Играть","Исследовать","Открыть"];
   for(const [index,b] of metrics.buttons.entries()){
    assert.equal(b.text,labels[index]);
-   assert.ok(b.background.includes("btn-"),"Glossy asset missing");
+   assert.ok(b.background.includes("data:image/webp;base64,") || b.background.includes("btn-"),"Glossy asset missing");
    assert.equal(b.shadow,"none","Unexpected CSS shadow under glossy art");
    assert.ok(["none","normal"].includes(b.pseudo),"Extra button layer");
    assert.ok(Math.abs(b.width-metrics.buttons[0].width)<2&&Math.abs(b.height-metrics.buttons[0].height)<2,"Unequal game buttons");
