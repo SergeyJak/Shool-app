@@ -779,3 +779,41 @@ body[data-role="student"] .student-welcome:after{content:none}
 }
 @media(max-width:380px){.student-world-card{min-height:265px}}
 @media(prefers-reduced-motion:reduce){.student-world-card::before{transition:none}}
+
+
+/* Student mock layout v2: separate illustration from content, restore game dashboard hierarchy. */
+body[data-role="student"] .student-world{max-width:1060px;margin:auto}
+body[data-role="student"] .student-welcome{border-radius:30px 30px 0 0;border-bottom:0;box-shadow:none;min-height:240px}
+body[data-role="student"] .student-welcome-copy{max-width:65%}
+body[data-role="student"] .student-welcome h1{font-size:clamp(29px,4.6vw,43px)}
+body[data-role="student"] .student-welcome p{max-width:300px}
+body[data-role="student"] .student-welcome .student-primary-action{display:none}
+.student-adventure-stats{display:grid;grid-template-columns:repeat(3,1fr);margin:-4px 0 16px;gap:0;position:relative;z-index:2;background:#fff;border:4px solid #fff;border-radius:0 0 30px 30px;box-shadow:0 12px 25px #3f5e9730}
+.student-adventure-stats>div{display:flex;align-items:center;justify-content:center;gap:6px;padding:13px 8px;color:#202e59}
+.student-adventure-stats>div+div{border-left:2px solid #eee9f7}
+.student-adventure-stats span{font-size:26px}.student-adventure-stats b{font-size:24px}.student-adventure-stats small{font-size:12px;color:#586581;font-weight:800}
+.student-today{display:grid;grid-template-columns:40% 60%;align-items:center;min-height:185px;background:linear-gradient(115deg,#a6eec8,#e5f7eb);border:4px solid white;border-radius:29px;overflow:hidden;box-shadow:0 12px 26px #485b9028;text-decoration:none!important;color:#263359!important}
+.student-today-picture{height:100%;min-height:185px;background:url("/assets/student-worlds/fraction-world.svg") center / cover no-repeat}
+.student-today-copy{padding:18px 18px 20px}.student-today-copy strong{font-size:clamp(19px,3vw,26px);line-height:1.17;font-weight:900;display:block}.student-today-copy p{font-size:15px;line-height:1.4;margin:10px 0 16px}.student-today-copy span{display:inline-flex;background:linear-gradient(#9b6bff,#6942e9);color:#fff;border-radius:16px;box-shadow:0 4px 0 #5430b0;font-weight:900;padding:10px 22px}
+body[data-role="student"] .student-section-heading{margin-top:23px}
+body[data-role="student"] .student-world-card{min-height:220px;display:flex;flex-direction:column;justify-content:flex-end;padding:0;border-radius:24px}
+body[data-role="student"] .student-world-card:before{background-position:center 22%;background-size:cover;inset:0 0 66px}
+body[data-role="student"] .student-world-card:after{content:none}
+body[data-role="student"] .student-world-card strong{background:#fffffff0;display:block;align-self:stretch;margin:0;padding:12px 14px 0;font-size:20px;line-height:1.15;min-height:41px}
+body[data-role="student"] .student-world-card small{background:#fffffff0;display:block;align-self:stretch;min-height:34px;padding:5px 14px 0;line-height:1.25}
+body[data-role="student"] .student-world-card .student-world-action{align-self:stretch;display:flex;align-items:center;justify-content:center;margin:0;border-radius:0 0 18px 18px;box-shadow:none;padding:12px}
+@media(min-width:700px){body[data-role="student"] .student-world-card{min-height:280px}body[data-role="student"] .student-world-card:before{inset:0 0 85px}}
+@media(max-width:520px){
+body[data-role="student"] .student-welcome{min-height:218px;border-radius:23px 23px 0 0;padding:15px}
+body[data-role="student"] .student-welcome-copy{max-width:65%}
+body[data-role="student"] .student-welcome h1{font-size:25px}
+body[data-role="student"] .student-welcome p{font-size:13px;line-height:1.35}
+.student-adventure-stats{border-radius:0 0 22px 22px}
+.student-adventure-stats>div{padding:10px 3px;gap:3px;flex-wrap:wrap}.student-adventure-stats span{font-size:20px}.student-adventure-stats b{font-size:20px}.student-adventure-stats small{font-size:11px}
+.student-today{grid-template-columns:37% 63%;min-height:155px;border-radius:23px}.student-today-picture{min-height:155px}.student-today-copy{padding:10px 12px}.student-today-copy strong{font-size:17px}.student-today-copy p{font-size:12px;margin:5px 0 9px}.student-today-copy span{padding:8px 16px;font-size:14px}
+body[data-role="student"] .student-world-grid{gap:10px}
+body[data-role="student"] .student-world-card{min-height:211px}
+body[data-role="student"] .student-world-card strong{font-size:16px;padding:9px 9px 0}
+body[data-role="student"] .student-world-card small{font-size:12px;padding:4px 9px 0;min-height:44px}
+body[data-role="student"] .student-world-card .student-world-action{font-size:13px!important}
+}
