@@ -1502,6 +1502,7 @@ async function loadAccount() {
     await loadMaterials();
     renderLessons(user, lessons);
   } else if (user.role === "student") {
+    document.getElementById("studentMathPanel").hidden = false;
     perfButton.hidden = true;
     note.textContent = "Выберите урок.";
   } else {
