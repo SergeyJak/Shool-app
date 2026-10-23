@@ -705,3 +705,49 @@ body[data-role="student"] .materials-card{display:none!important}
     color:#4c3bd5;
   }
 }
+
+
+/* Student adventure world. Teacher, admin and payments screens remain unchanged. */
+body[data-role="student"]{background:linear-gradient(180deg,#d8f4ff 0,#f9f7ff 480px,#fff8ed 100%);color:#233052}
+body[data-role="student"] .dashboard-shell{max-width:1200px}
+body[data-role="student"] .dashboard-header{background:#fffefedc;backdrop-filter:blur(12px)}
+body[data-role="student"] #teacherSessions{margin-top:34px}
+body[data-role="student"] .sessions-card{border:3px solid #fff;border-radius:32px;box-shadow:0 14px 34px #45529b12;background:#ffffffdb}
+.student-world[hidden]{display:none!important}
+.student-world{padding:0 0 12px}
+.student-welcome{position:relative;overflow:hidden;display:flex;min-height:295px;align-items:center;justify-content:space-between;gap:15px;padding:clamp(24px,5vw,48px);border-radius:38px;background:radial-gradient(circle at 84% 10%,#fff5a4 0,transparent 29%),linear-gradient(115deg,#9be5ff,#c9efff 48%,#e8d6ff);border:4px solid #fff;box-shadow:0 16px 35px #4e8ec42b}
+.student-welcome:after{content:"☁️  ☁️";position:absolute;right:10%;top:12px;font-size:33px;opacity:.65;pointer-events:none}
+.student-welcome-copy{position:relative;z-index:1;max-width:640px}
+.student-kicker{display:inline-block;font-weight:900;font-size:13px;letter-spacing:.08em;color:#5445d7;background:#fff9;padding:10px 14px;border-radius:30px}
+.student-welcome h1{margin:16px 0 8px;font-size:clamp(29px,5.6vw,52px);font-weight:900;color:#213262;line-height:1.13}
+.student-welcome p{font-size:clamp(16px,2vw,21px);line-height:1.45;max-width:440px;color:#354979}
+.student-owl{position:relative;flex-shrink:0;font-size:clamp(110px,17vw,205px);line-height:1;filter:drop-shadow(0 12px 10px #5360ae39);transform:rotate(-8deg)}
+.student-owl-star{position:absolute;font-size:38px;right:0;top:0;transform:rotate(22deg)}
+.student-primary-action,.student-world-action{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#8268ff,#5e48e9);color:#fff!important;text-decoration:none;border-radius:18px;padding:15px 22px;font-weight:900;box-shadow:0 6px 0 #3f2fba;font-size:17px}
+.student-primary-action{margin-top:13px}
+.student-section-heading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:34px 4px 15px}
+.student-section-heading h2{font-size:clamp(26px,4vw,36px);font-weight:900;margin:0;color:#253261}
+.student-section-heading span{color:#647199;font-weight:700}
+.student-world-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.student-world-card{display:flex;flex-direction:column;align-items:flex-start;min-height:270px;border:4px solid #fff;border-radius:30px;padding:22px;box-shadow:0 9px 20px #44549a13;text-decoration:none;color:#233052!important;transition:transform .16s ease}
+.student-world-card:hover{transform:translateY(-4px)}
+.student-card-numbers{background:linear-gradient(145deg,#90dffb,#d3f7ff)}
+.student-card-fractions{background:linear-gradient(145deg,#ffb5d7,#ffe0ef)}
+.student-card-geometry{background:linear-gradient(145deg,#a7ebcb,#d9ffe7)}
+.student-card-puzzles{background:linear-gradient(145deg,#ffe48e,#fff1bf)}
+.student-world-art{display:flex;align-items:center;justify-content:center;align-self:flex-end;width:110px;height:95px;border-radius:28px;background:#ffffff80;font-size:65px;box-shadow:0 7px 15px #515f9520}
+.student-world-card strong{font-size:clamp(21px,3vw,28px);font-weight:900;line-height:1.16;margin:8px 0}
+.student-world-card small{font-size:16px;line-height:1.4;color:#405273;max-width:300px}
+.student-world-card .student-world-action{margin-top:auto;padding:10px 20px;font-size:16px;box-shadow:0 4px 0 #3f2fba}
+.student-card-fractions .student-world-action{background:linear-gradient(#ff77b0,#ed3e8d);box-shadow:0 4px 0 #b72b6c}
+.student-card-geometry .student-world-action{background:linear-gradient(#56d885,#23aa5d);box-shadow:0 4px 0 #148246}
+.student-card-puzzles .student-world-action{background:linear-gradient(#ffa85c,#ee8232);box-shadow:0 4px 0 #b65d1c}
+.student-bottom-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:20px}
+.student-training-card{display:flex;align-items:center;gap:14px;padding:20px;border-radius:24px;background:#fff;border:3px solid #e9e9ff;text-decoration:none;color:#233052!important}
+.student-training-card>span:first-child{font-size:40px}
+.student-training-card>span:last-child{margin-left:auto;font-size:26px;color:#6452e7}
+.student-training-card strong{font-size:20px;display:block}
+.student-training-card small{display:block;font-size:14px;color:#69738c}
+@media(max-width:640px){.student-welcome{min-height:230px;padding:22px;border-radius:26px}.student-owl{font-size:100px}.student-owl-star{font-size:24px}.student-welcome p{font-size:15px}.student-primary-action{font-size:15px;padding:12px 15px}.student-world-grid{gap:12px}.student-world-card{min-height:225px;padding:14px;border-radius:25px}.student-world-art{width:64px;height:62px;font-size:43px}.student-world-card strong{font-size:18px}.student-world-card small{font-size:13px}.student-world-action{font-size:13px!important;padding:9px 13px!important}.student-bottom-actions{grid-template-columns:1fr;gap:10px}.student-training-card{padding:14px}}
+@media(max-width:380px){.student-welcome{align-items:flex-start}.student-owl{font-size:72px}.student-world-grid{grid-template-columns:1fr}.student-world-card{min-height:190px}.student-world-art{float:right}}
+@media(prefers-reduced-motion:reduce){.student-world-card{transition:none}}
