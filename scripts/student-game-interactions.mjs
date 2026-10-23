@@ -28,6 +28,17 @@ try{
  await fractions.$eval('[data-size="4"]',el=>el.click());
  assert.equal(await fractions.$$eval(".slice",els=>els.length),4);
  assert.equal(await fractions.$eval('[data-size="4"]',el=>el.getAttribute("aria-pressed")),"true");
+ // Complete all five rounds at quarter difficulty and verify restart.
+ for(let round=1;round<=5;round++){
+  assert.equal(await fractions.$eval("#round",el=>el.textContent),"Задание "+round+" / 5");
+  await fractions.$eval(".slice",el=>el.click());
+  await fractions.$eval("#check",el=>el.click());
+  assert.equal(await fractions.$eval("#next",el=>el.hidden),false);
+  await fractions.$eval("#next",el=>el.click());
+ }
+ assert.equal(await fractions.$eval("#round",el=>el.textContent),"Задание 1 / 5");
+ await fractions.$eval("#check",el=>el.click());
+ assert.match(await fractions.$eval("#feedback",el=>el.textContent),/Нужно 1 кусочков/);
  await fractions.close();
  console.log("✓ fractions: select → check → feedback → next → difficulty");
  const numbers=await openGame("number-lab");
@@ -45,6 +56,22 @@ try{
  assert.equal(await numbers.$eval("#score",el=>el.textContent),"Правильно: 0");
  await numbers.$eval("#marker",el=>el.dispatchEvent(new KeyboardEvent("keydown",{key:"End",bubbles:true})));
  assert.equal(await numbers.$eval("#marker",el=>el.getAttribute("aria-valuenow")),"20");
+ // Wrong answer should show the correct value without incrementing score.
+ await numbers.$eval("#check",el=>el.click());
+ assert.match(await numbers.$eval("#feedback",el=>el.textContent),/Правильная точка: 7/);
+ assert.equal(await numbers.$eval("#score",el=>el.textContent),"Правильно: 0");
+ await numbers.$eval('[data-level="easy"]',el=>el.click());
+ for(const [i,target] of [3,7,5,9,2].entries()){
+  assert.equal(await numbers.$eval("#round",el=>el.textContent),"Задание "+(i+1)+" / 5");
+  await numbers.focus("#marker");await numbers.keyboard.press("Home");
+  for(let k=0;k<target;k++) await numbers.keyboard.press("ArrowRight");
+  assert.equal(await numbers.$eval("#marker",el=>el.getAttribute("aria-valuenow")),String(target));
+  await numbers.$eval("#check",el=>el.click());
+  assert.match(await numbers.$eval("#feedback",el=>el.textContent),/Точно в цель/);
+  await numbers.$eval("#next",el=>el.click());
+ }
+ assert.equal(await numbers.$eval("#round",el=>el.textContent),"Задание 1 / 5");
+ assert.equal(await numbers.$eval("#score",el=>el.textContent),"Правильно: 0");
  await numbers.close();
  console.log("✓ numbers: keyboard → score → next → difficulty → slider bounds");
 }finally{await browser.close();}
