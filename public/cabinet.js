@@ -1503,6 +1503,7 @@ async function loadAccount() {
     renderLessons(user, lessons);
   } else if (user.role === "student") {
     document.getElementById("studentMathPanel").hidden = false;
+    document.getElementById("studentFirstName").textContent = String(user.displayName || user.username || "друг").trim().split(/\s+/)[0].slice(0,32);
     document.getElementById("studentMathNav").hidden = false;
     perfButton.hidden = true;
     note.textContent = "Выберите урок.";
