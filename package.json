@@ -8,8 +8,9 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "test": "node --test",
-    "test:layout": "node scripts/mobile-layout-browser.mjs",
-    "test:rtc-browser": "node scripts/rtc-browser-e2e.mjs"
+    "test:layout": "node scripts/mobile-layout-browser.mjs && node scripts/student-dashboard-regression.mjs",
+    "test:rtc-browser": "node scripts/rtc-browser-e2e.mjs",
+    "test:student-ui": "node scripts/student-dashboard-regression.mjs"
   },
   "engines": {
     "node": ">=20"
