@@ -1996,6 +1996,9 @@ app.post("/api/math/attempts", requireApiRole("student"), async (req,res,next)=>
 app.get("/number-lab", requirePageAuth("student"), (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "number-lab.html"));
 });
+app.get("/fraction-builder", requirePageAuth("student"), (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "fraction-builder.html"));
+});
 app.get("/math-academy", requirePageAuth("student"), (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "math-academy.html"));
 });
