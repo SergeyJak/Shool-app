@@ -1,0 +1,26 @@
+{
+  "assets": {
+    "hero": "assets/student-worlds/hero-owl.webp",
+    "numbers": "assets/student-worlds/number-trail.webp",
+    "fractions": "assets/student-worlds/fraction-world.webp",
+    "geometry": "assets/student-worlds/geometry-world.webp",
+    "puzzles": "assets/student-worlds/puzzle-world.webp",
+    "today": "assets/student-worlds/today-fraction.webp",
+    "purple": "assets/ui/btn-purple.webp",
+    "pink": "assets/ui/btn-pink.webp",
+    "green": "assets/ui/btn-green.webp",
+    "orange": "assets/ui/btn-orange.webp"
+  },
+  "gitSha1": {
+    "hero": "ced67a861319d6a85ccfcaad3bb34441cc4591dc",
+    "numbers": "0f69e0ac420bc26aff1ef6aa98f28134fef3805c",
+    "fractions": "c6080b41bc1dd19378dbf205add8e02546f09bbe",
+    "geometry": "31d01bd354af620416cfea954da9691144fcf5f7",
+    "puzzles": "860cb369f18d1fe8a39452a723483657597e957e",
+    "today": "8b0b5b78236fd488051f30c54bbb02a1cf6df15c",
+    "purple": "dd6e79066eb3a5dfba7e7d87f5b8aa1d427c7bea",
+    "pink": "149c1c6b3798e6f964430b02af22d1443412184c",
+    "green": "500700f5202de0dc44c341abcad3aaa4dca9708c",
+    "orange": "b75cb5050f04c50d852158cf4cc194bb28c65118"
+  }
+}
