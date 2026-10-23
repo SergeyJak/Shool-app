@@ -25,7 +25,7 @@ async function next(){
  if(index<session.questions.length-1){index++;render();return;}
  $("adaptiveNext").disabled=true;
  try{const r=await fetch("/api/math/attempts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"adaptive",answers})});if(!r.ok)throw Error("SAVE_FAILED");const data=await r.json();
- $("adaptivePanel").hidden=true;$("adaptiveSummary").hidden=false;$("adaptiveSummary").textContent="Задания завершены! Правильно: "+data.attempt.correct+" из "+data.attempt.total+". Прогресс сохранён в твоём кабинете.";await beginRefresh();
+ $("adaptivePanel").hidden=true;$("adaptiveSummary").hidden=false;$("adaptiveSummary").textContent="Задания завершены! Правильно: "+data.attempt.correct+" из "+data.attempt.total+". Прогресс сохранён в твоём кабинете.";await beginRefresh();window.dispatchEvent(new Event("math-attempt-saved"));
  }catch(_){$("adaptiveFeedback").textContent="Не получилось сохранить. Нажми «Завершить», чтобы повторить."; }
  finally{$("adaptiveNext").disabled=false;}
 }

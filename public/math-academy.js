@@ -27,7 +27,7 @@ async function loadProgress(){
 async function submitAttempt(){
  if(submitting||state.submitted)return;submitting=true;
  try{const res=await fetch("/api/math/attempts",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:state.mode,answers:state.answers.map(a=>({origin:a.origin,value:a.value}))})});
- if(!res.ok)throw Error("SAVE_FAILED");state.submitted=true;save();await loadProgress();
+ if(!res.ok)throw Error("SAVE_FAILED");state.submitted=true;save();await loadProgress();window.dispatchEvent(new Event("math-attempt-saved"));
  const info=document.getElementById("syncStatus");if(info)info.textContent="Результат сохранён в кабинете ученика.";
  }catch(_){const info=document.getElementById("syncStatus");if(info)info.textContent="Не удалось сохранить в облаке. Проверь соединение и нажми «Повторить сохранение».";const retry=document.getElementById("retrySync");if(retry)retry.hidden=false;}
  finally{submitting=false;}
