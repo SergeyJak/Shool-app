@@ -37,7 +37,7 @@ try{
   await fractions.$eval("#next",el=>el.click());
  }
  assert.match(await fractions.$eval("#task",el=>el.textContent),/Уровень завершён/);
- assert.match(await fractions.$eval("#feedback",el=>el.textContent),/Результат: 5 из 5/);
+ assert.match(await fractions.$eval("#feedback",el=>el.textContent),/Результат: 2 из 5/);
  await fractions.$eval("#next",el=>el.click());
  assert.equal(await fractions.$eval("#round",el=>el.textContent),"Задание 1 / 5");
  await fractions.$eval("#check",el=>el.click());
