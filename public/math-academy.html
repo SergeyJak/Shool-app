@@ -24,13 +24,13 @@ footer{text-align:center;color:#78829a;font-size:13px;margin:28px} @media(max-wi
 <body><header><a href="/cabinet">← Мои занятия</a><strong>🦉 School App</strong></header>
 <main><div class="tag">МАТЕМАТИЧЕСКАЯ АКАДЕМИЯ · ПЕРВЫЙ ЭТАП</div><h1>Математические открытия ✨</h1>
 <p>Найдём твои сильные стороны и подберём интересные задания. Ошибаться можно: так мы понимаем, чему учиться дальше.</p>
-<section class="card" id="intro"><h2>Начнём с маленькой разведки знаний?</h2><p>12 заданий по четырём темам. Без таймера и оценок. После проверки откроются тренировки.</p><button id="start">Начать диагностику</button></section>
+<section class="card" id="intro"><p id="history" class="small" aria-live="polite">Загружаем историю…</p><h2>Начнём с маленькой разведки знаний?</h2><p>12 заданий по четырём темам. Без таймера и оценок. После проверки откроются тренировки.</p><button id="start">Начать диагностику</button></section>
 <section class="card hidden" id="play" aria-live="polite">
 <div class="top"><span id="mode" class="tag"></span><strong id="progress"></strong></div><div class="meter"><div id="progressFill"></div></div>
 <div id="question"></div><div id="options" class="options"></div><p id="feedback" class="feedback" aria-live="polite"></p>
 <button id="next" class="hidden">Продолжить →</button></section>
 <section class="card hidden" id="results"><h2 id="resultTitle">Твоя карта знаний</h2><p id="resultLead"></p><div id="skills" class="skills"></div>
 <p class="small">Это ориентировочная диагностика, не школьная оценка. Уровень уточняется по следующим заданиям.</p>
-<button id="practice">Тренировать слабую тему</button> <button class="secondary" id="repeat">Пройти заново</button></section>
-<footer>Раздел в разработке · Данные первого этапа сохраняются в этом браузере</footer></main>
+<p id="syncStatus" class="small" role="status"></p><button id="retrySync" class="secondary" hidden>Повторить сохранение</button><br><br><button id="practice">Тренировать слабую тему</button> <button class="secondary" id="repeat">Пройти заново</button></section>
+<footer>Раздел в разработке · Результаты завершённых занятий сохраняются в кабинете ученика</footer></main>
 <script src="/math-academy.js"></script></body></html>
