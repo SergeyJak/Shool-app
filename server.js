@@ -37,7 +37,7 @@ const {
 const { resolveIdentityFromCookies } = require("./lib/session-context");
 const { canAccessLesson } = require("./lib/lesson-access");
 const { validateAttempt } = require("./lib/math-assessment");
-const { buildSession, QUESTIONS: ADAPTIVE_QUESTIONS } = require("./lib/math-adaptive");
+const { buildSession, buildReviewSession, QUESTIONS: ADAPTIVE_QUESTIONS } = require("./lib/math-adaptive");
 const { summarizeSkills, mistakes } = require("./lib/math-progress");
 const {
   normalizeManagedUsername,
@@ -1981,7 +1981,7 @@ app.get("/api/math/adaptive", requireApiRole("student"), async (req,res,next)=>{
   try{
     if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
     const attempts=await mathAttempts.find({studentId:req.user._id},{projection:{_id:0}}).sort({createdAt:-1}).limit(20).toArray();
-    res.json(buildSession(attempts));
+    res.json(req.query.review==="1"?buildReviewSession(attempts):buildSession(attempts));
   }catch(error){next(error);}
 });
 app.get("/api/math/progress", requireApiRole("student"), async (req,res,next)=>{
