@@ -17,10 +17,9 @@ button:focus-visible{outline:3px solid #0b9abd;outline-offset:3px}.secondary{bac
 .prompt{font-size:clamp(20px,4vw,29px);font-weight:800;color:#182449}
 .result{font-weight:700;min-height:28px}.stats{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 @media(max-width:500px){.line{margin-top:25px}.tick span{font-size:11px}}
-</style></head><body><header><a href="/math-academy">← В академию</a><strong>🦉 School App</strong></header><main>
-<p>ИНТЕРАКТИВНАЯ МАТЕМАТИКА</p><h1>Числовая экспедиция</h1>
-<p>Перетащи оранжевый маркер на правильное число. Можно также нажать на нужную точку. Здесь нет таймера: главное понять, как работает числовая прямая.</p>
-<section class="panel"><div class="levels" role="group" aria-label="Сложность">
+</style><link rel="stylesheet" href="/number-storybook.css?v=20261023-1"></head><body><header><a href="/math-academy">← В академию</a><strong>🦉 School App</strong></header><main>
+<section class="trail-hero"><div class="trail-owl" aria-hidden="true"></div><div><h1>Тропа чисел</h1><p>Помоги совёнку найти правильное число! Передвигай фишку по волшебной тропинке.</p></div></section>
+<section class="panel trail-game"><div class="levels" role="group" aria-label="Сложность">
 <button data-level="easy" aria-pressed="true">1 · Разминка</button>
 <button data-level="medium" class="secondary" aria-pressed="false">2 · Сложение</button>
 <button data-level="hard" class="secondary" aria-pressed="false">3 · Вычитание</button></div>
@@ -30,5 +29,5 @@ button:focus-visible{outline:3px solid #0b9abd;outline-offset:3px}.secondary{bac
 <div id="marker" class="marker" role="slider" tabindex="0" aria-label="Выбранное число" aria-valuemin="0" aria-valuemax="20" aria-valuenow="0"></div></div>
 <p class="result" id="selected" aria-live="polite">Выбрано: 0</p><div class="stats"><button id="check">Проверить</button><button id="next" class="secondary" hidden>Следующее →</button></div>
 <p class="result" id="feedback" aria-live="polite"></p></section>
-<section class="panel"><h2>Как это помогает?</h2><p>Числовая прямая связывает вычисления с расстоянием и положением чисел. Сначала ребёнок осваивает числа до 10, затем переходит к сложению и вычитанию до 20.</p></section></main>
+<section class="panel trail-hint"><h2>Совет совёнка</h2><p>Числовая прямая связывает вычисления с расстоянием и положением чисел. Сначала ребёнок осваивает числа до 10, затем переходит к сложению и вычитанию до 20.</p></section></main>
 <script src="/number-lab.js"></script></body></html>
