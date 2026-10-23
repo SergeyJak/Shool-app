@@ -48,14 +48,14 @@ button{box-shadow:0 4px 0 #4539b2}button.secondary{box-shadow:0 4px 0 #c4bfee}
 @media(max-width:560px){.academy-world{min-height:235px}.academy-world:before{inset:0 0 100px}.academy-world-content{padding:10px 10px 0;gap:3px}.academy-world strong{font-size:16px}.academy-world small{font-size:12px;min-height:31px}.academy-world b{margin:7px -10px 0;font-size:13px;padding:10px}}
 
 /* Shared high-fidelity children's world scenes. */
-.academy-hero{background-image:linear-gradient(90deg,#c5f0fff0,#c5f0ffb7 43%,transparent 83%),url("/assets/student-worlds/hero-owl.webp"),url("/assets/student-worlds/owl-adventure.svg");background-position:center;background-size:cover}
+.academy-hero{background-image:linear-gradient(90deg,#c5f0fff0,#c5f0ffb7 43%,transparent 83%),url("/assets/hero-owl.webp"),url("/assets/student-worlds/owl-adventure.svg");background-position:center;background-size:cover}
 .academy-world:before{background-size:cover;background-position:center}
-.academy-numbers:before{background-image:url("/assets/student-worlds/number-trail.webp"),url("/assets/student-worlds/number-trail.svg")}
-.academy-fractions:before{background-image:url("/assets/student-worlds/fraction-world.webp"),url("/assets/student-worlds/fraction-world.svg")}
-.academy-geometry:before{background-image:url("/assets/student-worlds/geometry-world.webp"),url("/assets/student-worlds/geometry-mountain.svg")}
-.academy-problems:before{background-image:url("/assets/student-worlds/puzzle-world.webp"),url("/assets/student-worlds/puzzle-treasure.svg")}
+.academy-numbers:before{background-image:url("/assets/number-trail.webp"),url("/assets/student-worlds/number-trail.svg")}
+.academy-fractions:before{background-image:url("/assets/fraction-world.webp"),url("/assets/student-worlds/fraction-world.svg")}
+.academy-geometry:before{background-image:url("/assets/geometry-world.webp"),url("/assets/student-worlds/geometry-mountain.svg")}
+.academy-problems:before{background-image:url("/assets/puzzle-world.webp"),url("/assets/student-worlds/puzzle-treasure.svg")}
 .academy-world b{background-size:100% 100%;background-position:center;box-shadow:none}
-.academy-numbers b{background-image:url("/assets/ui/btn-purple.webp"),linear-gradient(#8469ff,#6347ea)}
-.academy-fractions b{background-image:url("/assets/ui/btn-pink.webp"),linear-gradient(#ff78b5,#f24696)}
-.academy-geometry b{background-image:url("/assets/ui/btn-green.webp"),linear-gradient(#52d784,#23ae66)}
-.academy-problems b{background-image:url("/assets/ui/btn-orange.webp"),linear-gradient(#ffb252,#ee8136)}
+.academy-numbers b{background-image:url("/assets/btn-purple.webp"),linear-gradient(#8469ff,#6347ea)}
+.academy-fractions b{background-image:url("/assets/btn-pink.webp"),linear-gradient(#ff78b5,#f24696)}
+.academy-geometry b{background-image:url("/assets/btn-green.webp"),linear-gradient(#52d784,#23ae66)}
+.academy-problems b{background-image:url("/assets/btn-orange.webp"),linear-gradient(#ffb252,#ee8136)}
