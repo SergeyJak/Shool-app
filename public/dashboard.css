@@ -845,139 +845,63 @@ body[data-role="student"] .student-card-puzzles .student-world-action{background
  body[data-role="student"] .student-welcome{background-position:center,61% center,61% center}
  body[data-role="student"] .student-world-card:before{inset:0 0 103px}
 }
-/* Fix: painted buttons must be pills, never full-width card footer strips. */
-body[data-role="student"] .student-world-card .student-world-action{
-  align-self:flex-start!important;display:inline-flex!important;flex:none!important;
-  width:auto!important;min-width:104px;max-width:calc(100% - 22px);
-  margin:7px 11px 12px!important;padding:10px 22px!important;
-  border-radius:999px!important;background-size:100% 100%!important;
-  line-height:1.25;white-space:nowrap;box-shadow:none!important;
-}
-body[data-role="student"] .student-world-card{justify-content:flex-end}
-body[data-role="student"] .student-world-card small{width:100%}
-@media(max-width:520px){body[data-role="student"] .student-world-card .student-world-action{min-width:0;margin:6px 8px 10px!important;padding:9px 14px!important;font-size:13px!important}}
 
-/* Immersive mobile game tiles: artwork occupies the entire scene, with a gentle text-safe footer. */
-body[data-role="student"] .student-world-card{
-  display:flex!important;flex-direction:column!important;justify-content:flex-end!important;
-  position:relative!important;isolation:isolate;overflow:hidden!important;
-  min-height:270px!important;background:#d9f3f6!important;border:4px solid #fff!important;
-  border-radius:26px!important;box-shadow:0 12px 28px #30498224!important;
-  padding:0 0 14px!important;
-}
-body[data-role="student"] .student-world-card::before{
-  content:"";inset:0!important;position:absolute!important;z-index:-2!important;
-  background-position:center center!important;background-size:cover!important;
-}
-body[data-role="student"] .student-world-card::after{
-  content:"";display:block!important;position:absolute!important;inset:35% 0 0!important;
-  z-index:-1!important;background:linear-gradient(180deg,transparent 0%,#fffaf2a8 38%,#fffff5eb 74%,#fffffff5 100%)!important;
-}
-body[data-role="student"] .student-world-card strong,
-body[data-role="student"] .student-world-card small{
-  background:transparent!important;align-self:stretch!important;min-height:0!important;
-  width:auto!important;height:auto!important;margin:0!important;
-  padding-left:14px!important;padding-right:10px!important;
-  color:#20315a!important;text-shadow:0 1px 1px #ffffffa6;
-}
-body[data-role="student"] .student-world-card strong{
-  padding-top:8px!important;padding-bottom:2px!important;
-  font-weight:900!important;font-size:clamp(17px,2.3vw,23px)!important;line-height:1.12!important;
-}
-body[data-role="student"] .student-world-card small{
-  padding-top:2px!important;padding-bottom:2px!important;
-  font-size:13px!important;line-height:1.27!important;font-weight:700!important;
-}
-body[data-role="student"] .student-world-card .student-world-action{
-  align-self:flex-start!important;margin:10px 12px 3px!important;
-  padding:10px 21px!important;width:auto!important;min-width:110px!important;
-  border-radius:999px!important;line-height:1.2!important;
-}
-@media(max-width:520px){
-  body[data-role="student"] .student-world-card{min-height:245px!important;padding-bottom:9px!important}
-  body[data-role="student"] .student-world-card strong{font-size:16px!important;padding-left:10px!important}
-  body[data-role="student"] .student-world-card small{font-size:12px!important;padding-left:10px!important}
-  body[data-role="student"] .student-world-card .student-world-action{margin:8px 9px 4px!important;padding:9px 14px!important;min-width:0!important}
-}
-
-/* Preserve original 3D button image, including the lower bevel and drop shadow. */
-body[data-role="student"] .student-world-card .student-world-action,
-body[data-role="student"] .student-today-copy span{
-  position:relative!important;z-index:3!important;
-  display:inline-flex!important;align-items:center!important;justify-content:center!important;
-  background-image:none!important;background-color:transparent!important;
-  border:0!important;border-radius:0!important;box-shadow:none!important;
-  overflow:visible!important;isolation:isolate;
-  color:#fff!important;text-shadow:0 1px 2px #523b8d9e!important;
-  min-height:45px!important;padding:10px 25px 14px!important;
-}
-body[data-role="student"] .student-world-card .student-world-action::before,
-body[data-role="student"] .student-today-copy span::before{
-  content:"";position:absolute;z-index:-1;inset:-3px -9px -5px!important;
-  background-repeat:no-repeat!important;background-position:center!important;
-  background-size:100% 100%!important;pointer-events:none;
-}
-body[data-role="student"] .student-card-numbers .student-world-action::before,
-body[data-role="student"] .student-today-copy span::before{background-image:url("/assets/ui/btn-purple.webp")!important}
-body[data-role="student"] .student-card-fractions .student-world-action::before{background-image:url("/assets/ui/btn-pink.webp")!important}
-body[data-role="student"] .student-card-geometry .student-world-action::before{background-image:url("/assets/ui/btn-green.webp")!important}
-body[data-role="student"] .student-card-puzzles .student-world-action::before{background-image:url("/assets/ui/btn-orange.webp")!important}
-@media(max-width:520px){body[data-role="student"] .student-world-card .student-world-action{padding:8px 18px 12px!important;min-height:42px!important}}
-
-/* Render one glossy PNG per game button. No duplicated CSS pill underneath. */
-body[data-role="student"] .student-world-card .student-world-action,
-body[data-role="student"] .student-today-copy span{
-  background:transparent!important;background-image:none!important;
-  border:0!important;border-radius:0!important;box-shadow:none!important;
-  filter:none!important;overflow:visible!important;
-  padding:10px 23px 15px!important;min-height:45px!important;
-  background-repeat:no-repeat!important;background-position:center!important;
-  background-size:100% 100%!important;
-}
-body[data-role="student"] .student-world-card .student-world-action::before,
-body[data-role="student"] .student-today-copy span::before{content:none!important;display:none!important}
-body[data-role="student"] .student-card-numbers .student-world-action,
-body[data-role="student"] .student-today-copy span{background-image:url("/assets/ui/btn-purple.webp")!important}
-body[data-role="student"] .student-card-fractions .student-world-action{background-image:url("/assets/ui/btn-pink.webp")!important}
-body[data-role="student"] .student-card-geometry .student-world-action{background-image:url("/assets/ui/btn-green.webp")!important}
-body[data-role="student"] .student-card-puzzles .student-world-action{background-image:url("/assets/ui/btn-orange.webp")!important}
-
-/* Keep entire supplied 650 x 217 image (3:1 ratio), including its 3D lower bevel. */
-body[data-role="student"] .student-world-card .student-world-action,
-body[data-role="student"] .student-today-copy span{
-  background-size:100% 100%!important;background-position:center!important;
-  background-repeat:no-repeat!important;background-color:transparent!important;
-  border:0!important;border-radius:0!important;box-shadow:none!important;
-  padding:0 16px!important;min-height:0!important;
-  width:clamp(112px,13vw,172px)!important;
-  height:auto!important;aspect-ratio:650 / 217!important;
-  display:inline-flex!important;align-items:center!important;justify-content:center!important;
-  white-space:nowrap!important;overflow:visible!important;line-height:1.1!important;
-}
-body[data-role="student"] .student-world-card .student-world-action::before,
-body[data-role="student"] .student-today-copy span::before{display:none!important;content:none!important}
-@media(max-width:520px){
- body[data-role="student"] .student-world-card .student-world-action{
-  width:clamp(112px,34vw,160px)!important;padding:0 11px!important;
-  margin:8px 8px 5px!important;font-size:13px!important;
- }
- body[data-role="student"] .student-today-copy span{width:145px!important;font-size:14px!important}
-}
-
-/* Display only the shiny front face from supplied artwork.
-   The dark extrusion is already baked into its lower 22%; do not render it. */
-body[data-role="student"] .student-world-card .student-world-action,
-body[data-role="student"] .student-today-copy span{
-  background-size:100% 129%!important;
-  background-position:center top!important;
-  background-repeat:no-repeat!important;
-  height:45px!important;min-height:45px!important;
+/* Unified 3D world actions: ONE original WebP image, no CSS shape beneath it. */
+body[data-role="student"] .student-world-card .student-world-action {
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  align-self:flex-start!important;
+  flex:none!important;
+  box-sizing:border-box!important;
+  width:168px!important;
+  min-width:168px!important;
+  max-width:calc(100% - 18px)!important;
+  height:56px!important;
+  min-height:56px!important;
   aspect-ratio:auto!important;
-  border-radius:999px!important;overflow:hidden!important;
-  padding:0 13px!important;line-height:1.1!important;
+  margin:7px 9px 13px!important;
+  padding:0 14px!important;
+  color:white!important;
+  font-size:15px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  text-align:center!important;
+  background-color:transparent!important;
+  background-position:center center!important;
+  background-size:100% 100%!important;
+  background-repeat:no-repeat!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+  text-shadow:0 1px 1px #46347377!important;
+  overflow:visible!important;
 }
-@media(max-width:520px){
-  body[data-role="student"] .student-world-card .student-world-action{
-    height:41px!important;min-height:41px!important;
-  }
+body[data-role="student"] .student-world-card .student-world-action::before,
+body[data-role="student"] .student-world-card .student-world-action::after {
+  content:none!important;
+  display:none!important;
+  background:none!important;
+}
+body[data-role="student"] .student-card-numbers .student-world-action {
+  background-image:url("/assets/ui/btn-purple.webp")!important;
+}
+body[data-role="student"] .student-card-fractions .student-world-action {
+  background-image:url("/assets/ui/btn-pink.webp")!important;
+}
+body[data-role="student"] .student-card-geometry .student-world-action {
+  background-image:url("/assets/ui/btn-green.webp")!important;
+}
+body[data-role="student"] .student-card-puzzles .student-world-action {
+  background-image:url("/assets/ui/btn-orange.webp")!important;
+}
+@media(max-width:520px) {
+ body[data-role="student"] .student-world-card .student-world-action {
+   width:140px!important;min-width:140px!important;
+   height:47px!important;min-height:47px!important;
+   font-size:13px!important;
+   margin:7px 8px 12px!important;
+ }
 }
