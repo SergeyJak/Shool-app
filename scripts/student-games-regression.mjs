@@ -18,7 +18,7 @@ const out=path.join(root,"artifacts","student-games");fs.mkdirSync(out,{recursiv
 try{
  for(const screen of screens){
   const source=read(screen.html);
-  assert.match(source,new RegExp('href="'+screen.back.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+'"'),screen.name+" lost return link");
+  assert.ok(source.includes('href="'+screen.back+'"'),screen.name+" lost return link");
   if(screen.name==="academy") assert.doesNotMatch(source,/academy-world-grid/,"Academy must not create a second world menu");
   const css=read(screen.css);
   // Local fixture uses the same production markup and both stylesheets, without API data or login.
