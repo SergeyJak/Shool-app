@@ -942,22 +942,24 @@ body[data-role="student"] .student-card-fractions .student-world-action{backgrou
 body[data-role="student"] .student-card-geometry .student-world-action{background-image:url("/assets/ui/btn-green.webp")!important}
 body[data-role="student"] .student-card-puzzles .student-world-action{background-image:url("/assets/ui/btn-orange.webp")!important}
 
-/* Art itself includes a heavy dark extruded base. Crop the lower band.
-   No pseudo-elements and no secondary CSS button remain. */
+/* Keep entire supplied 650 x 217 image (3:1 ratio), including its 3D lower bevel. */
 body[data-role="student"] .student-world-card .student-world-action,
 body[data-role="student"] .student-today-copy span{
-  background-size:100% 120%!important;
-  background-position:center top!important;
-  background-repeat:no-repeat!important;
-  border-radius:999px!important;
-  overflow:hidden!important;
-  padding:9px 21px!important;
-  min-height:40px!important;
-  line-height:1.3!important;
+  background-size:100% 100%!important;background-position:center!important;
+  background-repeat:no-repeat!important;background-color:transparent!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+  padding:0 16px!important;min-height:0!important;
+  width:clamp(112px,13vw,172px)!important;
+  height:auto!important;aspect-ratio:650 / 217!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  white-space:nowrap!important;overflow:visible!important;line-height:1.1!important;
 }
 body[data-role="student"] .student-world-card .student-world-action::before,
 body[data-role="student"] .student-today-copy span::before{display:none!important;content:none!important}
 @media(max-width:520px){
-body[data-role="student"] .student-world-card .student-world-action{
-  min-height:38px!important;padding:8px 17px!important;
-}}
+ body[data-role="student"] .student-world-card .student-world-action{
+  width:clamp(112px,34vw,160px)!important;padding:0 11px!important;
+  margin:8px 8px 5px!important;font-size:13px!important;
+ }
+ body[data-role="student"] .student-today-copy span{width:145px!important;font-size:14px!important}
+}
