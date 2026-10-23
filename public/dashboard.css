@@ -689,3 +689,19 @@ body[data-role="student"] .materials-card{display:none!important}
     max-width:100%;
   }
 }
+
+/* Keep the student learning entry point visible on narrow screens. */
+@media (max-width: 760px) {
+  body[data-role="student"] .dashboard-header .dashboard-nav {
+    display:flex!important;
+    width:auto;
+    order:initial;
+    margin:0;
+  }
+  body[data-role="student"] .dashboard-header #studentMathNav:not([hidden]) {
+    display:inline-flex!important;
+    align-items:center;
+    background:#eeebff;
+    color:#4c3bd5;
+  }
+}
