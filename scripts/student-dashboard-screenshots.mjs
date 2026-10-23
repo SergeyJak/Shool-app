@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import puppeteer from "puppeteer-core";
 
@@ -59,6 +60,16 @@ try {
    assert.ok(Math.abs(b.width-metrics.buttons[0].width)<2&&Math.abs(b.height-metrics.buttons[0].height)<2,"Unequal game buttons");
   }
   await page.screenshot({path:path.join(outDir,`student-${width}.png`),fullPage:true,animations:"disabled"});
+  // Compare the painted assets independently of text antialiasing/font changes.
+  // A source-art regression is a visual change even if geometry remains correct.
+  const baselinePath=path.join(root,"tests","student-art-baselines.json");
+  const baselines=JSON.parse(fs.readFileSync(baselinePath,"utf8"));
+  for(const [label,relativePath] of Object.entries(baselines.assets)){
+    const asset=path.join(publicDir,relativePath);
+    assert.ok(fs.existsSync(asset),`Missing visual asset ${label}`);
+    const digest=createHash("sha256").update(fs.readFileSync(asset)).digest("hex");
+    assert.equal(digest,baselines.sha256[label],`Artwork changed for ${label}; review and update its approved baseline intentionally`);
+  }
   fs.writeFileSync(path.join(outDir,`student-${width}.json`),JSON.stringify(metrics,null,2));
   console.log(`✓ Screenshot and rendered checks: ${width}px`);
   await page.close();
