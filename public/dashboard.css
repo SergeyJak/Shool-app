@@ -845,3 +845,14 @@ body[data-role="student"] .student-card-puzzles .student-world-action{background
  body[data-role="student"] .student-welcome{background-position:center,61% center,61% center}
  body[data-role="student"] .student-world-card:before{inset:0 0 103px}
 }
+/* Fix: painted buttons must be pills, never full-width card footer strips. */
+body[data-role="student"] .student-world-card .student-world-action{
+  align-self:flex-start!important;display:inline-flex!important;flex:none!important;
+  width:auto!important;min-width:104px;max-width:calc(100% - 22px);
+  margin:7px 11px 12px!important;padding:10px 22px!important;
+  border-radius:999px!important;background-size:100% 100%!important;
+  line-height:1.25;white-space:nowrap;box-shadow:none!important;
+}
+body[data-role="student"] .student-world-card{justify-content:flex-end}
+body[data-role="student"] .student-world-card small{width:100%}
+@media(max-width:520px){body[data-role="student"] .student-world-card .student-world-action{min-width:0;margin:6px 8px 10px!important;padding:9px 14px!important;font-size:13px!important}}
