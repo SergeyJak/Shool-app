@@ -59,3 +59,7 @@ button{box-shadow:0 4px 0 #4539b2}button.secondary{box-shadow:0 4px 0 #c4bfee}
 .academy-fractions b{background-image:url("/assets/ui/btn-pink.webp"),linear-gradient(#ff78b5,#f24696)}
 .academy-geometry b{background-image:url("/assets/ui/btn-green.webp"),linear-gradient(#52d784,#23ae66)}
 .academy-problems b{background-image:url("/assets/ui/btn-orange.webp"),linear-gradient(#ffb252,#ee8136)}
+
+/* Mock-style buttons: not stretched edge-to-edge. */
+.academy-world b{align-self:flex-start!important;width:auto!important;min-width:105px;max-width:calc(100% - 10px);margin:9px 0 12px!important;padding:11px 24px!important;border-radius:999px!important;line-height:1.25;background-size:100% 100%;}
+@media(max-width:560px){.academy-world b{min-width:0;padding:9px 16px!important;font-size:13px}}
