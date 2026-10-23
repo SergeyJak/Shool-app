@@ -941,3 +941,23 @@ body[data-role="student"] .student-today-copy span{background-image:url("/assets
 body[data-role="student"] .student-card-fractions .student-world-action{background-image:url("/assets/ui/btn-pink.webp")!important}
 body[data-role="student"] .student-card-geometry .student-world-action{background-image:url("/assets/ui/btn-green.webp")!important}
 body[data-role="student"] .student-card-puzzles .student-world-action{background-image:url("/assets/ui/btn-orange.webp")!important}
+
+/* Art itself includes a heavy dark extruded base. Crop the lower band.
+   No pseudo-elements and no secondary CSS button remain. */
+body[data-role="student"] .student-world-card .student-world-action,
+body[data-role="student"] .student-today-copy span{
+  background-size:100% 120%!important;
+  background-position:center top!important;
+  background-repeat:no-repeat!important;
+  border-radius:999px!important;
+  overflow:hidden!important;
+  padding:9px 21px!important;
+  min-height:40px!important;
+  line-height:1.3!important;
+}
+body[data-role="student"] .student-world-card .student-world-action::before,
+body[data-role="student"] .student-today-copy span::before{display:none!important;content:none!important}
+@media(max-width:520px){
+body[data-role="student"] .student-world-card .student-world-action{
+  min-height:38px!important;padding:8px 17px!important;
+}}
