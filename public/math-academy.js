@@ -17,6 +17,22 @@ const QUESTIONS=[
 const KEY="school-math-diagnostic-v1";
 const $=id=>document.getElementById(id);
 let state=null;
+let latestRemote=null;
+let submitting=false;
+async function loadProgress(){
+ try {const res=await fetch("/api/math/progress",{credentials:"same-origin"});if(!res.ok)return;const data=await res.json();latestRemote=data.attempts?.[0]||null;
+ const history=document.getElementById("history");if(history){const attempts=data.attempts||[];history.textContent=attempts.length?`История: ${attempts.length} последних попыток. Последняя: ${attempts[0].correct} из ${attempts[0].total}.`:"Результатов пока нет. Начнём с диагностики!";}
+ }catch(_){const history=document.getElementById("history");if(history)history.textContent="История временно недоступна";}
+}
+async function submitAttempt(){
+ if(submitting||state.submitted)return;submitting=true;
+ try{const res=await fetch("/api/math/attempts",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:state.mode,answers:state.answers.map(a=>({origin:a.origin,value:a.value}))})});
+ if(!res.ok)throw Error("SAVE_FAILED");state.submitted=true;save();await loadProgress();
+ const info=document.getElementById("syncStatus");if(info)info.textContent="Результат сохранён в кабинете ученика.";
+ }catch(_){const info=document.getElementById("syncStatus");if(info)info.textContent="Не удалось сохранить в облаке. Проверь соединение и нажми «Повторить сохранение».";const retry=document.getElementById("retrySync");if(retry)retry.hidden=false;}
+ finally{submitting=false;}
+}
+
 function show(id){["intro","play","results"].forEach(x=>$(x).classList.toggle("hidden",x!==id));}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){}}
 function start(mode="diagnostic"){state={mode,index:0,answers:[],skill:null};if(mode==="practice"){const saved=load(); const scores=compute(saved?.answers||[]);state.skill=Object.keys(scores).sort((a,b)=>scores[a].correct/scores[a].total-scores[b].correct/scores[b].total)[0]||"Счёт";}state.questions=mode==="practice"?QUESTIONS.map((q,i)=>({...q,origin:i})).filter(q=>q.skill===state.skill):QUESTIONS.map((q,i)=>({...q,origin:i}));save();render();}
@@ -24,7 +40,9 @@ function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");return
 function compute(answers){const scores={};for(const skill of ["Счёт","Задачи","Дроби","Геометрия"])scores[skill]={correct:0,total:0};for(const v of answers){const skill=QUESTIONS[v.origin]?.skill;if(!scores[skill])continue;scores[skill].total++;if(v.correct)scores[skill].correct++;}return scores}
 function render(){if(state.index>=state.questions.length)return finish();show("play");const q=state.questions[state.index];$("mode").textContent=state.mode==="practice"?"ТРЕНИРОВКА · "+state.skill:"ДИАГНОСТИКА · "+q.skill;$("progress").textContent=(state.index+1)+" / "+state.questions.length;$("progressFill").style.width=(state.index/state.questions.length*100)+"%";$("question").textContent=q.q;$("feedback").textContent="";$("next").classList.add("hidden");const options=$("options");options.replaceChildren();for(const val of q.options){const b=document.createElement("button");b.className="option";b.textContent=val;b.addEventListener("click",()=>answer(val));options.append(b)}}
 function answer(value){const q=state.questions[state.index];if(state.answers.length>state.index)return;const correct=String(value)===String(q.a);state.answers.push({origin:q.origin,correct,value});save();for(const b of $("options").children){b.disabled=true;if(b.textContent===String(q.a))b.classList.add("correct");else if(b.textContent===String(value))b.classList.add("wrong")} $("feedback").textContent=(correct?"Верно! ":"Хорошая попытка! ")+q.why;$("next").classList.remove("hidden");$("progressFill").style.width=((state.index+1)/state.questions.length*100)+"%"}
-function finish(){show("results");const scores=compute(state.answers);const total=state.answers.filter(x=>x.correct).length;$("resultTitle").textContent=state.mode==="practice"?"Тренировка завершена!":"Твоя карта знаний";$("resultLead").textContent="Верных ответов: "+total+" из "+state.answers.length+". Каждая задача помогает прокачать навыки.";$("skills").replaceChildren();for(const [name,s] of Object.entries(scores)){if(!s.total)continue;const item=document.createElement("div");item.className="skill";const percent=Math.round(s.correct/s.total*100);const label=percent>=80?"Сильная сторона":percent>=50?"Продолжаем учиться":"Потренируем вместе";const title=document.createElement("strong");title.textContent=name;const progress=document.createElement("span");progress.textContent=percent+"% · "+label;item.append(title,progress);$("skills").append(item)}save();}
+function finish(){show("results");if(!state.submitted)void submitAttempt();const scores=compute(state.answers);const total=state.answers.filter(x=>x.correct).length;$("resultTitle").textContent=state.mode==="practice"?"Тренировка завершена!":"Твоя карта знаний";$("resultLead").textContent="Верных ответов: "+total+" из "+state.answers.length+". Каждая задача помогает прокачать навыки.";$("skills").replaceChildren();for(const [name,s] of Object.entries(scores)){if(!s.total)continue;const item=document.createElement("div");item.className="skill";const percent=Math.round(s.correct/s.total*100);const label=percent>=80?"Сильная сторона":percent>=50?"Продолжаем учиться":"Потренируем вместе";const title=document.createElement("strong");title.textContent=name;const progress=document.createElement("span");progress.textContent=percent+"% · "+label;item.append(title,progress);$("skills").append(item)}save();}
 $("start").addEventListener("click",()=>start());$("repeat").addEventListener("click",()=>start());$("practice").addEventListener("click",()=>{const prev=state;state=null;try{localStorage.setItem(KEY,JSON.stringify(prev));}catch(_){} start("practice")});$("next").addEventListener("click",()=>{state.index++;save();render()});
+document.getElementById("retrySync")?.addEventListener("click",()=>{document.getElementById("retrySync").hidden=true;void submitAttempt()});
+void loadProgress();
 const previous=load();if(previous && previous.mode==="diagnostic" && previous.answers.length===QUESTIONS.length){state=previous;finish();}
 })();
