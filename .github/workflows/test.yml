@@ -24,4 +24,12 @@ jobs:
           path: artifacts/student-dashboard/
           if-no-files-found: ignore
           retention-days: 30
+      - run: npm run test:student-games
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: student-game-screenshots
+          path: artifacts/student-games/
+          if-no-files-found: ignore
+          retention-days: 30
       - run: npm run test:rtc-browser
