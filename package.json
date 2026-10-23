@@ -12,7 +12,8 @@
     "test:rtc-browser": "node scripts/rtc-browser-e2e.mjs",
     "test:student-ui": "node scripts/student-dashboard-regression.mjs",
     "test:student-screenshots": "node scripts/student-dashboard-screenshots.mjs",
-    "test:student-games": "node scripts/student-games-regression.mjs"
+    "test:student-games": "node scripts/student-games-regression.mjs",
+    "test:student-interactions": "node scripts/student-game-interactions.mjs"
   },
   "engines": {
     "node": ">=20"
