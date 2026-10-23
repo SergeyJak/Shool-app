@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>School App · Кабинет учителя</title>
   <link rel="stylesheet" href="/landing.css?v=20261002-archive1" />
-  <link rel="stylesheet" href="/dashboard.css?v=20261023-student-math-nav" />
+  <link rel="stylesheet" href="/dashboard.css?v=20261023-student-world1" />
 </head>
 <body class="landing-body dashboard-page">
   <header class="dashboard-header">
@@ -68,11 +68,29 @@
       </form>
     </section>
 
-    <section id="studentMathPanel" class="sessions-card" style="margin:0 0 20px;padding:24px" hidden>
-      <div class="section-card-heading"><div><span class="section-icon purple">✦</span><h2>Математическая академия</h2></div></div>
-      <p>Игровая диагностика знаний и тренировки по темам. Начни с 12 коротких заданий.</p>
-      <a href="/math-academy" style="display:inline-block;background:#6255eb;color:#fff;padding:14px 19px;border-radius:14px;text-decoration:none;font-weight:750">Открыть задания →</a>
+    <section id="studentMathPanel" class="student-world" hidden aria-label="Математический мир ученика">
+      <div class="student-welcome">
+        <div class="student-welcome-copy">
+          <span class="student-kicker">ТВОЁ ПРИКЛЮЧЕНИЕ</span>
+          <h1>Привет, <span id="studentFirstName">друг</span>! 👋</h1>
+          <p>Совёнок приглашает тебя в мир математики. Выбери приключение!</p>
+          <a class="student-primary-action" href="/math-academy">Начать приключение →</a>
+        </div>
+        <div class="student-owl" role="img" aria-label="Весёлый совёнок">🦉<span class="student-owl-star" aria-hidden="true">⭐</span></div>
+      </div>
+      <div class="student-section-heading"><h2>Миры математики</h2><span>Выбирай, во что играть!</span></div>
+      <div class="student-world-grid">
+        <a class="student-world-card student-card-numbers" href="/number-lab"><span class="student-world-art" aria-hidden="true">🚀</span><strong>Тропа чисел</strong><small>Находи числа и решай примеры</small><span class="student-world-action">В путь →</span></a>
+        <a class="student-world-card student-card-fractions" href="/fraction-builder"><span class="student-world-art" aria-hidden="true">🍕</span><strong>Мастерская дробей</strong><small>Собирай весёлые кусочки</small><span class="student-world-action">Играть →</span></a>
+        <a class="student-world-card student-card-geometry" href="/math-academy"><span class="student-world-art" aria-hidden="true">🔷</span><strong>Гора геометрии</strong><small>Раскрой секреты фигур</small><span class="student-world-action">Исследовать →</span></a>
+        <a class="student-world-card student-card-puzzles" href="/math-academy"><span class="student-world-art" aria-hidden="true">🗝️</span><strong>Страна задач</strong><small>Разгадывай загадки</small><span class="student-world-action">Открыть →</span></a>
+      </div>
+      <div class="student-bottom-actions">
+        <a class="student-training-card" href="/math-academy"><span aria-hidden="true">⭐</span><span><strong>Мои успехи</strong><small>Посмотри, чему научился!</small></span><span aria-hidden="true">→</span></a>
+        <a class="student-training-card" href="/math-academy"><span aria-hidden="true">🧩</span><span><strong>Тренировка дня</strong><small>Попробуй новое задание</small></span><span aria-hidden="true">→</span></a>
+      </div>
     </section>
+
     <div class="teacher-dashboard-grid" id="teacherSessions">
       <section class="sessions-card">
         <div class="section-card-heading">
@@ -358,6 +376,6 @@
     </form>
   </dialog>
 
-  <script src="/cabinet.js?v=20261023-student-math-nav"></script>
+  <script src="/cabinet.js?v=20261023-student-world1"></script>
 </body>
 </html>
