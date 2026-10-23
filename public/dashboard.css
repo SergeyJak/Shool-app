@@ -899,3 +899,27 @@ body[data-role="student"] .student-world-card .student-world-action{
   body[data-role="student"] .student-world-card small{font-size:12px!important;padding-left:10px!important}
   body[data-role="student"] .student-world-card .student-world-action{margin:8px 9px 4px!important;padding:9px 14px!important;min-width:0!important}
 }
+
+/* Preserve original 3D button image, including the lower bevel and drop shadow. */
+body[data-role="student"] .student-world-card .student-world-action,
+body[data-role="student"] .student-today-copy span{
+  position:relative!important;z-index:3!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  background-image:none!important;background-color:transparent!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+  overflow:visible!important;isolation:isolate;
+  color:#fff!important;text-shadow:0 1px 2px #523b8d9e!important;
+  min-height:45px!important;padding:10px 25px 14px!important;
+}
+body[data-role="student"] .student-world-card .student-world-action::before,
+body[data-role="student"] .student-today-copy span::before{
+  content:"";position:absolute;z-index:-1;inset:-3px -9px -5px!important;
+  background-repeat:no-repeat!important;background-position:center!important;
+  background-size:100% 100%!important;pointer-events:none;
+}
+body[data-role="student"] .student-card-numbers .student-world-action::before,
+body[data-role="student"] .student-today-copy span::before{background-image:url("/assets/ui/btn-purple.webp")!important}
+body[data-role="student"] .student-card-fractions .student-world-action::before{background-image:url("/assets/ui/btn-pink.webp")!important}
+body[data-role="student"] .student-card-geometry .student-world-action::before{background-image:url("/assets/ui/btn-green.webp")!important}
+body[data-role="student"] .student-card-puzzles .student-world-action::before{background-image:url("/assets/ui/btn-orange.webp")!important}
+@media(max-width:520px){body[data-role="student"] .student-world-card .student-world-action{padding:8px 18px 12px!important;min-height:42px!important}}
