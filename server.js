@@ -1966,6 +1966,9 @@ app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
 app.get("/connections.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "connections.html"))
 );
+app.get("/math-academy", requirePageAuth("student"), (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "math-academy.html"));
+});
 app.get("/student.html", requirePageAuth("student"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "student.html"))
 );
