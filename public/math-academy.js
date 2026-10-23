@@ -1,0 +1,30 @@
+"use strict";
+(() => {
+const QUESTIONS=[
+{skill:"Счёт",q:"Сколько будет 48 + 27?",a:75,options:[65,75,85,74],why:"48 + 20 = 68, ещё 7 = 75."},
+{skill:"Счёт",q:"Сколько будет 90 − 36?",a:54,options:[64,54,46,56],why:"90 − 30 = 60, затем − 6 = 54."},
+{skill:"Счёт",q:"Сколько будет 7 × 8?",a:56,options:[48,54,56,64],why:"7 × 8 = 56."},
+{skill:"Задачи",q:"У Алисы 24 наклейки. Она подарила 9. Сколько осталось?",a:15,options:[13,15,16,33],why:"24 − 9 = 15 наклеек."},
+{skill:"Задачи",q:"3 коробки по 6 карандашей. Сколько всего карандашей?",a:18,options:[9,12,18,24],why:"3 × 6 = 18."},
+{skill:"Задачи",q:"Билет стоит 4 €. Сколько стоят 5 билетов?",a:20,options:[9,16,20,25],why:"5 × 4 = 20 €."},
+{skill:"Дроби",q:"Половина от 18 — это…",a:9,options:[6,8,9,12],why:"18 ÷ 2 = 9."},
+{skill:"Дроби",q:"Какая дробь равна половине?",a:"2/4",options:["1/3","2/4","3/4","1/4"],why:"2 из 4 равных частей — это половина."},
+{skill:"Дроби",q:"Что больше: 1/2 или 1/4?",a:"1/2",options:["1/4","1/2","Равны","Не сравнить"],why:"Если делим целое на 2 части, каждая больше четвертинки."},
+{skill:"Геометрия",q:"Сколько углов у прямоугольника?",a:4,options:[3,4,5,6],why:"У прямоугольника 4 прямых угла."},
+{skill:"Геометрия",q:"Периметр квадрата со стороной 5 см?",a:20,options:[10,15,20,25],why:"5 + 5 + 5 + 5 = 20 см."},
+{skill:"Геометрия",q:"Сколько сантиметров в 2 метрах?",a:200,options:[20,100,200,2000],why:"В 1 метре 100 см, значит в 2 метрах 200 см."}
+];
+const KEY="school-math-diagnostic-v1";
+const $=id=>document.getElementById(id);
+let state=null;
+function show(id){["intro","play","results"].forEach(x=>$(x).classList.toggle("hidden",x!==id));}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){}}
+function start(mode="diagnostic"){state={mode,index:0,answers:[],skill:null};if(mode==="practice"){const saved=load(); const scores=compute(saved?.answers||[]);state.skill=Object.keys(scores).sort((a,b)=>scores[a].correct/scores[a].total-scores[b].correct/scores[b].total)[0]||"Счёт";}state.questions=mode==="practice"?QUESTIONS.map((q,i)=>({...q,origin:i})).filter(q=>q.skill===state.skill):QUESTIONS.map((q,i)=>({...q,origin:i}));save();render();}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");return x&&Array.isArray(x.answers)?x:null}catch(_){return null}}
+function compute(answers){const scores={};for(const skill of ["Счёт","Задачи","Дроби","Геометрия"])scores[skill]={correct:0,total:0};for(const v of answers){const skill=QUESTIONS[v.origin]?.skill;if(!scores[skill])continue;scores[skill].total++;if(v.correct)scores[skill].correct++;}return scores}
+function render(){if(state.index>=state.questions.length)return finish();show("play");const q=state.questions[state.index];$("mode").textContent=state.mode==="practice"?"ТРЕНИРОВКА · "+state.skill:"ДИАГНОСТИКА · "+q.skill;$("progress").textContent=(state.index+1)+" / "+state.questions.length;$("progressFill").style.width=(state.index/state.questions.length*100)+"%";$("question").textContent=q.q;$("feedback").textContent="";$("next").classList.add("hidden");const options=$("options");options.replaceChildren();for(const val of q.options){const b=document.createElement("button");b.className="option";b.textContent=val;b.addEventListener("click",()=>answer(val));options.append(b)}}
+function answer(value){const q=state.questions[state.index];if(state.answers.length>state.index)return;const correct=String(value)===String(q.a);state.answers.push({origin:q.origin,correct,value});save();for(const b of $("options").children){b.disabled=true;if(b.textContent===String(q.a))b.classList.add("correct");else if(b.textContent===String(value))b.classList.add("wrong")} $("feedback").textContent=(correct?"Верно! ":"Хорошая попытка! ")+q.why;$("next").classList.remove("hidden");$("progressFill").style.width=((state.index+1)/state.questions.length*100)+"%"}
+function finish(){show("results");const scores=compute(state.answers);const total=state.answers.filter(x=>x.correct).length;$("resultTitle").textContent=state.mode==="practice"?"Тренировка завершена!":"Твоя карта знаний";$("resultLead").textContent="Верных ответов: "+total+" из "+state.answers.length+". Каждая задача помогает прокачать навыки.";$("skills").replaceChildren();for(const [name,s] of Object.entries(scores)){if(!s.total)continue;const item=document.createElement("div");item.className="skill";const percent=Math.round(s.correct/s.total*100);const label=percent>=80?"Сильная сторона":percent>=50?"Продолжаем учиться":"Потренируем вместе";const title=document.createElement("strong");title.textContent=name;const progress=document.createElement("span");progress.textContent=percent+"% · "+label;item.append(title,progress);$("skills").append(item)}save();}
+$("start").addEventListener("click",()=>start());$("repeat").addEventListener("click",()=>start());$("practice").addEventListener("click",()=>{const prev=state;state=null;try{localStorage.setItem(KEY,JSON.stringify(prev));}catch(_){} start("practice")});$("next").addEventListener("click",()=>{state.index++;save();render()});
+const previous=load();if(previous && previous.mode==="diagnostic" && previous.answers.length===QUESTIONS.length){state=previous;finish();}
+})();
