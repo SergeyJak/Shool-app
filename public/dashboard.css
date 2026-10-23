@@ -905,3 +905,76 @@ body[data-role="student"] .student-card-puzzles .student-world-action {
    margin:7px 8px 12px!important;
  }
 }
+
+
+/* Balanced illustrated worlds: show more scenery, no colored bars behind buttons. */
+body[data-role="student"] .student-world-grid{align-items:stretch}
+body[data-role="student"] .student-world-card{
+  display:flex!important;flex-direction:column!important;min-height:300px!important;
+  justify-content:flex-end!important;padding:0 0 12px!important;
+  background:#fff!important;isolation:isolate!important;
+}
+body[data-role="student"] .student-world-card::before{
+  inset:0 0 102px!important;background-size:cover!important;
+  background-position:center 43%!important;
+}
+body[data-role="student"] .student-world-card::after{
+  display:none!important;content:none!important;
+}
+body[data-role="student"] .student-world-card strong,
+body[data-role="student"] .student-world-card small{
+  position:relative!important;z-index:2!important;
+  background:#fffffff0!important;width:100%!important;
+  padding-left:12px!important;padding-right:10px!important;
+}
+body[data-role="student"] .student-world-card strong{
+  padding-top:10px!important;padding-bottom:0!important;
+  min-height:0!important;margin:0!important;
+}
+body[data-role="student"] .student-world-card small{
+  padding-top:5px!important;padding-bottom:4px!important;
+  min-height:0!important;margin:0!important;
+}
+body[data-role="student"] .student-world-card .student-world-action{
+  position:relative!important;z-index:3!important;
+  align-self:center!important;
+  width:160px!important;min-width:0!important;max-width:calc(100% - 24px)!important;
+  height:53px!important;min-height:53px!important;
+  margin:7px auto 0!important;
+  padding:0 10px!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+  background-color:transparent!important;background-size:100% 100%!important;
+  background-position:center!important;background-repeat:no-repeat!important;
+}
+body[data-role="student"] .student-world-card .student-world-action::before,
+body[data-role="student"] .student-world-card .student-world-action::after{
+  content:none!important;display:none!important;
+}
+body[data-role="student"] .student-today{
+  background:#dcf7e7!important;
+  grid-template-columns:40% minmax(0,1fr)!important;
+}
+body[data-role="student"] .student-today-copy span{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  width:155px!important;max-width:100%!important;height:52px!important;
+  padding:0 14px!important;margin:6px 0 0!important;
+  color:#fff!important;font-weight:900!important;line-height:1!important;
+  background-color:transparent!important;
+  background-image:url("/assets/ui/btn-purple.webp")!important;
+  background-position:center!important;background-repeat:no-repeat!important;
+  background-size:100% 100%!important;
+  border:0!important;border-radius:0!important;box-shadow:none!important;
+}
+body[data-role="student"] .student-today-copy span::before,
+body[data-role="student"] .student-today-copy span::after{content:none!important;display:none!important}
+@media(max-width:520px){
+ body[data-role="student"] .student-world-card{min-height:275px!important;padding-bottom:12px!important}
+ body[data-role="student"] .student-world-card::before{inset:0 0 102px!important}
+ body[data-role="student"] .student-world-card .student-world-action{
+  width:min(140px,calc(100% - 20px))!important;height:47px!important;min-height:47px!important;
+  margin:8px auto 0!important;
+ }
+ body[data-role="student"] .student-today-copy span{
+  width:135px!important;height:46px!important;min-height:46px!important;font-size:14px!important;
+ }
+}
