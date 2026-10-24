@@ -8,7 +8,13 @@ if(!saved||!Number.isInteger(saved.unlocked))saved={unlocked:0,stars:0,completed
 saved.unlocked=Math.max(0,Math.min(levels.length-1,saved.unlocked));saved.completed=Array.isArray(saved.completed)?saved.completed.filter(x=>Number.isInteger(x)&&x>=0&&x<levels.length):[];
 let current=-1,round=0,correct=0,answered=false,questions=[];
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(_){}}
-function task(type,i){const a=i+2,b=i%5+2;if(type==="geometry"){const data=[["Сколько сторон у треугольника?",3],["Сколько углов у квадрата?",4],["Сколько сторон у пятиугольника?",5],["Сколько углов у прямоугольника?",4]];return data[i%4]}if(type==="word"){return [`У совёнка ${a} яблока и ещё ${b}. Сколько всего?`,a+b]}if(type==="boss"){return i%2===0?[`${a} × ${b} = ?`,a*b]:[`${a+b} − ${b} = ?`,a]}return i%3===0?[`${a+b} − ${b} = ?`,a]:[`${a} + ${b} = ?`,a+b]}
+function task(type,i){
+ const a=i+2,b=i%5+2;
+ if(type==="geometry"){const data=[["Сколько сторон у треугольника?",3],["Сколько углов у квадрата?",4],["Сколько сторон у пятиугольника?",5],["Сколько углов у прямоугольника?",4],["Сколько сторон у шестиугольника?",6],["Сколько углов у треугольника?",3],["Сколько сторон у прямоугольника?",4],["Сколько углов у пятиугольника?",5],["Сколько сторон у квадрата?",4],["Сколько углов у шестиугольника?",6]];return data[i%data.length]}
+ if(type==="word"){const data=[[`У совёнка ${a} яблока и ещё ${b}. Сколько всего?`,a+b],[`У дракона ${a+b} монет, ${b} он отдал. Сколько осталось?`,a],[`На ветке ${a} птицы, прилетели ещё ${b}. Сколько стало?`,a+b]];return data[i%data.length]}
+ if(type==="boss"){return i%2===0?[`${a} × ${b} = ?`,a*b]:[`${a+b} − ${b} = ?`,a]}
+ return i%3===0?[`${a+b} − ${b} = ?`,a]:[`${a} + ${b} = ?`,a+b]
+}
 function options(answer,i){const values=[answer,answer+1,answer+2,Math.max(0,answer-1)];return [...new Set(values)].sort((a,b)=>((a*7+i*3)%11)-((b*7+i*3)%11))}
 function show(id){for(const key of ["intro","game","result"])$(key).classList.toggle("hidden",key!==id)}
 function map(){document.querySelectorAll(".node").forEach(n=>n.remove());levels.forEach((level,i)=>{const btn=document.createElement("button");btn.className="node";btn.style.left=level.x+"%";btn.style.top=level.y+"%";btn.disabled=i>saved.unlocked;btn.setAttribute("aria-label",level.name+(btn.disabled?", закрыт":""));const img=document.createElement("img");img.alt="";img.src="/assets/math-adventure/map/"+(i===4?"boss-node.svg":i>saved.unlocked?"locked-node.svg":saved.completed.includes(i)?"node-complete.svg":"path-node.svg");const label=document.createElement("span");label.textContent=level.name;btn.append(img,label);btn.addEventListener("click",()=>start(i));$("world").append(btn)});$("summary").textContent=`Открыто уровней: ${saved.unlocked+1} из ${levels.length}. Звёзд: ${saved.stars}. Для прохождения нужно не менее 80% правильных ответов.`}
