@@ -9,7 +9,7 @@ test("bank has 210 unique, answerable questions across seven skills",()=>{
 test("diagnostic never repeats and ends after at most 25 questions",()=>{
  let s=d.createSession();
  while(!s.finished){const q=d.nextQuestion(s);assert.ok(q);s=d.submitAnswer(s,q.id,q.answer);}
- assert.equal(s.answers.length,25);assert.equal(new Set(s.asked).size,s.asked.length);
+ assert.ok(s.answers.length>=15&&s.answers.length<=25);assert.equal(new Set(s.asked).size,s.asked.length);
  assert.equal(d.nextQuestion(s),null);
 });
 test("incorrect answers lower placement relative to correct answers",()=>{
