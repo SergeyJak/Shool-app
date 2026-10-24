@@ -60,7 +60,7 @@ function renderDiagnosticV2(){
   $("skills").replaceChildren();
   for(const [name,score] of Object.entries(result.skills)){
    const item=document.createElement("div");item.className="skill";
-   const title=document.createElement("strong");title.textContent=name;
+   const title=document.createElement("strong");title.textContent=skillLabels[name]||name;
    const value=document.createElement("span");value.textContent="Уровень "+score.estimate+" · "+score.count+" заданий";
    item.append(title,value);$("skills").append(item);
   }
@@ -68,7 +68,7 @@ function renderDiagnosticV2(){
  }
  show("play");
  const q=diagnosticV2.question;
- $("mode").textContent="ДИАГНОСТИКА · "+q.skill;
+ $("mode").textContent="ДИАГНОСТИКА · "+(skillLabels[q.skill]||q.skill);
  $("progress").textContent=diagnosticV2.answered+" / 15–25";
  $("progressFill").style.width=(diagnosticV2.answered/25*100)+"%";
  $("question").textContent=q.prompt;$("feedback").textContent="";$("next").classList.add("hidden");
