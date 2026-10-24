@@ -70,8 +70,8 @@ try{
  assert.match(await page.$eval("#adaptiveQuestion",e=>e.textContent),/3 \+ 4/);
  await page.$eval("#adaptiveOptions button:nth-child(2)",b=>b.click());
  await page.click("#adaptiveNext");
- await page.waitForFunction(()=>window.__posts.length===2);
- const adaptive=await page.evaluate(()=>window.__posts[1]);
+ await page.waitForFunction(()=>window.__posts.length===1);
+ const adaptive=await page.evaluate(()=>window.__posts[0]);
  assert.equal(adaptive.mode,"adaptive");assert.deepEqual(adaptive.answers,[{origin:0,value:5},{origin:1,value:7}]);
  assert.match(await page.$eval("#adaptiveSummary",e=>e.textContent),/Прогресс сохранён/);
  await page.click("#reviewStart");
