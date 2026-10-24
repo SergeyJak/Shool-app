@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>School App · Регистрация</title>
   <link rel="stylesheet" href="/join.css?v=20261003-register2" />
-</head>
+<style>.registration-roles{display:flex;gap:12px;flex-wrap:wrap;border:0;padding:0;margin:0 0 18px}.registration-roles legend{font-weight:750;margin-bottom:8px}.registration-roles label{display:flex;align-items:center;gap:8px;padding:12px 16px;border:2px solid #ddd4fa;border-radius:16px;background:#f8f5ff;cursor:pointer}.registration-roles input{width:20px;height:20px;accent-color:#7352da}</style></head>
 <body>
   <main class="join-shell">
     <section class="join-card" aria-labelledby="registerTitle">
       <div class="join-mark">🦉</div>
       <span class="eyebrow">School App</span>
       <h1 id="registerTitle">Регистрация</h1>
-      <p>Шаг 1 из 2. Придумайте логин и пароль. После этого заполним профиль преподавателя.</p>
+      <p>Выбери, для кого создаём аккаунт, и придумай логин и пароль. Учителю понадобится подтверждение администратора.</p>
 
-      <form id="registerForm">
+      <form id="registerForm"><fieldset class="registration-roles"><legend>Кто будет пользоваться?</legend><label><input type="radio" name="role" value="student" checked /> Ученик</label><label><input type="radio" name="role" value="teacher" /> Учитель</label></fieldset>
         <label>
           <span>Логин</span>
           <input id="username" name="username" minlength="3" maxlength="50" autocomplete="username" required />
