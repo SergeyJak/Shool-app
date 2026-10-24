@@ -51,6 +51,7 @@ try{
  await page.click("#start");
  await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("1 / 15–25"));
  for(let i=1;i<19;i++){
+  await page.waitForFunction(expected=>document.querySelector("#options button")?.disabled===false&&document.querySelector("#progress")?.textContent.includes(expected+" / 15–25"),i);
   await page.$eval("#options input",el=>el.value="5");
   await page.click("#options button");
   await page.waitForFunction(expected=>window.__v2Count===expected,i+1);
