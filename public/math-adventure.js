@@ -2,6 +2,7 @@
 (()=>{
 const KEY="school-math-adventure-v2";
 const LEGACY_KEY="school-math-adventure-v1";
+const BUILD="20261024-adventure100-r2";
 const TOTAL_LEVELS=100;
 const themes=[{name:"Солнечная поляна",x:18,y:80,type:"numbers"},{name:"Мост примеров",x:38,y:60,type:"numbers"},{name:"Развилка задач",x:68,y:75,type:"word"},{name:"Тропа фигур",x:72,y:36,type:"geometry"},{name:"Дракон знаний",x:43,y:22,type:"boss"}];
 const levels=Array.from({length:TOTAL_LEVELS},(_,i)=>({...themes[i%5],name:themes[i%5].name+" · "+(i+1),index:i}));
