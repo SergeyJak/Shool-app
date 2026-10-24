@@ -53,14 +53,27 @@ function renderDiagnosticV2(){
  if(diagnosticV2.finished){
   show("results");
   const result=diagnosticV2.result;
-  $("resultTitle").textContent="Проверка закончена!";
-  $("resultLead").textContent="Правильно: "+result.correct+" · Не знаю: "+result.skipped+" · Не понял вопрос: "+(result.misunderstood||0)+" · Ошибки: "+result.incorrect+". Теперь подберём задания для тебя.";
+  $("resultTitle").textContent="Задания пройдены!";
+  const stats=$("resultStats");
+  stats.replaceChildren();
+  for(const [number,label] of [
+    [result.correct,"Получилось"],
+    [Math.max(0,result.skipped-(result.misunderstood||0)),"Пока не знаю"],
+    [result.misunderstood||0,"Не понял вопрос"],
+    [result.incorrect,"Попробуем ещё"]
+  ]){
+    const tile=document.createElement("div");tile.className="result-stat";
+    const value=document.createElement("strong");value.textContent=String(number);
+    const name=document.createElement("span");name.textContent=label;
+    tile.append(value,name);stats.append(tile);
+  }
+  $("resultLead").textContent="Совёнок запомнил твои ответы и подберёт следующие задания.";
   $("adventureAssessment").textContent="Твой старт: уровень "+result.level;
   $("adventureLaunch").classList.remove("hidden");
   const entries=Object.entries(result.skills);
   const strongest=entries.reduce((best,item)=>item[1].estimate>best[1].estimate?item:best,entries[0]);
   const weakest=entries.reduce((best,item)=>item[1].estimate<best[1].estimate?item:best,entries[0]);
-  $("resultHighlights").textContent=result.correct===0?"Начнём с самых простых заданий. Всё получится!":result.correct<=3?"Начнём с простых заданий и будем учиться постепенно.":"Получается лучше всего: "+(skillLabels[strongest[0]]||strongest[0])+". Потренируем: "+(skillLabels[weakest[0]]||weakest[0])+".";
+  $("resultHighlights").textContent=result.incorrect===0&&result.skipped===0?"Отличная работа! Все задания получились. Можно пробовать новые темы.":result.correct===0?"Начнём с самых простых заданий. Всё получится!":result.correct<=3?"Начнём с простых заданий и будем учиться постепенно.":"Получается лучше всего: "+(skillLabels[strongest[0]]||strongest[0])+". Потренируем: "+(skillLabels[weakest[0]]||weakest[0])+".";
   $("skills").replaceChildren();
   for(const [name,score] of entries){
    const item=document.createElement("div");item.className="skill";
