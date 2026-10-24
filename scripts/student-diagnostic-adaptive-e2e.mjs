@@ -9,8 +9,12 @@ const read=n=>fs.readFileSync(path.join(pub,n),"utf8");
 const chrome=[process.env.CHROME_BIN,"/usr/bin/google-chrome","/usr/bin/google-chrome-stable","/usr/bin/chromium","/usr/bin/chromium-browser"].filter(Boolean).find(fs.existsSync);
 assert.ok(chrome,"Chrome required");
 const mocks=`<script>
-window.__posts=[];window.__failSave=false;
+window.__posts=[];window.__failSave=false;window.__v2Count=0;window.__v2Done=false;window.__v2Fail=false;
+const v2Response=()=>({question:window.__v2Done?null:{id:"d2-"+window.__v2Count,skill:"arithmetic",prompt:"Сколько будет 2 + 3?"},answered:window.__v2Count,finished:window.__v2Done,result:window.__v2Done?{level:42,provisional:true,skills:{arithmetic:{estimate:42,count:19}}}:null});
 window.fetch=async(url,opts={})=>{
+ if(url==="/api/math/diagnostic-v2")return {ok:true,json:async()=>v2Response()};
+ if(url==="/api/math/diagnostic-v2/restart"){window.__v2Count=0;window.__v2Done=false;return {ok:true,json:async()=>({ok:true})};}
+ if(url==="/api/math/diagnostic-v2/answer"){if(window.__v2Fail)return {ok:false};window.__v2Count++;window.__v2Done=window.__v2Count>=19;return {ok:true,json:async()=>({...v2Response(),correct:true})};}
  if(url==="/api/math/progress")return {ok:true,json:async()=>({attempts:[]})};
  if(url==="/api/math/skill-map")return {ok:true,json:async()=>({skills:{"Счёт":{percent:70,level:"Растёт"}},reviewOrigins:[1]})};
  if(url.startsWith("/api/math/adaptive"))return {ok:true,json:async()=>({skill:"Счёт",level:2,review:url.includes("review=1"),questions:[
@@ -33,18 +37,29 @@ try{
  await page.waitForFunction(()=>document.querySelector("#skillMap .skill")!==null);
  assert.match(await page.$eval("#skillMapStatus",e=>e.textContent),/30 занятий/);
  await page.click("#start");
- for(let i=0;i<12;i++){
-   assert.equal(await page.$eval("#progress",e=>e.textContent),`${i+1} / 12`);
-   await page.$eval("#options button",b=>b.click());
-   assert.equal(await page.$eval("#next",e=>e.classList.contains("hidden")),false);
-   await page.click("#next");
+ await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("15–25"));
+ assert.match(await page.$eval("#question",e=>e.textContent),/2 \+ 3/);
+ await page.$eval("#options input",el=>el.value="5");
+ await page.evaluate(()=>window.__v2Fail=true);
+ await page.click("#options button");
+ await page.waitForFunction(()=>document.querySelector("#feedback").textContent.includes("Ошибка сохранения"));
+ assert.equal(await page.evaluate(()=>window.__v2Count),0);
+ await page.evaluate(()=>window.__v2Fail=false);
+ await page.click("#options button");
+ await page.waitForFunction(()=>window.__v2Count===1);
+ await page.reload({waitUntil:"load"});
+ await page.click("#start");
+ await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("1 / 15–25"));
+ for(let i=1;i<19;i++){
+  await page.$eval("#options input",el=>el.value="5");
+  await page.click("#options button");
+  await page.waitForFunction(expected=>window.__v2Count===expected,i+1);
  }
- await page.waitForFunction(()=>window.__posts.length===1);
- assert.equal(await page.$eval("#resultLead",e=>e.textContent.includes("12")),true);
- const diagnostic=await page.evaluate(()=>window.__posts[0]);
- assert.equal(diagnostic.mode,"diagnostic");assert.equal(diagnostic.answers.length,12);
+ await page.waitForFunction(()=>document.querySelector("#resultLead").textContent.includes("19 заданий"));
+ assert.match(await page.$eval("#adventureAssessment",e=>e.textContent),/42 из 100/);
  await page.click("#repeat");
- assert.equal(await page.$eval("#progress",e=>e.textContent),"1 / 12");
+ await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("0 / 15–25"));
+ assert.equal(await page.evaluate(()=>window.__v2Count),0);
  await page.click("#adaptiveStart");
  await page.waitForFunction(()=>document.querySelector("#adaptivePanel").hidden===false);
  assert.match(await page.$eval("#adaptiveTitle",e=>e.textContent),/уровень 2/);
@@ -67,5 +82,5 @@ try{
  await page.evaluate(()=>window.__failSave=false);
  await page.click("#adaptiveNext");
  await page.waitForFunction(()=>document.querySelector("#adaptiveSummary").textContent.includes("Прогресс сохранён"));
- console.log("✓ Diagnostic 12 questions + restart; skill map; adaptive, review, failed save and retry");
+ console.log("✓ Adaptive diagnostic 19 questions, retry, reload/resume, restart, placement; skill map and practice");
 }finally{await browser.close();}
