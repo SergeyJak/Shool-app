@@ -54,7 +54,7 @@ try{
   try{await page.waitForFunction(expected=>document.querySelector("#options button")?.disabled===false&&document.querySelector("#progress")?.textContent.includes(expected+" / 15–25"),{timeout:4000},i);}catch(error){throw Error("Diagnostic step "+i+": "+JSON.stringify(await page.evaluate(()=>({counter:window.__v2Count,progress:document.querySelector("#progress")?.textContent,button:document.querySelector("#options button")?.disabled,feedback:document.querySelector("#feedback")?.textContent,play:document.querySelector("#play")?.className})))));}
   await page.$eval("#options input",el=>el.value="5");
   await page.click("#options button");
-  await page.waitForFunction(expected=>window.__v2Count===expected,i+1);
+  await page.waitForFunction(expected=>window.__v2Count===expected,{},i+1);
  }
  await page.waitForFunction(()=>document.querySelector("#resultLead").textContent.includes("19 заданий"));
  assert.match(await page.$eval("#adventureAssessment",e=>e.textContent),/42 из 100/);
