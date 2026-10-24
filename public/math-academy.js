@@ -53,15 +53,19 @@ function renderDiagnosticV2(){
  if(diagnosticV2.finished){
   show("results");
   const result=diagnosticV2.result;
-  $("resultTitle").textContent="Твоя карта знаний";
-  $("resultLead").textContent="Пройдено "+diagnosticV2.answered+" заданий. "+(result.provisional?"Оценка предварительная.":"");
-  $("adventureAssessment").textContent="Твой путь начинается с уровня "+result.level;
+  $("resultTitle").textContent="Отлично, ты справился!";
+  $("resultLead").textContent="Ты прошёл "+diagnosticV2.answered+" заданий. Теперь можно отправляться в приключение!";
+  $("adventureAssessment").textContent="Твой старт: уровень "+result.level;
   $("adventureLaunch").classList.remove("hidden");
+  const entries=Object.entries(result.skills);
+  const strongest=entries.reduce((best,item)=>item[1].estimate>best[1].estimate?item:best,entries[0]);
+  const weakest=entries.reduce((best,item)=>item[1].estimate<best[1].estimate?item:best,entries[0]);
+  $("resultHighlights").textContent="Лучше всего: "+(skillLabels[strongest[0]]||strongest[0])+" · Потренируем: "+(skillLabels[weakest[0]]||weakest[0]);
   $("skills").replaceChildren();
-  for(const [name,score] of Object.entries(result.skills)){
+  for(const [name,score] of entries){
    const item=document.createElement("div");item.className="skill";
    const title=document.createElement("strong");title.textContent=skillLabels[name]||name;
-   const value=document.createElement("span");value.textContent="Уровень "+score.estimate+" · "+score.count+" заданий";
+   const value=document.createElement("span");value.textContent="Уровень "+score.estimate;
    item.append(title,value);$("skills").append(item);
   }
   return;
