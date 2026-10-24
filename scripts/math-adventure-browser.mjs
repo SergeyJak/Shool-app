@@ -30,6 +30,8 @@ try{
  assert.match(await page.$eval("#adventureLevelHeading",el=>el.textContent),/из 100/);
  assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),1);
  await page.$eval(".node",el=>el.click());
+ assert.equal(await page.$eval("#world",el=>el.classList.contains("hidden")),true,"Map must hide while answering");
+ assert.equal(await page.$eval("#game",el=>el.classList.contains("hidden")),false);
  for(let i=0;i<10;i++){
   const prompt=await page.$eval("#question",el=>el.textContent);
   const answer=prompt.includes("−")?Number(prompt.match(/^(\d+)/)[1])-Number(prompt.match(/− (\d+)/)[1]):Number(prompt.match(/^(\d+)/)[1])+Number(prompt.match(/\+ (\d+)/)[1]);
