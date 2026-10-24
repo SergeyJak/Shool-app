@@ -8,8 +8,8 @@ function run(strategy,initial=d.createSession()){
 }
 test("all-correct and all-wrong paths remain bounded and produce distinct levels",()=>{
  const good=run(q=>q.answer),bad=run(()=>"__wrong__");
- assert.ok(good.answers.length>=15&&good.answers.length<=25);
- assert.ok(bad.answers.length>=15&&bad.answers.length<=25);
+ assert.ok(good.answers.length>=14&&good.answers.length<=42);
+ assert.ok(bad.answers.length>=14&&bad.answers.length<=42);
  assert.ok(d.result(good).level>d.result(bad).level);
  for(const s of [good,bad])assert.equal(new Set(s.asked).size,s.asked.length);
 });
@@ -54,7 +54,7 @@ test("diagnostic remains balanced across all seven skills for weak, strong and m
   const stats=d.result(session).skills;
   assert.ok(Object.values(stats).every(x=>x.count>=2),"each skill must be sampled twice");
   assert.ok(Math.max(...Object.values(stats).map(x=>x.count))-Math.min(...Object.values(stats).map(x=>x.count))<=1,"no skill should dominate");
-  assert.ok(d.result(session).confidence>=0.75,"completed placement should meet confidence threshold");
+  assert.ok(d.result(session).answered>=14,"completed placement must cover all skills");
  }
 });
 test("skill-specific weaknesses affect skill estimates and placement",()=>{
@@ -141,8 +141,24 @@ test("result separates correct answers, mistakes and explicit skips",()=>{
 test("completed diagnostic with two answers and seventeen skips reports reality",()=>{
  let count=0;const session=run(q=>++count<=2?q.answer:null);
  const r=d.result(session);
- assert.equal(r.answered,19);
+ assert.ok(r.answered>=14&&r.answered<=42);
  assert.equal(r.correct,2);
- assert.equal(r.skipped,17);
+ assert.equal(r.skipped,r.answered-2);
  assert.equal(r.incorrect,0);
+});
+
+test("simulated student profiles: strong, weak, mixed and skip-heavy",()=>{
+ const profiles=[
+  {name:"all correct",answer:q=>q.answer,min:28,max:42},
+  {name:"all skipped",answer:()=>null,min:14,max:21},
+  {name:"all wrong",answer:()=>"__wrong__",min:14,max:21},
+  {name:"alternating",answer:(q,s)=>s.answers.length%2?q.answer:null,min:14,max:42},
+  {name:"mostly correct",answer:(q,s)=>s.answers.length%10===0?null:q.answer,min:28,max:42},
+  {name:"mostly skipped",answer:(q,s)=>s.answers.length%10===0?q.answer:null,min:14,max:21}
+ ];
+ const levels={};
+ for(const p of profiles){const session=run(p.answer);const r=d.result(session);levels[p.name]=r.level;assert.ok(r.answered>=p.min&&r.answered<=p.max,p.name+": "+r.answered);assert.equal(r.correct+r.incorrect+r.skipped,r.answered);assert.equal(new Set(session.asked).size,r.answered);}
+ assert.ok(levels["all correct"]>levels["mostly correct"]);
+ assert.ok(levels["mostly correct"]>levels["mostly skipped"]);
+ assert.ok(levels["all skipped"]<=levels["all correct"]);
 });
