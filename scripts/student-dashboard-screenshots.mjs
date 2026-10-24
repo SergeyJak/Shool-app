@@ -26,7 +26,7 @@ const assetData=(url)=>{
 const mergedCSS=(landing+"\n"+css).replace(/url\(["']?(\/assets\/[^)"']+)["']?\)/g,(whole,url)=>'url("'+(assetData(url)||url)+'")');
 const documentHtml=html
  .replace('<body class="landing-body dashboard-page">','<body class="landing-body dashboard-page" data-role="student">')
- .replace('<section id="studentMathPanel" class="student-world" hidden','<section id="studentMathPanel" class="student-world"')
+ .replace('<section id="studentMathPanel" class="student-world student-entry"','<section id="studentMathPanel" class="student-world"')
  .replace('</head>','<style>'+mergedCSS+'</style></head>')
  .replace(/<script src="\/cabinet\.js[^"]*"><\/script>/,'')
  .replace(/<img([^>]*?)src="(\/assets\/[^"]+)"([^>]*)>/g,(whole,a,url,b)=>'<img'+a+'src="'+(assetData(url)||url)+'"'+b+'>');
@@ -41,24 +41,16 @@ try {
   await page.evaluate(async()=>{await document.fonts.ready;document.getElementById("studentFirstName").textContent="Алиса";});
   const metrics=await page.evaluate(()=>{
    const rect=(el)=>{const r=el.getBoundingClientRect();return{left:r.left,right:r.right,width:r.width,height:r.height}};
-   const cards=[...document.querySelectorAll(".student-world-card")];
+   const cards=[...document.querySelectorAll(".student-math-entry")];
    return {width:innerWidth,bodyWidth:document.documentElement.scrollWidth,
     header:rect(document.querySelector(".dashboard-header")),
     cards:cards.map(rect),
-    buttons:cards.map(c=>{const el=c.querySelector(".student-world-action"),s=getComputedStyle(el),before=getComputedStyle(el,"::before");
-     return{...rect(el),background:s.backgroundImage,shadow:s.boxShadow,pseudo:before.content,text:el.textContent.trim()};})};
+    buttons:cards.map(c=>{const el=c.querySelector(".student-math-entry-copy b");return{...rect(el),text:el.textContent.trim()};})};
   });
-  assert.equal(metrics.cards.length,5,"World card count changed");
+  assert.equal(metrics.cards.length,1,"Expected one mathematics card");
   assert.ok(metrics.bodyWidth<=width+2,`Horizontal overflow at ${width}px`);
   for(const [index,c] of metrics.cards.entries())assert.ok(c.left>=-2&&c.right<=width+2,`Card ${index} escapes ${width}px viewport`);
-  const labels=["Играть","В путь","Играть","Исследовать","Открыть"];
-  for(const [index,b] of metrics.buttons.entries()){
-   assert.equal(b.text,labels[index]);
-   assert.ok(b.background.includes("data:image/webp;base64,") || b.background.includes("btn-"),"Glossy asset missing");
-   assert.equal(b.shadow,"none","Unexpected CSS shadow under glossy art");
-   assert.ok(["none","normal"].includes(b.pseudo),"Extra button layer");
-   assert.ok(Math.abs(b.width-metrics.buttons[0].width)<2&&Math.abs(b.height-metrics.buttons[0].height)<2,"Unequal game buttons");
-  }
+  assert.match(metrics.buttons[0].text,/Открыть математику/);
   await page.screenshot({path:path.join(outDir,`student-${width}.png`),fullPage:true,animations:"disabled"});
   // Compare the painted assets independently of text antialiasing/font changes.
   // A source-art regression is a visual change even if geometry remains correct.
