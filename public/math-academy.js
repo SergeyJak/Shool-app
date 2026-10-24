@@ -87,7 +87,7 @@ async function startDiagnosticV2(restart=false){
  try{
   if(restart)await diagnosticApi("/api/math/diagnostic-v2/restart",{method:"POST"});
   diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2");document.getElementById("diagnosticV2Error")?.remove();renderDiagnosticV2();document.getElementById(diagnosticV2.finished?"results":"play")?.scrollIntoView({block:"start",behavior:"instant"});
- }catch(_){show("intro");$("feedback").textContent="Диагностика временно недоступна.";const note=document.getElementById("diagnosticV2Error")||document.createElement("p");note.id="diagnosticV2Error";note.textContent="Не удалось загрузить диагностику. Попробуй ещё раз.";note.setAttribute("role","alert");$("start").insertAdjacentElement("afterend",note);}
+ }catch(_){document.documentElement.classList.remove("journey-mode");show("intro");$("feedback").textContent="Диагностика временно недоступна.";const note=document.getElementById("diagnosticV2Error")||document.createElement("p");note.id="diagnosticV2Error";note.textContent="Не удалось загрузить диагностику. Попробуй ещё раз.";note.setAttribute("role","alert");$("start").insertAdjacentElement("afterend",note);}
 }
 $("start").addEventListener("click",()=>void startDiagnosticV2());$("repeat").addEventListener("click",()=>void startDiagnosticV2(true));$("practice").addEventListener("click",()=>{const prev=state;state=null;try{localStorage.setItem(KEY,JSON.stringify(prev));}catch(_){} start("practice")});$("next").addEventListener("click",()=>{state.index++;save();render()});
 document.getElementById("retrySync")?.addEventListener("click",()=>{document.getElementById("retrySync").hidden=true;void submitAttempt()});
