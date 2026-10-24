@@ -97,3 +97,15 @@ test("advanced fractions include non-unit numerators and word problem answers va
  const change=d.BANK.filter(q=>q.skill==="wordProblems"&&q.prompt.includes("сдачи"));
  assert.ok(new Set(change.map(q=>q.answer)).size>=5);
 });
+
+test("skipped question is saved distinctly and advances the diagnostic",()=>{
+ const start=d.createSession(),first=d.nextQuestion(start);
+ const skipped=d.submitAnswer(start,first.id,null);
+ assert.equal(skipped.answers[0].skipped,true);
+ assert.equal(skipped.answers[0].correct,false);
+ assert.equal(skipped.answers.length,1);
+ assert.notEqual(d.nextQuestion(skipped).id,first.id);
+ const done=run(()=>null,skipped);
+ assert.ok(done.finished);
+ assert.ok(d.result(done).level<d.result(run(q=>q.answer)).level);
+});
