@@ -1853,6 +1853,15 @@ app.patch("/api/admin/users/:id", requireApiRole("admin"), async (req, res, next
       if (!displayName) return res.status(400).json({ error: "INVALID_DISPLAY_NAME" });
       changes.displayName = displayName;
     }
+    if (req.body?.role === "student" && current.role === "teacher") {
+      const ownsLessons = await lessons.countDocuments({ $or: [{ ownerId: id }, { teacherIds: id }] });
+      const hasPayments = await paymentAccounts.countDocuments({ teacherId: id });
+      if (ownsLessons || hasPayments) return res.status(409).json({ error: "TEACHER_HAS_DATA" });
+      changes.role = "student";
+      changes.active = true;
+      changes.approvalStatus = "approved";
+      changes.profileComplete = true;
+    }
     if (typeof req.body?.active === "boolean") changes.active = req.body.active;
     if (typeof req.body?.password === "string" && req.body.password) {
       if (req.body.password.length < 8) return res.status(400).json({ error: "INVALID_PASSWORD" });
