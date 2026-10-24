@@ -206,3 +206,16 @@ test("slightly stronger beginner progresses beyond all-skip learner",()=>{
  assert.ok(d.result(novice).correct>0);
  assert.ok(d.result(novice).level>d.result(weak).level);
 });
+
+test("misunderstood question is tracked separately and does not lower the skill estimate",()=>{
+ const session=d.createSession();
+ const question=d.nextQuestion(session);
+ const updated=d.submitAnswer(session,question.id,"__MISUNDERSTOOD__");
+ const outcome=d.result(updated);
+ assert.equal(outcome.misunderstood,1);
+ assert.equal(outcome.skipped,1);
+ assert.equal(outcome.incorrect,0);
+ assert.equal(outcome.skills[question.skill].estimate,20);
+ assert.equal(updated.answers[0].misunderstood,true);
+ assert.equal(updated.answers[0].answer,null);
+});
