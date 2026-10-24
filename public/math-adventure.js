@@ -15,12 +15,13 @@ function mergeProgress(remote){
  if(!remote||!Array.isArray(remote.completed))return;
  saved.completed=[...new Set([...saved.completed,...remote.completed.filter(i=>Number.isInteger(i)&&i>=0&&i<levels.length)])];
  saved.unlocked=Math.max(saved.unlocked,Math.min(levels.length-1,remote.unlocked||0));
+ if(Number.isInteger(remote.startLevel))startingLevel=remote.startLevel;
  saved.stars=Math.max(saved.stars,Number.isInteger(remote.stars)?remote.stars:0);
  persist();map();
 }
 async function loadCloud(){
  try{const response=await fetch("/api/math/adventure",{credentials:"same-origin"});
- if(response.ok)mergeProgress((await response.json()).progress);
+ if(response.ok){const data=await response.json();mergeProgress(data.progress);if(data.progress?.startLevel)setAssessment(data.progress.startLevel)}
  }catch(_){}
 }
 async function syncResult(level,score){
@@ -39,7 +40,7 @@ function task(type,i,level=0){
 }
 function options(answer,i){const values=[answer,answer+1,answer+2,Math.max(0,answer-1)];return [...new Set(values)].sort((a,b)=>((a*7+i*3)%11)-((b*7+i*3)%11))}
 function show(id){for(const key of ["intro","game","result"])$(key).classList.toggle("hidden",key!==id)}
-function setAssessment(level){assessed=true;startingLevel=level;$("diagnosticGate").classList.add("hidden");$("world").hidden=false;$("intro").classList.remove("hidden");$("adventureLevelHeading").textContent="Твой уровень: "+startingLevel+" из 100";map()}
+function setAssessment(level){assessed=true;startingLevel=level;saved.unlocked=Math.max(saved.unlocked,level-1);$("diagnosticGate").classList.add("hidden");$("world").hidden=false;$("intro").classList.remove("hidden");$("adventureLevelHeading").textContent="Твой уровень: "+startingLevel+" из 100";map()}
 async function checkAssessment(){
  try{const response=await fetch("/api/math/progress",{credentials:"same-origin"});if(!response.ok)throw Error("PROGRESS_UNAVAILABLE");
  const data=await response.json();const attempts=(data.attempts||[]).filter(a=>a.mode==="diagnostic"&&Number.isFinite(a.correct)&&Number.isFinite(a.total)&&a.total>0);
