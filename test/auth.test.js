@@ -35,10 +35,10 @@ test("signed session tokens reject tampering and expiration", () => {
   assert.equal(parseSessionToken(expired, secret), null);
 });
 
-test("session cookie is HttpOnly and SameSite strict", () => {
+test("session cookie is HttpOnly and SameSite lax", () => {
   const value = sessionCookie("abc", { secure: true });
   assert.match(value, /HttpOnly/);
-  assert.match(value, /SameSite=Strict/);
+  assert.match(value, /SameSite=Lax/);
   assert.match(value, /Secure/);
   assert.equal(parseCookies("a=1; school_session=abc").school_session, "abc");
 });
