@@ -14,7 +14,13 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: npm test
+      - run: npm test > ci-npm-test.log 2>&1 || { cat ci-npm-test.log; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-npm-test-log
+          path: ci-npm-test.log
+          if-no-files-found: ignore
       - run: npm run test:layout
       - run: npm run test:student-screenshots
       - uses: actions/upload-artifact@v4
@@ -35,5 +41,19 @@ jobs:
       - run: npm run test:student-interactions
       - run: npm run test:math-hub
       - run: npm run test:math-adventure
-      - run: npm run test:student-diagnostic
+      - run: npm run test:student-diagnostic > ci-student-diagnostic.log 2>&1 || { cat ci-student-diagnostic.log; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-student-diagnostic-log
+          path: ci-student-diagnostic.log
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ci-diagnostic-logs
+          path: |
+            ci-npm-test.log
+            ci-student-diagnostic.log
+          if-no-files-found: ignore
       - run: npm run test:rtc-browser
