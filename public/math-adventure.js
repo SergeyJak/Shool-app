@@ -44,6 +44,7 @@ function options(answer,i){const values=[answer,answer+1,answer+2,Math.max(0,ans
 function show(id){for(const key of ["intro","game","result"])$(key).classList.toggle("hidden",key!==id);const playing=id!=="intro";$("world").classList.toggle("hidden",playing);$("chapterNav").classList.toggle("hidden",playing||!assessed);document.body.classList.toggle("adventure-playing",playing)}
 function setAssessment(level){assessed=true;startingLevel=level;saved.unlocked=Math.max(saved.unlocked,level-1);chapter=Math.floor(saved.unlocked/5);$("chapterNav").classList.remove("hidden");$("diagnosticGate").classList.add("hidden");$("world").hidden=false;$("intro").classList.remove("hidden");$("adventureLevelHeading").textContent="Твой уровень: "+startingLevel+" из 100";map()}
 async function checkAssessment(){
+ try{const v2=await fetch("/api/math/diagnostic-v2",{credentials:"same-origin"});if(v2.ok){const data=await v2.json();if(data.finished&&Number.isInteger(data.result?.level)){setAssessment(data.result.level);return}}}catch(_){}
  try{const response=await fetch("/api/math/progress",{credentials:"same-origin"});if(!response.ok)throw Error("PROGRESS_UNAVAILABLE");
  const data=await response.json();const attempts=(data.attempts||[]).filter(a=>a.mode==="diagnostic"&&Number.isFinite(a.correct)&&Number.isFinite(a.total)&&a.total>0);
  if(attempts.length){const last=attempts[0];setAssessment(Math.max(1,Math.min(100,Math.round(last.correct/last.total*99)+1)));return}
