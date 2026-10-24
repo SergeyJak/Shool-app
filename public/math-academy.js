@@ -73,7 +73,7 @@ function renderDiagnosticV2(){
  $("question").textContent=q.prompt;$("feedback").textContent="";$("next").classList.add("hidden");
  const field=document.createElement("input");field.className="option";field.inputMode="decimal";field.setAttribute("aria-label","Ответ");
  const submit=document.createElement("button");submit.className="option";submit.textContent="Ответить";
- const skip=document.createElement("button");skip.className="secondary";skip.type="button";skip.textContent="Не знаю · дальше →";
+ const skip=document.createElement("button");skip.className="secondary";skip.type="button";skip.textContent="Не знаю · дальше";
  submit.addEventListener("click",async()=>{
   submit.disabled=true;skip.disabled=true;
   try{
