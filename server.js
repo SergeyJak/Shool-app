@@ -3757,6 +3757,7 @@ async function start() {
   }
 
   await mathAttempts.createIndex({ studentId: 1, createdAt: -1 });
+  await db.collection(collectionName("math_diagnostic_v2")).createIndex({studentId:1},{unique:true});
   await users.createIndex({ role: 1, active: 1 });
   await users.createIndex({ approvalStatus: 1, registrationSubmittedAt: -1 });
   await users.createIndex({ email: 1 }, { unique: true, sparse: true });
