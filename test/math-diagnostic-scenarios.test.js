@@ -81,7 +81,7 @@ test("empty, partial and finished assessments have coherent confidence and level
  const partial=d.createSession(),q=d.nextQuestion(partial),one=d.submitAnswer(partial,q.id,q.answer);
  assert.equal(d.result(one).answered,1);assert.equal(d.result(one).provisional,true);
  const done=run(q=>q.answer);
- assert.equal(d.result(done).provisional,false);
+ assert.equal(d.result(done).provisional,true); // A short placement is preliminary, not a validated grade.
  assert.ok(d.result(done).level>=1&&d.result(done).level<=100);
 });
 
@@ -161,4 +161,48 @@ test("simulated student profiles: strong, weak, mixed and skip-heavy",()=>{
  assert.ok(levels["all correct"]>levels["mostly correct"]);
  assert.ok(levels["mostly correct"]>levels["mostly skipped"]);
  assert.ok(levels["all skipped"]<=levels["all correct"]);
+});
+
+test("age-inspired learner simulations from 5 to 15 years",()=>{
+ // Synthetic ability profiles, NOT age norms or clinical validation.
+ const profiles=[
+  {age:5,threshold:0,skip:0.9},
+  {age:6,threshold:9,skip:0.75},
+  {age:7,threshold:18,skip:0.6},
+  {age:8,threshold:27,skip:0.45},
+  {age:9,threshold:36,skip:0.3},
+  {age:10,threshold:45,skip:0.2},
+  {age:11,threshold:54,skip:0.15},
+  {age:12,threshold:63,skip:0.1},
+  {age:13,threshold:72,skip:0.08},
+  {age:14,threshold:81,skip:0.05},
+  {age:15,threshold:95,skip:0}
+ ];
+ const outcomes=[];
+ for(const p of profiles){
+  const session=run((q,s)=>{
+   if(q.difficulty<=p.threshold)return q.answer;
+   // deterministic skip-vs-wrong split; stable across CI runs
+   return ((s.answers.length*17+3)%100)<p.skip*100?null:"__wrong__";
+  });
+  const r=d.result(session);
+  assert.ok(r.answered>=14&&r.answered<=42,`age ${p.age}: ${r.answered} questions`);
+  assert.equal(r.correct+r.skipped+r.incorrect,r.answered);
+  assert.ok(Object.values(r.skills).every(v=>v.count>=2),`age ${p.age}: skill coverage`);
+  outcomes.push({age:p.age,level:r.level,correct:r.correct,skipped:r.skipped,questions:r.answered});
+ }
+ assert.ok(outcomes.at(-1).level>outcomes[0].level,"advanced profile should place higher than beginner");
+ assert.ok(outcomes.at(-1).correct>outcomes[0].correct,"advanced profile should answer more correctly");
+});
+test("very weak learner can skip everything and finishes without a loop",()=>{
+ const s=run(()=>null),r=d.result(s);
+ assert.equal(r.correct,0);assert.equal(r.skipped,r.answered);
+ assert.ok(r.answered<=21);
+ assert.ok(r.level<=25);
+});
+test("slightly stronger beginner progresses beyond all-skip learner",()=>{
+ const novice=run((q)=>q.difficulty<=12?q.answer:null);
+ const weak=run(()=>null);
+ assert.ok(d.result(novice).correct>0);
+ assert.ok(d.result(novice).level>d.result(weak).level);
 });
