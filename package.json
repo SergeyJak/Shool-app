@@ -15,7 +15,8 @@
     "test:student-games": "node scripts/student-games-regression.mjs",
     "test:student-interactions": "node scripts/student-game-interactions.mjs",
     "test:student-diagnostic": "node scripts/student-diagnostic-adaptive-e2e.mjs",
-    "test:math-adventure": "node scripts/math-adventure-browser.mjs"
+    "test:math-adventure": "node scripts/math-adventure-browser.mjs",
+    "test:math-hub": "node scripts/math-hub-browser.mjs"
   },
   "engines": {
     "node": ">=20"
