@@ -109,3 +109,20 @@ test("skipped question is saved distinctly and advances the diagnostic",()=>{
  assert.ok(done.finished);
  assert.ok(d.result(done).level<d.result(run(q=>q.answer)).level);
 });
+
+test("first seven questions start at accessible difficulty across skills",()=>{
+ let session=d.createSession();
+ for(let i=0;i<7;i++){
+  const q=d.nextQuestion(session);
+  assert.ok(q.difficulty<=20,"first question in each skill should be easy: "+q.skill);
+  session=d.submitAnswer(session,q.id,q.answer);
+ }
+});
+test("correct answer raises difficulty and skipping lowers it within a skill",()=>{
+ const first=d.nextQuestion(d.createSession());
+ const right=d.submitAnswer(d.createSession(),first.id,first.answer);
+ const skipped=d.submitAnswer(d.createSession(),first.id,null);
+ function findNextInSkill(session,skill){let s=session;while(!s.finished){const q=d.nextQuestion(s);if(q.skill===skill)return q;s=d.submitAnswer(s,q.id,null);}throw Error("missing skill");}
+ const harder=findNextInSkill(right,first.skill),easier=findNextInSkill(skipped,first.skill);
+ assert.ok(harder.difficulty>easier.difficulty);
+});
