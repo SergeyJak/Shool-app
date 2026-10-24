@@ -468,7 +468,11 @@ test("teacher registration is two-step and requires admin approval", () => {
 
   assert.match(auth, /REGISTRATION_COOKIE/);
   assert.match(auth, /createRegistrationToken/);
-  assert.match(server, /approvalStatus: "onboarding"/);
+  assert.match(server, /approvalStatus: role === "student" \? "approved" : "onboarding"/);
+  assert.match(register, /name="role" value="student"/);
+  assert.match(register, /name="role" value="teacher"/);
+  assert.match(registerJs, /role: data.get\("role"\)/);
+  assert.match(server, /role === "student" \? createSessionToken/);
   assert.match(server, /approvalStatus: "pending"/);
   assert.match(server, /approvalStatus: "approved"/);
   assert.match(server, /approvalStatus: "rejected"/);

@@ -610,6 +610,8 @@ app.post("/api/auth/register", async (req, res, next) => {
     const credentials = validateRegistrationCredentials(req.body || {});
     if (!credentials.ok) return res.status(400).json({ error: credentials.error });
     const { username, password } = credentials;
+    const role = req.body?.role === "student" ? "student" : req.body?.role === "teacher" ? "teacher" : null;
+    if (!role) return res.status(400).json({ error: "INVALID_ROLE" });
     const registrationLimit = registrationIpLimiter.consume(clientIp(req));
     if (!registrationLimit.allowed) return rejectRateLimited(res, registrationLimit);
 
@@ -623,10 +625,10 @@ app.post("/api/auth/register", async (req, res, next) => {
       _id: username,
       username,
       displayName: "",
-      role: "teacher",
-      active: false,
-      approvalStatus: "onboarding",
-      profileComplete: false,
+      role,
+      active: role === "student",
+      approvalStatus: role === "student" ? "approved" : "onboarding",
+      profileComplete: role === "student",
       lessonIds: [],
       passwordSalt: salt,
       passwordHash: hash,
@@ -636,11 +638,11 @@ app.post("/api/auth/register", async (req, res, next) => {
     };
     await users.insertOne(user);
 
-    const token = createRegistrationToken(user, AUTH_SECRET);
-    res.setHeader("Set-Cookie", registrationCookie(token, { secure: requestIsSecure(req) }));
+    const token = role === "student" ? createSessionToken(user, AUTH_SECRET) : createRegistrationToken(user, AUTH_SECRET);
+    res.setHeader("Set-Cookie", role === "student" ? sessionCookie(token, { secure: requestIsSecure(req) }) : registrationCookie(token, { secure: requestIsSecure(req) }));
     res.status(201).json({
       ok: true,
-      redirect: "/register/profile",
+      redirect: role === "student" ? "/cabinet" : "/register/profile",
       user: publicUser(user),
     });
   } catch (error) {
@@ -1850,6 +1852,15 @@ app.patch("/api/admin/users/:id", requireApiRole("admin"), async (req, res, next
       const displayName = req.body.displayName.trim();
       if (!displayName) return res.status(400).json({ error: "INVALID_DISPLAY_NAME" });
       changes.displayName = displayName;
+    }
+    if (req.body?.role === "student" && current.role === "teacher") {
+      const ownsLessons = await lessons.countDocuments({ $or: [{ ownerId: id }, { teacherIds: id }] });
+      const hasPayments = await paymentAccounts.countDocuments({ teacherId: id });
+      if (ownsLessons || hasPayments) return res.status(409).json({ error: "TEACHER_HAS_DATA" });
+      changes.role = "student";
+      changes.active = true;
+      changes.approvalStatus = "approved";
+      changes.profileComplete = true;
     }
     if (typeof req.body?.active === "boolean") changes.active = req.body.active;
     if (typeof req.body?.password === "string" && req.body.password) {
