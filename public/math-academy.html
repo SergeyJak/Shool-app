@@ -61,6 +61,21 @@ footer{text-align:center;color:#78829a;font-size:13px;margin:28px} @media(max-wi
 .journey-mode #play #options button:focus-visible{outline:3px solid #25a6c8;outline-offset:5px}
 @media(max-width:390px){.journey-mode #play #options button:not(.secondary){font-size:17px!important}.journey-mode #play #options input.option{font-size:23px!important}}
 @media(prefers-reduced-motion:reduce){.journey-mode #play #options button{transition:none!important}}
+</style><style>
+/* One task, one screen. Keep the card within the visible mobile viewport. */
+html.journey-mode:has(#play:not(.hidden)),html.journey-mode:has(#play:not(.hidden)) body{height:100%;overflow:hidden;overscroll-behavior:none}
+.journey-mode:has(#play:not(.hidden)) body{display:flex;flex-direction:column;min-height:0!important}
+.journey-mode:has(#play:not(.hidden)) header{width:100%;flex:0 0 auto;padding:10px 18px!important}
+.journey-mode:has(#play:not(.hidden)) main{flex:1 1 auto;min-height:0;width:calc(100% - 24px);max-width:620px;margin:4px auto 12px!important;padding:8px!important;display:flex;flex-direction:column;overflow:hidden}
+.journey-mode:has(#play:not(.hidden)) #play{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:clamp(14px,3.5vh,28px)!important;overflow:hidden}
+.journey-mode:has(#play:not(.hidden)) #play .top{flex:0 0 auto}
+.journey-mode:has(#play:not(.hidden)) #question{flex:0 1 auto;margin:clamp(12px,3.5vh,32px) 0!important;font-size:clamp(24px,5.5vh,38px)!important;line-height:1.2!important}
+.journey-mode:has(#play:not(.hidden)) #options{flex:0 0 auto}
+.journey-mode:has(#play:not(.hidden)) #play #options input.option{height:clamp(52px,8vh,70px)!important;min-height:52px!important}
+.journey-mode:has(#play:not(.hidden)) #play #options button{min-height:clamp(50px,8vh,66px)!important}
+.journey-mode:has(#play:not(.hidden)) #play #options:has(input.option){gap:clamp(8px,1.4vh,14px)!important}
+.journey-mode:has(#play:not(.hidden)) #play .feedback:empty{display:none}
+@media(max-height:650px){.journey-mode:has(#play:not(.hidden)) header{padding:5px 12px!important}.journey-mode:has(#play:not(.hidden)) #play{padding:12px!important}.journey-mode:has(#play:not(.hidden)) #question{font-size:clamp(22px,5vh,30px)!important;margin:10px 0!important}.journey-mode:has(#play:not(.hidden)) #play .meter{margin:8px 0!important}}
 </style></head>
 <body><header><a href="/cabinet#studentMathPanel"> К выбору игр</a><strong>🦉 School App</strong></header>
 <main><section class="card" id="diagnosticLoading" style="display:none" role="status" aria-live="polite"><h1>Готовим первое задание…</h1><p>Совёнок подбирает вопросы.</p></section><section class="card academy-tools-intro"><span class="tag">ТВОЯ МАТЕМАТИКА</span><h1>Мои успехи и тренировки</h1><p>Здесь совёнок помогает подобрать новые задания, повторить сложное и увидеть твои достижения.</p><a class="academy-back-to-worlds" href="/cabinet#studentMathPanel"> К выбору игр</a></section>
