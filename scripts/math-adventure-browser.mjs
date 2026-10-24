@@ -15,7 +15,8 @@ try{
  await page.evaluateOnNewDocument(()=>{
   window.__adventurePosts=[];
   window.fetch=async(url,opts={})=>{
-   if(url==="/api/math/progress")return {ok:true,json:async()=>({attempts:[{mode:"diagnostic",correct:8,total:12}]})};\n   if(url==="/api/math/adventure"&&(!opts.method||opts.method==="GET"))return {ok:true,json:async()=>({progress:null})};
+   if(url==="/api/math/progress")return {ok:true,json:async()=>({attempts:[{mode:"diagnostic",correct:8,total:12}]})};
+   if(url==="/api/math/adventure"&&(!opts.method||opts.method==="GET"))return {ok:true,json:async()=>({progress:null})};
    if(url==="/api/math/adventure"&&opts.method==="POST"){
     const body=JSON.parse(opts.body);window.__adventurePosts.push(body);
     return {ok:true,json:async()=>({progress:{unlocked:1,stars:3,completed:[0]},passed:true})};
