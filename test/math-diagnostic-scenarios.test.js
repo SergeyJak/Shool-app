@@ -69,7 +69,7 @@ test("question bank covers several mathematical operations and measurement conce
  const prompts=d.BANK.map(q=>q.prompt);
  assert.ok(prompts.some(p=>p.includes("×")),"multiplication");
  assert.ok(prompts.some(p=>p.includes("Площадь")),"area");
- assert.ok(prompts.some(p=>p.includes("Периметр")),"perimeter");
+ assert.ok(prompts.some(p=>p.includes("четырёх сторон")),"perimeter");
  assert.ok(prompts.some(p=>p.includes("сантиметров")),"length conversion");
  assert.ok(prompts.some(p=>p.includes("минут")),"time");
  assert.ok(prompts.some(p=>p.includes("сдачи")),"multistep word problems");
