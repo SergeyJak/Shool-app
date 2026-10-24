@@ -7,7 +7,7 @@ import puppeteer from "puppeteer-core";
 const root=path.resolve(import.meta.dirname,".."),pub=path.join(root,"public");
 const chrome=[process.env.CHROME_BIN,"/usr/bin/google-chrome","/usr/bin/google-chrome-stable","/usr/bin/chromium","/usr/bin/chromium-browser"].filter(Boolean).find(fs.existsSync);
 assert.ok(chrome,"Chrome/Chromium required for adventure tests");
-const html=fs.readFileSync(path.join(pub,"math-adventure.html"),"utf8").replace('<script src="/math-adventure.js"></script>',"<script>"+fs.readFileSync(path.join(pub,"math-adventure.js"),"utf8")+"</script>");
+const html=fs.readFileSync(path.join(pub,"math-adventure.html"),"utf8").replace(/<script src="\/math-adventure\.js(?:\?[^"]*)?"><\/script>/,"<script>"+fs.readFileSync(path.join(pub,"math-adventure.js"),"utf8")+"</script>");
 const file=path.join(os.tmpdir(),"school-math-adventure-test.html");fs.writeFileSync(file,html);
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:["--no-sandbox","--disable-gpu"]});
 try{
