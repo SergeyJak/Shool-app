@@ -679,6 +679,30 @@ function renderAdminUsers() {
       }
     });
 
+    if (user.role === "teacher") {
+      const convert = document.createElement("button");
+      convert.type = "button";
+      convert.className = "secondary";
+      convert.textContent = "Сделать учеником";
+      convert.addEventListener("click", async () => {
+        if (!confirm(`Перевести ${user.displayName || user.username} в ученики? Пароль и аккаунт сохранятся. Действие доступно только учителям без уроков и финансовых записей.`)) return;
+        convert.disabled = true;
+        try {
+          await apiJson(`/api/admin/users/${encodeURIComponent(user.id)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ role: "student" }),
+          });
+          setAdminStatus(`${user.displayName || user.username} теперь ученик`, "success");
+          await loadAdminData();
+        } catch (error) {
+          setAdminStatus(error.message === "TEACHER_HAS_DATA"
+            ? "Нельзя изменить роль: у учителя есть уроки или финансовые записи."
+            : `Не удалось изменить роль: ${error.message}`, "error");
+          convert.disabled = false;
+        }
+      });
+      actions.append(convert);
+    }
     actions.append(save, toggle);
     row.append(identity, actions);
     adminUserList.append(row);
