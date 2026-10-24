@@ -1,0 +1,196 @@
+{
+  "name": "School App Math Adventure complete visual starter pack",
+  "version": "1.0",
+  "files": [
+    {
+      "path": "icons/fractions.svg",
+      "bytes": 670
+    },
+    {
+      "path": "icons/boss.svg",
+      "bytes": 666
+    },
+    {
+      "path": "icons/star.svg",
+      "bytes": 309
+    },
+    {
+      "path": "icons/back.svg",
+      "bytes": 606
+    },
+    {
+      "path": "icons/next.svg",
+      "bytes": 606
+    },
+    {
+      "path": "icons/check.svg",
+      "bytes": 607
+    },
+    {
+      "path": "icons/geometry.svg",
+      "bytes": 670
+    },
+    {
+      "path": "icons/logic.svg",
+      "bytes": 667
+    },
+    {
+      "path": "icons/diagnostic.svg",
+      "bytes": 670
+    },
+    {
+      "path": "icons/close.svg",
+      "bytes": 613
+    },
+    {
+      "path": "icons/numbers.svg",
+      "bytes": 669
+    },
+    {
+      "path": "references/diagnostic-question.png",
+      "bytes": 175563
+    },
+    {
+      "path": "references/dashboard.png",
+      "bytes": 302214
+    },
+    {
+      "path": "references/level-complete.png",
+      "bytes": 225841
+    },
+    {
+      "path": "references/concept.png",
+      "bytes": 1871037
+    },
+    {
+      "path": "references/diagnostic-intro.png",
+      "bytes": 232843
+    },
+    {
+      "path": "references/diagnostic-results.png",
+      "bytes": 218594
+    },
+    {
+      "path": "references/boss-challenge.png",
+      "bytes": 246624
+    },
+    {
+      "path": "references/adventure-map.png",
+      "bytes": 257139
+    },
+    {
+      "path": "references/math-question.png",
+      "bytes": 192938
+    },
+    {
+      "path": "backgrounds/castle.svg",
+      "bytes": 2502
+    },
+    {
+      "path": "backgrounds/forest.svg",
+      "bytes": 2313
+    },
+    {
+      "path": "backgrounds/cave.svg",
+      "bytes": 2612
+    },
+    {
+      "path": "backgrounds/boss-arena.svg",
+      "bytes": 2757
+    },
+    {
+      "path": "backgrounds/sunset.svg",
+      "bytes": 2107
+    },
+    {
+      "path": "backgrounds/river.svg",
+      "bytes": 2486
+    },
+    {
+      "path": "backgrounds/mountains.svg",
+      "bytes": 2620
+    },
+    {
+      "path": "backgrounds/meadow.svg",
+      "bytes": 2319
+    },
+    {
+      "path": "examples/map-preview.html",
+      "bytes": 2625
+    },
+    {
+      "path": "ui/progress-track.svg",
+      "bytes": 658
+    },
+    {
+      "path": "ui/speech-bubble.svg",
+      "bytes": 637
+    },
+    {
+      "path": "ui/card-panel.svg",
+      "bytes": 671
+    },
+    {
+      "path": "ui/button-primary.svg",
+      "bytes": 750
+    },
+    {
+      "path": "characters/owl-thinking.svg",
+      "bytes": 1179
+    },
+    {
+      "path": "characters/owl-mascot.svg",
+      "bytes": 871
+    },
+    {
+      "path": "characters/owl-happy.svg",
+      "bytes": 1341
+    },
+    {
+      "path": "characters/dragon-boss.svg",
+      "bytes": 1290
+    },
+    {
+      "path": "map/winding-road.svg",
+      "bytes": 1046
+    },
+    {
+      "path": "map/path-node.svg",
+      "bytes": 451
+    },
+    {
+      "path": "map/node-current.svg",
+      "bytes": 749
+    },
+    {
+      "path": "map/node-branch.svg",
+      "bytes": 746
+    },
+    {
+      "path": "map/node-boss.svg",
+      "bytes": 746
+    },
+    {
+      "path": "map/locked-node.svg",
+      "bytes": 459
+    },
+    {
+      "path": "map/node-complete.svg",
+      "bytes": 750
+    },
+    {
+      "path": "map/boss-node.svg",
+      "bytes": 383
+    },
+    {
+      "path": "map/branch-sign.svg",
+      "bytes": 417
+    },
+    {
+      "path": "map/node-challenge.svg",
+      "bytes": 749
+    }
+  ],
+  "usage": "Use individual SVG assets in public/assets/math-adventure; example preview in examples/map-preview.html",
+  "limitations": "SVG drawings are original reusable vector starter artwork, not extracted transparent layers from AI concept. Functional diagnostic, progression and API need implementation."
+}
