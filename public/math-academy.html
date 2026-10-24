@@ -76,6 +76,18 @@ html.journey-mode:has(#play:not(.hidden)),html.journey-mode:has(#play:not(.hidde
 .journey-mode:has(#play:not(.hidden)) #play #options:has(input.option){gap:clamp(8px,1.4vh,14px)!important}
 .journey-mode:has(#play:not(.hidden)) #play .feedback:empty{display:none}
 @media(max-height:650px){.journey-mode:has(#play:not(.hidden)) header{padding:5px 12px!important}.journey-mode:has(#play:not(.hidden)) #play{padding:12px!important}.journey-mode:has(#play:not(.hidden)) #question{font-size:clamp(22px,5vh,30px)!important;margin:10px 0!important}.journey-mode:has(#play:not(.hidden)) #play .meter{margin:8px 0!important}}
+</style><style>
+/* Friendly owl companion and warm illustrated task surface */
+.journey-mode #play{background:linear-gradient(180deg,#fffef6 0%,#fff 68%,#f9f4ff 100%)!important}
+.journey-mode .owl-guide{display:flex;align-items:center;gap:13px;margin:0 0 14px;padding:10px 14px;background:linear-gradient(110deg,#f1f8e7,#f4edff);border:2px solid #fff;border-radius:22px;box-shadow:0 4px 0 #dfe4d4}
+.journey-mode .owl-guide-icon{font-size:45px;line-height:1;flex:0 0 auto;filter:drop-shadow(0 3px 2px #6b536c30)}
+.journey-mode .owl-guide-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.journey-mode .owl-guide-text strong{font-size:18px;color:#3b3267}
+.journey-mode .owl-guide-text span{font-size:15px;color:#635b7c}
+.journey-mode #mode{font-size:14px!important;color:#71659a!important}
+.journey-mode #progress::before{content:"★ ";color:#d38e27}
+.journey-mode #question{padding:12px 4px;color:#30275c!important}
+@media(max-height:720px){.journey-mode .owl-guide{padding:7px 10px;margin-bottom:8px}.journey-mode .owl-guide-icon{font-size:35px}.journey-mode .owl-guide-text strong{font-size:16px}.journey-mode .owl-guide-text span{font-size:13px}}
 </style></head>
 <body><header><a href="/cabinet#studentMathPanel"> К выбору игр</a><strong>🦉 School App</strong></header>
 <main><section class="card" id="diagnosticLoading" style="display:none" role="status" aria-live="polite"><h1>Готовим первое задание…</h1><p>Совёнок подбирает вопросы.</p></section><section class="card academy-tools-intro"><span class="tag">ТВОЯ МАТЕМАТИКА</span><h1>Мои успехи и тренировки</h1><p>Здесь совёнок помогает подобрать новые задания, повторить сложное и увидеть твои достижения.</p><a class="academy-back-to-worlds" href="/cabinet#studentMathPanel"> К выбору игр</a></section>
@@ -84,7 +96,7 @@ html.journey-mode:has(#play:not(.hidden)),html.journey-mode:has(#play:not(.hidde
 <div id="adaptivePanel" hidden><h3 id="adaptiveTitle"></h3><p id="adaptiveQuestion" style="font-size:23px;font-weight:750"></p><div id="adaptiveOptions" class="options"></div><p id="adaptiveFeedback" role="status"></p><button id="adaptiveNext" type="button" hidden>Следующее</button></div>
 <p id="adaptiveSummary" role="status" hidden></p></section><section class="card" id="intro"><p id="history" class="small" aria-live="polite">Загружаем историю…</p><h2>Откроем новые способности?</h2><p>12 заданий по четырём темам. Без таймера и оценок. После проверки откроются тренировки.</p><button id="start">Начать диагностику</button></section>
 <section class="card hidden" id="play" aria-live="polite">
-<div class="top"><span id="mode" class="tag"></span><strong id="progress"></strong></div><div class="meter"><div id="progressFill"></div></div>
+<div class="owl-guide"><span class="owl-guide-icon" aria-hidden="true">🦉</span><div class="owl-guide-text"><strong>Задание от Совёнка</strong><span id="owlMessage">Давай решим задачку!</span></div></div><div class="top"><span id="mode" class="tag"></span><strong id="progress"></strong></div><div class="meter"><div id="progressFill"></div></div>
 <div id="question"></div><div id="options" class="options"></div><p id="feedback" class="feedback" aria-live="polite"></p>
 <button id="next" class="hidden">Продолжить</button></section>
 <section class="card hidden" id="results"><h2 id="resultTitle">Твоя карта знаний</h2><p id="resultLead"></p><p id="resultHighlights" class="result-highlights"></p><details class="skill-details"><summary>Посмотреть все темы</summary><div id="skills" class="skills"></div></details>
