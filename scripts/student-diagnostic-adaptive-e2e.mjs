@@ -51,7 +51,7 @@ try{
  await page.click("#start");
  await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("1 / 15–25"));
  for(let i=1;i<19;i++){
-  await page.waitForFunction(expected=>document.querySelector("#options button")?.disabled===false&&document.querySelector("#progress")?.textContent.includes(expected+" / 15–25"),i);
+  try{await page.waitForFunction(expected=>document.querySelector("#options button")?.disabled===false&&document.querySelector("#progress")?.textContent.includes(expected+" / 15–25"),{timeout:4000},i);}catch(error){throw Error("Diagnostic step "+i+": "+JSON.stringify(await page.evaluate(()=>({counter:window.__v2Count,progress:document.querySelector("#progress")?.textContent,button:document.querySelector("#options button")?.disabled,feedback:document.querySelector("#feedback")?.textContent,play:document.querySelector("#play")?.className})))));}
   await page.$eval("#options input",el=>el.value="5");
   await page.click("#options button");
   await page.waitForFunction(expected=>window.__v2Count===expected,i+1);
