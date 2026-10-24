@@ -269,5 +269,5 @@ test("guest cookie is Lax so permanent links work from messaging apps", () => {
   assert.match(guest, /SameSite=Lax/);
   assert.match(guest, /HttpOnly/);
   assert.match(guest, /Secure/);
-  assert.match(session, /SameSite=Strict/);
+  assert.match(session, /SameSite=Lax/);
 });
