@@ -1970,6 +1970,32 @@ app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
 app.get("/connections.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "connections.html"))
 );
+app.get("/api/math/adventure", requireApiRole("student"), async (req,res,next)=>{
+  try{
+    if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
+    const row=await db.collection(collectionName("math_adventure_progress")).findOne({studentId:req.user._id});
+    res.json({progress:row?{unlocked:row.unlocked,stars:row.stars,completed:row.completed}:null});
+  }catch(error){next(error);}
+});
+app.post("/api/math/adventure", requireApiRole("student"), async (req,res,next)=>{
+  try{
+    if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
+    const {level,correct,total}=req.body||{};
+    if(!Number.isInteger(level)||level<0||level>4||!Number.isInteger(correct)||!Number.isInteger(total)||total!==10||correct<0||correct>total)
+      return res.status(400).json({error:"INVALID_ADVENTURE_RESULT"});
+    const collection=db.collection(collectionName("math_adventure_progress"));
+    const current=await collection.findOne({studentId:req.user._id});
+    const completed=Array.isArray(current?.completed)?current.completed:[];
+    const unlocked=Math.max(0,Math.min(4,Number.isInteger(current?.unlocked)?current.unlocked:0));
+    if(level>unlocked)return res.status(409).json({error:"LEVEL_LOCKED"});
+    const passed=correct>=8;
+    const nextCompleted=passed&&!completed.includes(level)?[...completed,level]:completed;
+    const stars=(current?.stars||0)+(passed&&!completed.includes(level)?Math.min(3,Math.floor(correct/2)-2):0);
+    const nextUnlocked=passed?Math.max(unlocked,Math.min(4,level+1)):unlocked;
+    await collection.updateOne({studentId:req.user._id},{$set:{unlocked:nextUnlocked,stars,completed:nextCompleted,updatedAt:new Date()}},{upsert:true});
+    res.json({progress:{unlocked:nextUnlocked,stars,completed:nextCompleted},passed});
+  }catch(error){next(error);}
+});
 app.get("/api/math/skill-map", requireApiRole("student"), async (req,res,next)=>{
  try{
   if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
@@ -2000,6 +2026,9 @@ app.post("/api/math/attempts", requireApiRole("student"), async (req,res,next)=>
     await mathAttempts.insertOne(row);
     res.status(201).json({attempt:{mode:row.mode,answers:row.answers,scores:row.scores,correct:row.correct,total:row.total,createdAt:row.createdAt}});
   }catch(error){next(error);}
+});
+app.get("/math-adventure", requirePageAuth("student"), (_req,res)=>{
+  res.sendFile(path.join(__dirname,"public","math-adventure.html"));
 });
 app.get("/number-lab", requirePageAuth("student"), (_req, res) => {
   res.sendFile(path.join(__dirname, "public", "number-lab.html"));
