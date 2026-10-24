@@ -54,7 +54,7 @@ function renderDiagnosticV2(){
   show("results");
   const result=diagnosticV2.result;
   $("resultTitle").textContent="Проверка закончена!";
-  $("resultLead").textContent="Правильно: "+result.correct+" · Не знаю: "+result.skipped+" · Ошибки: "+result.incorrect+". Теперь подберём задания для тебя.";
+  $("resultLead").textContent="Правильно: "+result.correct+" · Не знаю: "+result.skipped+" · Не понял вопрос: "+(result.misunderstood||0)+" · Ошибки: "+result.incorrect+". Теперь подберём задания для тебя.";
   $("adventureAssessment").textContent="Твой старт: уровень "+result.level;
   $("adventureLaunch").classList.remove("hidden");
   const entries=Object.entries(result.skills);
@@ -81,21 +81,27 @@ function renderDiagnosticV2(){
  const syncSubmit=()=>{submit.disabled=field.value.trim().length===0;};
  field.addEventListener("input",syncSubmit);
  const skip=document.createElement("button");skip.className="secondary";skip.type="button";skip.textContent="Не знаю";
+ const unclear=document.createElement("button");unclear.className="secondary";unclear.type="button";unclear.textContent="Не понял вопрос";
  submit.addEventListener("click",async()=>{
   if(!field.value.trim())return;
-  submit.disabled=true;skip.disabled=true;
+  submit.disabled=true;skip.disabled=true;unclear.disabled=true;
   try{
    diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:field.value})});
    renderDiagnosticV2();
-  }catch(_){$("feedback").textContent="Ошибка сохранения. Повтори попытку.";syncSubmit();skip.disabled=false;}
+  }catch(_){$("feedback").textContent="Ошибка сохранения. Повтори попытку.";syncSubmit();skip.disabled=false;unclear.disabled=false;}
  });
  skip.addEventListener("click",async()=>{
   submit.disabled=true;skip.disabled=true;
   try{diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:null})});renderDiagnosticV2();}
-  catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";submit.disabled=false;skip.disabled=false;}
+  catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";syncSubmit();skip.disabled=false;unclear.disabled=false;}
  });
  field.addEventListener("keydown",event=>{if(event.key==="Enter"&&!submit.disabled)submit.click()});
- $("options").replaceChildren(field,submit,skip);
+ unclear.addEventListener("click",async()=>{
+  submit.disabled=true;skip.disabled=true;unclear.disabled=true;
+  try{diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:"__MISUNDERSTOOD__"})});renderDiagnosticV2();}
+  catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";syncSubmit();skip.disabled=false;unclear.disabled=false;}
+ });
+ $("options").replaceChildren(field,submit,skip,unclear);
 }
 async function startDiagnosticV2(restart=false){
  try{
