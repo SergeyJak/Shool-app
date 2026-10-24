@@ -1804,6 +1804,36 @@ app.get("/api/admin/users", requireApiRole("admin"), async (_req, res, next) => 
   }
 });
 
+app.get("/api/admin/users/:id/diagnostic-export", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = normalizeManagedUsername(req.params.id);
+    if (!id) return res.status(400).json({ error: "INVALID_USER" });
+    const student = await users.findOne({ _id: id, role: "student" });
+    if (!student) return res.status(404).json({ error: "STUDENT_NOT_FOUND" });
+    const current = await db.collection(collectionName("math_diagnostic_v2")).findOne({ studentId: id });
+    const history = await db.collection(collectionName("math_diagnostic_v2_history"))
+      .find({ studentId: id }).sort({ archivedAt: -1 }).limit(100).toArray();
+    const sessionData = (session) => ({
+      answers: session?.answers || [],
+      finished: Boolean(session?.finished),
+      result: session?.answers?.length ? diagnosticV2.result(session) : null,
+    });
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Disposition", `attachment; filename="diagnostic-${id}.json"`);
+    res.json({
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      student: { id, displayName: student.displayName },
+      current: current ? { ...sessionData(current.session), updatedAt: current.updatedAt || null } : null,
+      history: history.map(row => ({
+        ...sessionData(row.session),
+        archivedAt: row.archivedAt,
+        updatedAt: row.updatedAt || null,
+      })),
+    });
+  } catch (error) { next(error); }
+});
+
 app.post("/api/admin/users", requireApiRole("admin"), async (req, res, next) => {
   try {
     const username = normalizeManagedUsername(req.body?.username);
