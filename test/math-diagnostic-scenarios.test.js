@@ -87,8 +87,8 @@ test("empty, partial and finished assessments have coherent confidence and level
 
 test("number comparisons cannot be solved by always choosing the second operand",()=>{
  const questions=d.BANK.filter(q=>q.skill==="numbers");
- const first=questions.filter(q=>q.prompt.match(/число больше: (\\d+) или (\\d+)/)?.[1]===q.answer);
- const second=questions.filter(q=>q.prompt.match(/число больше: (\\d+) или (\\d+)/)?.[2]===q.answer);
+ const first=questions.filter(q=>q.prompt.match(/число больше: (\d+) или (\d+)/)?.[1]===q.answer);
+ const second=questions.filter(q=>q.prompt.match(/число больше: (\d+) или (\d+)/)?.[2]===q.answer);
  assert.ok(first.length>=10&&second.length>=10);
 });
 test("advanced fractions include non-unit numerators and word problem answers vary",()=>{
