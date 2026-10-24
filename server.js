@@ -37,6 +37,7 @@ const {
 const { resolveIdentityFromCookies } = require("./lib/session-context");
 const { canAccessLesson } = require("./lib/lesson-access");
 const { validateAttempt } = require("./lib/math-assessment");
+const diagnosticV2 = require("./lib/math-diagnostic-v2");
 const { buildSession, buildReviewSession, QUESTIONS: ADAPTIVE_QUESTIONS } = require("./lib/math-adaptive");
 const { summarizeSkills, mistakes } = require("./lib/math-progress");
 const {
@@ -1975,6 +1976,8 @@ function adventureStartingLevel(attempts) {
   return latest?Math.max(1,Math.min(100,Math.round(latest.correct/latest.total*99)+1)):null;
 }
 async function adventureAssessment(studentId) {
+  const v2=await db.collection(collectionName("math_diagnostic_v2")).findOne({studentId});
+  if(v2?.session?.finished)return diagnosticV2.result(v2.session).level;
   const attempts=await mathAttempts.find({studentId,mode:"diagnostic"},{projection:{correct:1,total:1,mode:1}}).sort({createdAt:-1}).limit(1).toArray();
   return adventureStartingLevel(attempts);
 }
@@ -2028,6 +2031,23 @@ app.get("/api/math/adaptive", requireApiRole("student"), async (req,res,next)=>{
     const attempts=await mathAttempts.find({studentId:req.user._id},{projection:{_id:0}}).sort({createdAt:-1}).limit(20).toArray();
     res.json(req.query.review==="1"?buildReviewSession(attempts):buildSession(attempts));
   }catch(error){next(error);}
+});
+app.get("/api/math/diagnostic-v2", requireApiRole("student"), async (req,res,next)=>{
+ try{const row=await db.collection(collectionName("math_diagnostic_v2")).findOne({studentId:req.user._id});const session=row?.session||diagnosticV2.createSession();const q=diagnosticV2.nextQuestion(session);res.json({question:q?{id:q.id,skill:q.skill,prompt:q.prompt}:null,answered:session.answers.length,finished:session.finished,result:session.finished?diagnosticV2.result(session):null});}catch(error){next(error);}
+});
+app.post("/api/math/diagnostic-v2/answer",requireApiRole("student"),async(req,res,next)=>{
+ try{
+  if(typeof req.body?.id!=="string"||!["string","number"].includes(typeof req.body?.value)||String(req.body.value).length>50)return res.status(400).json({error:"INVALID_ANSWER"});
+  const col=db.collection(collectionName("math_diagnostic_v2"));const row=await col.findOne({studentId:req.user._id});const session=row?.session||diagnosticV2.createSession();
+  let updated;try{updated=diagnosticV2.submitAnswer(session,req.body.id,req.body.value)}catch(_){return res.status(409).json({error:"QUESTION_MISMATCH"})}
+  const query=row?{_id:row._id,"session.asked":session.asked}:{studentId:req.user._id,session:{$exists:false}};
+  const write=await col.updateOne(query,{$set:{session:updated,updatedAt:new Date()}},{upsert:!row});
+  if(!write.modifiedCount&&!write.upsertedCount)return res.status(409).json({error:"CONCURRENT_ANSWER"});
+  const q=diagnosticV2.nextQuestion(updated);res.json({correct:updated.answers.at(-1).correct,question:q?{id:q.id,skill:q.skill,prompt:q.prompt}:null,answered:updated.answers.length,finished:updated.finished,result:updated.finished?diagnosticV2.result(updated):null});
+ }catch(error){next(error)}
+});
+app.post("/api/math/diagnostic-v2/restart",requireApiRole("student"),async(req,res,next)=>{
+ try{await db.collection(collectionName("math_diagnostic_v2")).updateOne({studentId:req.user._id},{$set:{session:diagnosticV2.createSession(),updatedAt:new Date()}},{upsert:true});res.json({ok:true})}catch(error){next(error)}
 });
 app.get("/api/math/progress", requireApiRole("student"), async (req,res,next)=>{
   try {
@@ -3737,6 +3757,7 @@ async function start() {
   }
 
   await mathAttempts.createIndex({ studentId: 1, createdAt: -1 });
+  await db.collection(collectionName("math_diagnostic_v2")).createIndex({studentId:1},{unique:true});
   await users.createIndex({ role: 1, active: 1 });
   await users.createIndex({ approvalStatus: 1, registrationSubmittedAt: -1 });
   await users.createIndex({ email: 1 }, { unique: true, sparse: true });
