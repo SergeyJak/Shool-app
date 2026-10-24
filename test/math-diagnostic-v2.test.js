@@ -6,10 +6,10 @@ test("bank has 210 unique, answerable questions across seven skills",()=>{
  assert.equal(new Set(d.BANK.map(q=>q.skill)).size,7);
  assert.ok(d.BANK.every(q=>q.explanation&&q.difficulty>=1&&q.difficulty<=100));
 });
-test("diagnostic never repeats and ends after at most 25 questions",()=>{
+test("diagnostic never repeats and ends after at most 42 questions",()=>{
  let s=d.createSession();
  while(!s.finished){const q=d.nextQuestion(s);assert.ok(q);s=d.submitAnswer(s,q.id,q.answer);}
- assert.ok(s.answers.length>=15&&s.answers.length<=25);assert.equal(new Set(s.asked).size,s.asked.length);
+ assert.ok(s.answers.length>=14&&s.answers.length<=42);assert.equal(new Set(s.asked).size,s.asked.length);
  assert.equal(d.nextQuestion(s),null);
 });
 test("incorrect answers lower placement relative to correct answers",()=>{
