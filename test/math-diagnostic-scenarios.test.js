@@ -126,3 +126,23 @@ test("correct answer raises difficulty and skipping lowers it within a skill",()
  const harder=findNextInSkill(right,first.skill),easier=findNextInSkill(skipped,first.skill);
  assert.ok(harder.difficulty>easier.difficulty);
 });
+
+test("result separates correct answers, mistakes and explicit skips",()=>{
+ let session=d.createSession();
+ let q=d.nextQuestion(session);session=d.submitAnswer(session,q.id,q.answer);
+ q=d.nextQuestion(session);session=d.submitAnswer(session,q.id,null);
+ q=d.nextQuestion(session);session=d.submitAnswer(session,q.id,"__wrong__");
+ const r=d.result(session);
+ assert.equal(r.answered,3);
+ assert.equal(r.correct,1);
+ assert.equal(r.skipped,1);
+ assert.equal(r.incorrect,1);
+});
+test("completed diagnostic with two answers and seventeen skips reports reality",()=>{
+ let count=0;const session=run(q=>++count<=2?q.answer:null);
+ const r=d.result(session);
+ assert.equal(r.answered,19);
+ assert.equal(r.correct,2);
+ assert.equal(r.skipped,17);
+ assert.equal(r.incorrect,0);
+});
