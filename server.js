@@ -2058,7 +2058,19 @@ app.post("/api/math/diagnostic-v2/answer",requireApiRole("student"),async(req,re
  }catch(error){next(error)}
 });
 app.post("/api/math/diagnostic-v2/restart",requireApiRole("student"),async(req,res,next)=>{
- try{await db.collection(collectionName("math_diagnostic_v2")).updateOne({studentId:req.user._id},{$set:{session:diagnosticV2.createSession(),updatedAt:new Date()}},{upsert:true});res.json({ok:true})}catch(error){next(error)}
+ try{
+  const col=db.collection(collectionName("math_diagnostic_v2"));
+  const current=await col.findOne({studentId:req.user._id});
+  if(current?.session?.answers?.length){
+    await db.collection(collectionName("math_diagnostic_v2_history")).insertOne({
+      studentId:req.user._id,session:current.session,
+      result:diagnosticV2.result(current.session),archivedAt:new Date(),
+      startedAt:current.createdAt||null,updatedAt:current.updatedAt||null,
+    });
+  }
+  await col.updateOne({studentId:req.user._id},{$set:{session:diagnosticV2.createSession(),updatedAt:new Date()},$setOnInsert:{createdAt:new Date()}},{upsert:true});
+  res.json({ok:true});
+ }catch(error){next(error)}
 });
 app.get("/api/math/progress", requireApiRole("student"), async (req,res,next)=>{
   try {
