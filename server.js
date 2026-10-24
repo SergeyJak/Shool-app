@@ -2037,7 +2037,7 @@ app.get("/api/math/diagnostic-v2", requireApiRole("student"), async (req,res,nex
 });
 app.post("/api/math/diagnostic-v2/answer",requireApiRole("student"),async(req,res,next)=>{
  try{
-  if(typeof req.body?.id!=="string"||!["string","number"].includes(typeof req.body?.value)||String(req.body.value).length>50)return res.status(400).json({error:"INVALID_ANSWER"});
+  if(typeof req.body?.id!=="string"||!(req.body?.value===null||["string","number"].includes(typeof req.body?.value))||String(req.body.value).length>50)return res.status(400).json({error:"INVALID_ANSWER"});
   const col=db.collection(collectionName("math_diagnostic_v2"));const row=await col.findOne({studentId:req.user._id});const session=row?.session||diagnosticV2.createSession();
   let updated;try{updated=diagnosticV2.submitAnswer(session,req.body.id,req.body.value)}catch(_){return res.status(409).json({error:"QUESTION_MISMATCH"})}
   const query=row?{_id:row._id,"session.asked":session.asked}:{studentId:req.user._id,session:{$exists:false}};
