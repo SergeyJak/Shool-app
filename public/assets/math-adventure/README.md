@@ -1,14 +1,19 @@
-# Math Adventure assets
+# School App · Math Adventure visual pack
 
-Upload the extracted graphic files into these folders:
+Complete **starter asset set for the first forest chapter**. Assets are separate editable SVG files, with transparent character and UI elements.
 
-- `backgrounds/` - forest, river, mountain, cave, castle and boss arena scenery.
-- `characters/` - owl, dragon and character variants.
-- `map/` - path segments, forks, unlocked/locked/completed nodes and boss markers.
-- `icons/` - subjects, achievements, stars and diagnostics.
-- `ui/` - buttons, cards, dialogue bubbles and progress bars.
+## Contents
+- `backgrounds/` 8 illustrated SVG scenes (forest, river, meadow, castle, mountains, sunset, cave, boss arena).
+- `characters/` owl (three variations including existing mascot) and dragon boss.
+- `map/` winding road, branch sign, available/complete/current/locked/challenge/boss nodes.
+- `ui/` button, progress bar, card, speech bubble.
+- `icons/` star, subject icons, check/back/next/close.
+- `references/` original AI concept and eight cropped screen examples.
+- `examples/map-preview.html` working standalone clickable map preview; open locally in browser.
+- `manifest.json` inventory for integration.
 
-Keep SVG assets as separate files. Upload the **contents** of the ZIP, not the ZIP itself.
-The `.gitkeep` placeholders can remain; GitHub ignores empty directories otherwise.
+## Integration
+Copy `backgrounds`, `characters`, `map`, `ui`, and `icons` to `public/assets/math-adventure/` in Shool-app. All are standalone SVG and can be scaled without loss. Keep map interactions as HTML buttons above backgrounds; do not use flattened reference images as UI.
 
-Do not upload reference screen mockups into these runtime asset folders.
+## Scope
+This is an asset kit, **not a completed game**. Diagnosis logic, branching progression, skill mastery, storage, and server integration require code. Art is an original vector interpretation, not a pixel-identical extraction of the generated concept.
