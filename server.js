@@ -1970,30 +1970,49 @@ app.get("/teacher.html", requirePageAuth("teacher"), (req, res) => {
 app.get("/connections.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "connections.html"))
 );
+function adventureStartingLevel(attempts) {
+  const latest=attempts.find(a=>a.mode==="diagnostic"&&Number.isFinite(a.correct)&&Number.isFinite(a.total)&&a.total>0);
+  return latest?Math.max(1,Math.min(100,Math.round(latest.correct/latest.total*99)+1)):null;
+}
+async function adventureAssessment(studentId) {
+  const attempts=await mathAttempts.find({studentId,mode:"diagnostic"},{projection:{correct:1,total:1,mode:1}}).sort({createdAt:-1}).limit(1).toArray();
+  return adventureStartingLevel(attempts);
+}
+function adventureProgress(row,startLevel) {
+  if(startLevel===null)return null;
+  const base=startLevel-1;
+  return {unlocked:Math.max(base,Math.min(99,Number.isInteger(row?.unlocked)?row.unlocked:base)),
+    stars:Math.max(0,Number.isInteger(row?.stars)?row.stars:0),
+    completed:Array.isArray(row?.completed)?row.completed.filter(i=>Number.isInteger(i)&&i>=0&&i<100):[],
+    startLevel};
+}
 app.get("/api/math/adventure", requireApiRole("student"), async (req,res,next)=>{
   try{
     if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
+    const startLevel=await adventureAssessment(req.user._id);
     const row=await db.collection(collectionName("math_adventure_progress")).findOne({studentId:req.user._id});
-    res.json({progress:row?{unlocked:row.unlocked,stars:row.stars,completed:row.completed}:null});
+    res.json({progress:adventureProgress(row,startLevel),assessmentRequired:startLevel===null});
   }catch(error){next(error);}
 });
 app.post("/api/math/adventure", requireApiRole("student"), async (req,res,next)=>{
   try{
     if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
     const {level,correct,total}=req.body||{};
-    if(!Number.isInteger(level)||level<0||level>4||!Number.isInteger(correct)||!Number.isInteger(total)||total!==10||correct<0||correct>total)
+    if(!Number.isInteger(level)||level<0||level>=100||!Number.isInteger(correct)||!Number.isInteger(total)||total!==10||correct<0||correct>total)
       return res.status(400).json({error:"INVALID_ADVENTURE_RESULT"});
+    const startLevel=await adventureAssessment(req.user._id);
+    if(startLevel===null)return res.status(409).json({error:"ASSESSMENT_REQUIRED"});
     const collection=db.collection(collectionName("math_adventure_progress"));
     const current=await collection.findOne({studentId:req.user._id});
-    const completed=Array.isArray(current?.completed)?current.completed:[];
-    const unlocked=Math.max(0,Math.min(4,Number.isInteger(current?.unlocked)?current.unlocked:0));
-    if(level>unlocked)return res.status(409).json({error:"LEVEL_LOCKED"});
+    const progress=adventureProgress(current,startLevel);
+    if(level>progress.unlocked)return res.status(409).json({error:"LEVEL_LOCKED"});
     const passed=correct>=8;
-    const nextCompleted=passed&&!completed.includes(level)?[...completed,level]:completed;
-    const stars=(current?.stars||0)+(passed&&!completed.includes(level)?Math.min(3,Math.floor(correct/2)-2):0);
-    const nextUnlocked=passed?Math.max(unlocked,Math.min(4,level+1)):unlocked;
+    const newCompletion=passed&&!progress.completed.includes(level);
+    const nextCompleted=newCompletion?[...progress.completed,level]:progress.completed;
+    const stars=progress.stars+(newCompletion?Math.min(3,Math.floor(correct/2)-2):0);
+    const nextUnlocked=passed?Math.max(progress.unlocked,Math.min(99,level+1)):progress.unlocked;
     await collection.updateOne({studentId:req.user._id},{$set:{unlocked:nextUnlocked,stars,completed:nextCompleted,updatedAt:new Date()}},{upsert:true});
-    res.json({progress:{unlocked:nextUnlocked,stars,completed:nextCompleted},passed});
+    res.json({progress:{unlocked:nextUnlocked,stars,completed:nextCompleted,startLevel},passed});
   }catch(error){next(error);}
 });
 app.get("/api/math/skill-map", requireApiRole("student"), async (req,res,next)=>{
