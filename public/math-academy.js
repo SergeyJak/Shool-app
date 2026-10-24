@@ -41,8 +41,56 @@ function compute(answers){const scores={};for(const skill of ["Счёт","Зад
 function render(){if(state.index>=state.questions.length)return finish();show("play");const q=state.questions[state.index];$("mode").textContent=state.mode==="practice"?"ТРЕНИРОВКА · "+state.skill:"ДИАГНОСТИКА · "+q.skill;$("progress").textContent=(state.index+1)+" / "+state.questions.length;$("progressFill").style.width=(state.index/state.questions.length*100)+"%";$("question").textContent=q.q;$("feedback").textContent="";$("next").classList.add("hidden");const options=$("options");options.replaceChildren();for(const val of q.options){const b=document.createElement("button");b.className="option";b.textContent=val;b.addEventListener("click",()=>answer(val));options.append(b)}}
 function answer(value){const q=state.questions[state.index];if(state.answers.length>state.index)return;const correct=String(value)===String(q.a);state.answers.push({origin:q.origin,correct,value});save();for(const b of $("options").children){b.disabled=true;if(b.textContent===String(q.a))b.classList.add("correct");else if(b.textContent===String(value))b.classList.add("wrong")} $("feedback").textContent=(correct?"Верно! ":"Хорошая попытка! ")+q.why;$("next").classList.remove("hidden");$("progressFill").style.width=((state.index+1)/state.questions.length*100)+"%"}
 function finish(){show("results");if(!state.submitted)void submitAttempt();const scores=compute(state.answers);const total=state.answers.filter(x=>x.correct).length;$("resultTitle").textContent=state.mode==="practice"?"Тренировка завершена!":"Твоя карта знаний";$("resultLead").textContent="Верных ответов: "+total+" из "+state.answers.length+". Каждая задача помогает прокачать навыки.";if(state.mode==="diagnostic"){const rank=Math.max(1,Math.min(100,Math.round(total/state.answers.length*99)+1));$("adventureAssessment").textContent=`Твой стартовый уровень приключения: ${rank} из 100`;$("adventureLaunch").classList.remove("hidden")}else{$("adventureAssessment").textContent="";$("adventureLaunch").classList.add("hidden")};$("skills").replaceChildren();for(const [name,s] of Object.entries(scores)){if(!s.total)continue;const item=document.createElement("div");item.className="skill";const percent=Math.round(s.correct/s.total*100);const label=percent>=80?"Сильная сторона":percent>=50?"Продолжаем учиться":"Потренируем вместе";const title=document.createElement("strong");title.textContent=name;const progress=document.createElement("span");progress.textContent=percent+"% · "+label;item.append(title,progress);$("skills").append(item)}save();}
-$("start").addEventListener("click",()=>start());$("repeat").addEventListener("click",()=>start());$("practice").addEventListener("click",()=>{const prev=state;state=null;try{localStorage.setItem(KEY,JSON.stringify(prev));}catch(_){} start("practice")});$("next").addEventListener("click",()=>{state.index++;save();render()});
+
+let diagnosticV2=null;
+async function diagnosticApi(path,options){
+ const response=await fetch(path,{credentials:"same-origin",...options});
+ if(!response.ok)throw Error("Diagnostic request failed");
+ return response.json();
+}
+function renderDiagnosticV2(){
+ if(diagnosticV2.finished){
+  show("results");
+  const result=diagnosticV2.result;
+  $("resultTitle").textContent="Твоя карта знаний";
+  $("resultLead").textContent="Пройдено "+diagnosticV2.answered+" заданий. "+(result.provisional?"Оценка предварительная.":"");
+  $("adventureAssessment").textContent="Твой стартовый уровень: "+result.level+" из 100";
+  $("adventureLaunch").classList.remove("hidden");
+  $("skills").replaceChildren();
+  for(const [name,score] of Object.entries(result.skills)){
+   const item=document.createElement("div");item.className="skill";
+   const title=document.createElement("strong");title.textContent=name;
+   const value=document.createElement("span");value.textContent="Уровень "+score.estimate+" · "+score.count+" заданий";
+   item.append(title,value);$("skills").append(item);
+  }
+  return;
+ }
+ show("play");
+ const q=diagnosticV2.question;
+ $("mode").textContent="ДИАГНОСТИКА · "+q.skill;
+ $("progress").textContent=diagnosticV2.answered+" / 15–25";
+ $("progressFill").style.width=(diagnosticV2.answered/25*100)+"%";
+ $("question").textContent=q.prompt;$("feedback").textContent="";$("next").classList.add("hidden");
+ const field=document.createElement("input");field.className="option";field.inputMode="decimal";field.setAttribute("aria-label","Ответ");
+ const submit=document.createElement("button");submit.className="option";submit.textContent="Ответить";
+ submit.addEventListener("click",async()=>{
+  submit.disabled=true;
+  try{
+   diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:field.value})});
+   renderDiagnosticV2();
+  }catch(_){$("feedback").textContent="Ошибка сохранения. Повтори попытку.";submit.disabled=false;}
+ });
+ field.addEventListener("keydown",event=>{if(event.key==="Enter")submit.click()});
+ $("options").replaceChildren(field,submit);
+}
+async function startDiagnosticV2(restart=false){
+ try{
+  if(restart)await diagnosticApi("/api/math/diagnostic-v2/restart",{method:"POST"});
+  diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2");renderDiagnosticV2();
+ }catch(_){$("intro").classList.remove("hidden");$("feedback").textContent="Диагностика временно недоступна.";}
+}
+$("start").addEventListener("click",()=>void startDiagnosticV2());$("repeat").addEventListener("click",()=>void startDiagnosticV2(true));$("practice").addEventListener("click",()=>{const prev=state;state=null;try{localStorage.setItem(KEY,JSON.stringify(prev));}catch(_){} start("practice")});$("next").addEventListener("click",()=>{state.index++;save();render()});
 document.getElementById("retrySync")?.addEventListener("click",()=>{document.getElementById("retrySync").hidden=true;void submitAttempt()});
 void loadProgress();
-const previous=load();if(previous && previous.mode==="diagnostic" && previous.answers.length===QUESTIONS.length){state=previous;finish();}
+
 })();
