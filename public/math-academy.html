@@ -39,6 +39,55 @@ footer{text-align:center;color:#78829a;font-size:13px;margin:28px} @media(max-wi
 .journey-mode #play #next{width:100%;min-height:60px}
 .journey-mode footer{display:none}
 @media(max-width:390px){.journey-mode #play #options:has(input.option){gap:9px}.journey-mode #play #options button:not(.secondary){padding:10px;font-size:18px}}
+</style><style>
+/* Storybook diagnostic: tactile controls and compact, inviting task panel */
+.journey-mode main{background:linear-gradient(160deg,#fffef5,#f5f3df)!important;border:5px solid #fff!important;box-shadow:0 14px 0 #d5c7a2,0 25px 48px #254a4160!important}
+.journey-mode #play{background:linear-gradient(180deg,#fffefa 0%,#fff 75%)!important;border:2px solid #f0e8d5;border-radius:28px!important;box-shadow:0 7px 0 #e7dfce,0 18px 30px #453c6d12!important}
+.journey-mode #play .top{padding:4px 0 2px}
+.journey-mode #mode{font-size:15px!important;font-weight:850!important;color:#6b53c9!important}
+.journey-mode #progress{border-radius:999px;background:#eee9ff;padding:7px 12px;color:#5547ac!important;font-size:15px!important}
+.journey-mode #play .meter{height:14px!important;background:#eae6f4;box-shadow:inset 0 2px 3px #3d286e15}
+.journey-mode #play .meter>div{background:linear-gradient(90deg,#8a74f8,#5c49db);border-radius:999px}
+.journey-mode #question{color:#2d2855!important;letter-spacing:-.025em;margin:27px 0 30px!important}
+.journey-mode #play #options:has(input.option){gap:14px!important}
+.journey-mode #play #options input.option{height:70px!important;border:3px solid #d9d1f2!important;background:#fbfaff!important;border-radius:20px!important;box-shadow:inset 0 3px 6px #32276a0c;font-weight:750;color:#29214d}
+.journey-mode #play #options input.option:focus{border-color:#7960e6!important;box-shadow:0 0 0 4px #7960e622!important}
+.journey-mode #play #options button{transition:transform .12s ease,box-shadow .12s ease,filter .12s ease}
+.journey-mode #play #options button:not(.secondary){background:linear-gradient(180deg,#aa79ff 0%,#7645ed 55%,#6230d4 100%)!important;color:#fff!important;border-radius:20px!important;border:2px solid #a782fa!important;box-shadow:0 7px 0 #4c269d,0 10px 16px #4c269d2e!important;text-shadow:0 1px 1px #35136d55}
+.journey-mode #play #options button.secondary{background:linear-gradient(180deg,#fff 0%,#ede8ff 100%)!important;color:#5c46bf!important;border:2px solid #d6cbf7!important;border-radius:20px!important;box-shadow:0 7px 0 #b8a9e4,0 10px 16px #44337b16!important}
+.journey-mode #play #options button:disabled{background:#e9e6f0!important;border-color:#e4e0eb!important;color:#a8a1b7!important;text-shadow:none!important;box-shadow:0 5px 0 #d8d3e0!important;cursor:default}
+.journey-mode #play #options button:not(:disabled):active{transform:translateY(5px);box-shadow:0 2px 0 #4c269d!important}
+.journey-mode #play #options button.secondary:not(:disabled):active{box-shadow:0 2px 0 #b8a9e4!important}
+.journey-mode #play #options button:focus-visible{outline:3px solid #25a6c8;outline-offset:5px}
+@media(max-width:390px){.journey-mode #play #options button:not(.secondary){font-size:17px!important}.journey-mode #play #options input.option{font-size:23px!important}}
+@media(prefers-reduced-motion:reduce){.journey-mode #play #options button{transition:none!important}}
+</style><style>
+/* One task, one screen. Keep the card within the visible mobile viewport. */
+html.journey-mode:has(#play:not(.hidden)),html.journey-mode:has(#play:not(.hidden)) body{height:100%;overflow:hidden;overscroll-behavior:none}
+.journey-mode:has(#play:not(.hidden)) body{display:flex;flex-direction:column;min-height:0!important}
+.journey-mode:has(#play:not(.hidden)) header{width:100%;flex:0 0 auto;padding:10px 18px!important}
+.journey-mode:has(#play:not(.hidden)) main{flex:1 1 auto;min-height:0;width:calc(100% - 24px);max-width:620px;margin:4px auto 12px!important;padding:8px!important;display:flex;flex-direction:column;overflow:hidden}
+.journey-mode:has(#play:not(.hidden)) #play{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;padding:clamp(14px,3.5vh,28px)!important;overflow:hidden}
+.journey-mode:has(#play:not(.hidden)) #play .top{flex:0 0 auto}
+.journey-mode:has(#play:not(.hidden)) #question{flex:0 1 auto;margin:clamp(12px,3.5vh,32px) 0!important;font-size:clamp(24px,5.5vh,38px)!important;line-height:1.2!important}
+.journey-mode:has(#play:not(.hidden)) #options{flex:0 0 auto}
+.journey-mode:has(#play:not(.hidden)) #play #options input.option{height:clamp(52px,8vh,70px)!important;min-height:52px!important}
+.journey-mode:has(#play:not(.hidden)) #play #options button{min-height:clamp(50px,8vh,66px)!important}
+.journey-mode:has(#play:not(.hidden)) #play #options:has(input.option){gap:clamp(8px,1.4vh,14px)!important}
+.journey-mode:has(#play:not(.hidden)) #play .feedback:empty{display:none}
+@media(max-height:650px){.journey-mode:has(#play:not(.hidden)) header{padding:5px 12px!important}.journey-mode:has(#play:not(.hidden)) #play{padding:12px!important}.journey-mode:has(#play:not(.hidden)) #question{font-size:clamp(22px,5vh,30px)!important;margin:10px 0!important}.journey-mode:has(#play:not(.hidden)) #play .meter{margin:8px 0!important}}
+</style><style>
+/* Friendly owl companion and warm illustrated task surface */
+.journey-mode #play{background:linear-gradient(180deg,#fffef6 0%,#fff 68%,#f9f4ff 100%)!important}
+.journey-mode .owl-guide{display:flex;align-items:center;gap:13px;margin:0 0 14px;padding:10px 14px;background:linear-gradient(110deg,#f1f8e7,#f4edff);border:2px solid #fff;border-radius:22px;box-shadow:0 4px 0 #dfe4d4}
+.journey-mode .owl-guide-icon{font-size:45px;line-height:1;flex:0 0 auto;filter:drop-shadow(0 3px 2px #6b536c30)}
+.journey-mode .owl-guide-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.journey-mode .owl-guide-text strong{font-size:18px;color:#3b3267}
+.journey-mode .owl-guide-text span{font-size:15px;color:#635b7c}
+.journey-mode #mode{font-size:14px!important;color:#71659a!important}
+.journey-mode #progress::before{content:"★ ";color:#d38e27}
+.journey-mode #question{padding:12px 4px;color:#30275c!important}
+@media(max-height:720px){.journey-mode .owl-guide{padding:7px 10px;margin-bottom:8px}.journey-mode .owl-guide-icon{font-size:35px}.journey-mode .owl-guide-text strong{font-size:16px}.journey-mode .owl-guide-text span{font-size:13px}}
 </style></head>
 <body><header><a href="/cabinet#studentMathPanel"> К выбору игр</a><strong>🦉 School App</strong></header>
 <main><section class="card" id="diagnosticLoading" style="display:none" role="status" aria-live="polite"><h1>Готовим первое задание…</h1><p>Совёнок подбирает вопросы.</p></section><section class="card academy-tools-intro"><span class="tag">ТВОЯ МАТЕМАТИКА</span><h1>Мои успехи и тренировки</h1><p>Здесь совёнок помогает подобрать новые задания, повторить сложное и увидеть твои достижения.</p><a class="academy-back-to-worlds" href="/cabinet#studentMathPanel"> К выбору игр</a></section>
@@ -47,11 +96,11 @@ footer{text-align:center;color:#78829a;font-size:13px;margin:28px} @media(max-wi
 <div id="adaptivePanel" hidden><h3 id="adaptiveTitle"></h3><p id="adaptiveQuestion" style="font-size:23px;font-weight:750"></p><div id="adaptiveOptions" class="options"></div><p id="adaptiveFeedback" role="status"></p><button id="adaptiveNext" type="button" hidden>Следующее</button></div>
 <p id="adaptiveSummary" role="status" hidden></p></section><section class="card" id="intro"><p id="history" class="small" aria-live="polite">Загружаем историю…</p><h2>Откроем новые способности?</h2><p>12 заданий по четырём темам. Без таймера и оценок. После проверки откроются тренировки.</p><button id="start">Начать диагностику</button></section>
 <section class="card hidden" id="play" aria-live="polite">
-<div class="top"><span id="mode" class="tag"></span><strong id="progress"></strong></div><div class="meter"><div id="progressFill"></div></div>
+<div class="owl-guide"><span class="owl-guide-icon" aria-hidden="true">🦉</span><div class="owl-guide-text"><strong>Задание от Совёнка</strong><span id="owlMessage">Давай решим задачку!</span></div></div><div class="top"><span id="mode" class="tag"></span><strong id="progress"></strong></div><div class="meter"><div id="progressFill"></div></div>
 <div id="question"></div><div id="options" class="options"></div><p id="feedback" class="feedback" aria-live="polite"></p>
 <button id="next" class="hidden">Продолжить</button></section>
 <section class="card hidden" id="results"><h2 id="resultTitle">Твоя карта знаний</h2><p id="resultLead"></p><p id="resultHighlights" class="result-highlights"></p><details class="skill-details"><summary>Посмотреть все темы</summary><div id="skills" class="skills"></div></details>
 <p class="small">Это только начало. Твой уровень будет расти!</p>
 <p id="adventureAssessment" class="tag"></p><a id="adventureLaunch" href="/math-adventure" class="hidden" style="display:inline-block;background:#6255eb;color:white;border-radius:15px;padding:15px 20px;margin:10px 0;text-decoration:none">К приключениям</a><p id="syncStatus" class="small" role="status"></p><button id="retrySync" class="secondary" hidden>Повторить сохранение</button><br><br><button id="practice">Потренироваться</button> <button class="secondary" id="repeat">Пройти заново</button></section>
 <footer></footer></main>
-<script src="/skill-map.js"></script><script src="/math-academy.js?v=20261024-required-answer"></script><script src="/adaptive-practice.js"></script></body></html>
+<script src="/skill-map.js"></script><script src="/math-academy.js?v=20261024-3d-buttons"></script><script src="/adaptive-practice.js"></script></body></html>
