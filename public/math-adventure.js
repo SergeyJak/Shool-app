@@ -33,6 +33,7 @@ async function syncResult(level,score){
 }
 function task(type,i,level=0){
  const tier=Math.floor(level/10);const a=i+2+tier*2,b=i%5+2+tier;
+ if(type==="geometry"&&tier>=2){const side=2+tier+i%4;const width=2+tier+(i%3);const height=2+Math.floor(tier/2)+(i%4);const advanced=[[`Периметр квадрата со стороной ${side} см?`,4*side],[`Площадь прямоугольника ${width} × ${height} клеток?`,width*height],[`Периметр прямоугольника со сторонами ${width} и ${height} см?`,2*(width+height)],[`Сколько градусов в прямом угле?`,90]];return advanced[i%advanced.length]}
  if(type==="geometry"){const data=[["Сколько сторон у треугольника?",3],["Сколько углов у квадрата?",4],["Сколько сторон у пятиугольника?",5],["Сколько углов у прямоугольника?",4],["Сколько сторон у шестиугольника?",6],["Сколько углов у треугольника?",3],["Сколько сторон у прямоугольника?",4],["Сколько углов у пятиугольника?",5],["Сколько сторон у квадрата?",4],["Сколько углов у шестиугольника?",6]];return data[i%data.length]}
  if(type==="word"){const data=[[`У совёнка ${a} яблока и ещё ${b}. Сколько всего?`,a+b],[`У дракона ${a+b} монет, ${b} он отдал. Сколько осталось?`,a],[`На ветке ${a} птицы, прилетели ещё ${b}. Сколько стало?`,a+b]];return data[i%data.length]}
  if(type==="boss"){return i%2===0?[`${a} × ${b} = ?`,a*b]:[`${a+b} − ${b} = ?`,a]}
