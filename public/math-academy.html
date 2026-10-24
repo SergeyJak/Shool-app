@@ -12,7 +12,7 @@ h1{font-size:clamp(27px,5vw,42px);margin:8px 0}p{color:#56627a;line-height:1.55}
 button{border:0;background:#6255eb;color:#fff;border-radius:15px;font:inherit;font-weight:750;padding:15px 20px;cursor:pointer;min-height:48px}
 button:focus-visible,a:focus-visible{outline:3px solid #00a7e1;outline-offset:3px}button.secondary{color:#493cc9;background:#edeafe}
 .options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:24px 0}
-.option{background:#f4f2ff;color:#172449;border:2px solid transparent;font-size:22px}
+#play #options:has(input.option){grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#play #options:has(input.option) button.secondary{grid-column:1/-1;display:block;width:100%;min-height:58px;background:#edeafe;color:#493cc9}#play #options:has(input.option) input.option{width:100%;min-width:0} .option{background:#f4f2ff;color:#172449;border:2px solid transparent;font-size:22px}
 .option:hover{border-color:#9186f7}.option:disabled{opacity:.75;cursor:default}.option.correct{background:#d3f6e3;border-color:#249b60}.option.wrong{background:#ffe1e4;border-color:#df6076}
 .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
 .meter{height:10px;border-radius:20px;background:#e9e9f4;overflow:hidden;margin:17px 0}.meter>div{height:100%;background:#6c61ed;transition:width .25s}
