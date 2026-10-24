@@ -72,9 +72,10 @@ function renderDiagnosticV2(){
  }
  show("play");
  const q=diagnosticV2.question;
- $("mode").textContent="ДИАГНОСТИКА · "+(skillLabels[q.skill]||q.skill);
- $("progress").textContent=diagnosticV2.answered+" / 15–25";
- $("progressFill").style.width=(diagnosticV2.answered/25*100)+"%";
+ $("mode").textContent=skillLabels[q.skill]||q.skill;
+ $("owlMessage").textContent=diagnosticV2.answered===0?"Давай решим первую задачку!":"Продолжим наше путешествие!";
+ $("progress").textContent="Задание "+(diagnosticV2.answered+1);
+ $("progressFill").style.width=(diagnosticV2.answered/42*100)+"%";
  $("question").textContent=q.prompt;$("feedback").textContent="";$("next").classList.add("hidden");
  const field=document.createElement("input");field.className="option";field.inputMode="decimal";field.setAttribute("aria-label","Твой ответ");field.placeholder="Ответ";field.autocomplete="off";
  const submit=document.createElement("button");submit.className="option";submit.textContent="Ответить";submit.disabled=true;
