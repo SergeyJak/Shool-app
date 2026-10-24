@@ -84,3 +84,16 @@ test("empty, partial and finished assessments have coherent confidence and level
  assert.equal(d.result(done).provisional,false);
  assert.ok(d.result(done).level>=1&&d.result(done).level<=100);
 });
+
+test("number comparisons cannot be solved by always choosing the second operand",()=>{
+ const questions=d.BANK.filter(q=>q.skill==="numbers");
+ const first=questions.filter(q=>q.prompt.match(/число больше: (\\d+) или (\\d+)/)?.[1]===q.answer);
+ const second=questions.filter(q=>q.prompt.match(/число больше: (\\d+) или (\\d+)/)?.[2]===q.answer);
+ assert.ok(first.length>=10&&second.length>=10);
+});
+test("advanced fractions include non-unit numerators and word problem answers vary",()=>{
+ const fractions=d.BANK.filter(q=>q.skill==="fractions");
+ assert.ok(fractions.some(q=>/равна [2-9]\\d*\\//.test(q.prompt)));
+ const change=d.BANK.filter(q=>q.skill==="wordProblems"&&q.prompt.includes("сдачи"));
+ assert.ok(new Set(change.map(q=>q.answer)).size>=5);
+});
