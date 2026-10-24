@@ -28,7 +28,7 @@ window.fetch=async(url,opts={})=>{
  throw Error("Unexpected endpoint "+url);
 };</script>`;
 const html=read("math-academy.html").replace("</head>",mocks+"</head>")
- .replace(/<script src="\/(skill-map|math-academy|adaptive-practice)\.js"><\/script>/g,(tag,name)=>"<script>"+read(name+".js")+"</script>");
+ .replace(/<script src="\/(skill-map|math-academy|adaptive-practice)\.js(?:\?[^"]*)?"><\/script>/g,(tag,name)=>"<script>"+read(name+".js")+"</script>");
 const fixture=path.join(os.tmpdir(),"school-math-full-e2e.html");fs.writeFileSync(fixture,html);
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:["--no-sandbox","--disable-gpu"]});
 const page=await browser.newPage();await page.setViewport({width:412,height:915});
@@ -57,7 +57,7 @@ try{
   await page.waitForFunction(expected=>window.__v2Count===expected,{},i+1);
  }
  await page.waitForFunction(()=>document.querySelector("#resultLead").textContent.includes("19 заданий"));
- assert.match(await page.$eval("#adventureAssessment",e=>e.textContent),/42 из 100/);
+ assert.match(await page.$eval("#adventureAssessment",e=>e.textContent),/начинается с уровня 42/);
  await page.click("#repeat");
  await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("0 / 15–25"));
  assert.equal(await page.evaluate(()=>window.__v2Count),0);
