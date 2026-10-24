@@ -703,6 +703,32 @@ function renderAdminUsers() {
       });
       actions.append(convert);
     }
+    if (user.role === "student") {
+      const exportButton = document.createElement("button");
+      exportButton.type = "button";
+      exportButton.className = "secondary";
+      exportButton.textContent = "Скачать диагностику";
+      exportButton.addEventListener("click", async () => {
+        exportButton.disabled = true;
+        try {
+          const response = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/diagnostic-export`, { credentials: "same-origin" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `diagnostic-${user.id}.json`;
+          document.body.append(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+          setAdminStatus("История диагностики скачана", "success");
+        } catch (error) {
+          setAdminStatus(`Ошибка экспорта: ${error.message}`, "error");
+        } finally { exportButton.disabled = false; }
+      });
+      actions.append(exportButton);
+    }
     actions.append(save, toggle);
     row.append(identity, actions);
     adminUserList.append(row);

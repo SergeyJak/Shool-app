@@ -1804,6 +1804,36 @@ app.get("/api/admin/users", requireApiRole("admin"), async (_req, res, next) => 
   }
 });
 
+app.get("/api/admin/users/:id/diagnostic-export", requireApiRole("admin"), async (req, res, next) => {
+  try {
+    const id = normalizeManagedUsername(req.params.id);
+    if (!id) return res.status(400).json({ error: "INVALID_USER" });
+    const student = await users.findOne({ _id: id, role: "student" });
+    if (!student) return res.status(404).json({ error: "STUDENT_NOT_FOUND" });
+    const current = await db.collection(collectionName("math_diagnostic_v2")).findOne({ studentId: id });
+    const history = await db.collection(collectionName("math_diagnostic_v2_history"))
+      .find({ studentId: id }).sort({ archivedAt: -1 }).limit(100).toArray();
+    const sessionData = (session) => ({
+      answers: session?.answers || [],
+      finished: Boolean(session?.finished),
+      result: session?.answers?.length ? diagnosticV2.result(session) : null,
+    });
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Disposition", `attachment; filename="diagnostic-${id}.json"`);
+    res.json({
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      student: { id, displayName: student.displayName },
+      current: current ? { ...sessionData(current.session), updatedAt: current.updatedAt || null } : null,
+      history: history.map(row => ({
+        ...sessionData(row.session),
+        archivedAt: row.archivedAt,
+        updatedAt: row.updatedAt || null,
+      })),
+    });
+  } catch (error) { next(error); }
+});
+
 app.post("/api/admin/users", requireApiRole("admin"), async (req, res, next) => {
   try {
     const username = normalizeManagedUsername(req.body?.username);
@@ -2058,7 +2088,19 @@ app.post("/api/math/diagnostic-v2/answer",requireApiRole("student"),async(req,re
  }catch(error){next(error)}
 });
 app.post("/api/math/diagnostic-v2/restart",requireApiRole("student"),async(req,res,next)=>{
- try{await db.collection(collectionName("math_diagnostic_v2")).updateOne({studentId:req.user._id},{$set:{session:diagnosticV2.createSession(),updatedAt:new Date()}},{upsert:true});res.json({ok:true})}catch(error){next(error)}
+ try{
+  const col=db.collection(collectionName("math_diagnostic_v2"));
+  const current=await col.findOne({studentId:req.user._id});
+  if(current?.session?.answers?.length){
+    await db.collection(collectionName("math_diagnostic_v2_history")).insertOne({
+      studentId:req.user._id,session:current.session,
+      result:diagnosticV2.result(current.session),archivedAt:new Date(),
+      startedAt:current.createdAt||null,updatedAt:current.updatedAt||null,
+    });
+  }
+  await col.updateOne({studentId:req.user._id},{$set:{session:diagnosticV2.createSession(),updatedAt:new Date()},$setOnInsert:{createdAt:new Date()}},{upsert:true});
+  res.json({ok:true});
+ }catch(error){next(error)}
 });
 app.get("/api/math/progress", requireApiRole("student"), async (req,res,next)=>{
   try {
