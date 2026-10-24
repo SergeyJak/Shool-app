@@ -25,7 +25,9 @@ try{
   };
  });
  await page.goto(pathToFileURL(file).href);
- await page.waitForFunction(()=>!document.getElementById("world").hidden);\n assert.equal(await page.$eval(".node",els=>els.length),5);\n assert.match(await page.$eval("#adventureLevelHeading",el=>el.textContent),/из 100/);
+ await page.waitForFunction(()=>!document.getElementById("world").hidden);
+ assert.equal(await page.$eval(".node",els=>els.length),5);
+ assert.match(await page.$eval("#adventureLevelHeading",el=>el.textContent),/из 100/);
  assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),1);
  await page.$eval(".node",el=>el.click());
  for(let i=0;i<10;i++){
