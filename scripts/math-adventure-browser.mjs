@@ -11,7 +11,19 @@ const html=fs.readFileSync(path.join(pub,"math-adventure.html"),"utf8").replace(
 const file=path.join(os.tmpdir(),"school-math-adventure-test.html");fs.writeFileSync(file,html);
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:["--no-sandbox","--disable-gpu"]});
 try{
- const page=await browser.newPage();await page.goto(pathToFileURL(file).href);
+ const page=await browser.newPage();
+ await page.evaluateOnNewDocument(()=>{
+  window.__adventurePosts=[];
+  window.fetch=async(url,opts={})=>{
+   if(url==="/api/math/adventure"&&(!opts.method||opts.method==="GET"))return {ok:true,json:async()=>({progress:null})};
+   if(url==="/api/math/adventure"&&opts.method==="POST"){
+    const body=JSON.parse(opts.body);window.__adventurePosts.push(body);
+    return {ok:true,json:async()=>({progress:{unlocked:1,stars:3,completed:[0]},passed:true})};
+   }
+   throw Error("Unexpected fetch "+url);
+  };
+ });
+ await page.goto(pathToFileURL(file).href);
  assert.equal(await page.$$eval(".node",els=>els.length),5);
  assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),1);
  await page.$eval(".node",el=>el.click());
@@ -23,6 +35,9 @@ try{
   await page.$eval("#next",el=>el.click());
  }
  assert.match(await page.$eval("#resultTitle",el=>el.textContent),/пройден/);
+ await page.waitForFunction(()=>window.__adventurePosts.length===1);
+ assert.deepEqual(await page.evaluate(()=>window.__adventurePosts[0]),{level:0,correct:10,total:10});
+ assert.match(await page.$eval("#resultText",el=>el.textContent),/сервере/);
  assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),2);
  await page.$eval("#return",el=>el.click());
  assert.match(await page.$eval("#summary",el=>el.textContent),/Звёзд: 3/);
