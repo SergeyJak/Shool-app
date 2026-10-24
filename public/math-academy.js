@@ -57,10 +57,10 @@ function renderDiagnosticV2(){
   const stats=$("resultStats");
   stats.replaceChildren();
   for(const [number,label] of [
-    [result.correct,"Получилось"],
-    [Math.max(0,result.skipped-(result.misunderstood||0)),"Пока не знаю"],
+    [result.correct??0,"Получилось"],
+    [Math.max(0,(result.skipped??0)-(result.misunderstood||0)),"Пока не знаю"],
     [result.misunderstood||0,"Не понял вопрос"],
-    [result.incorrect,"Попробуем ещё"]
+    [result.incorrect??0,"Попробуем ещё"]
   ]){
     const tile=document.createElement("div");tile.className="result-stat";
     const value=document.createElement("strong");value.textContent=String(number);
