@@ -92,5 +92,6 @@ async function startDiagnosticV2(restart=false){
 $("start").addEventListener("click",()=>void startDiagnosticV2());$("repeat").addEventListener("click",()=>void startDiagnosticV2(true));$("practice").addEventListener("click",()=>{const prev=state;state=null;try{localStorage.setItem(KEY,JSON.stringify(prev));}catch(_){} start("practice")});$("next").addEventListener("click",()=>{state.index++;save();render()});
 document.getElementById("retrySync")?.addEventListener("click",()=>{document.getElementById("retrySync").hidden=true;void submitAttempt()});
 void loadProgress();
+if(new URLSearchParams(location.search).get("start")==="1")void startDiagnosticV2();
 
 })();
