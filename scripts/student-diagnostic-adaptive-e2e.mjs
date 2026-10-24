@@ -56,8 +56,8 @@ try{
   await page.click("#options button");
   await page.waitForFunction(expected=>window.__v2Count===expected,{},i+1);
  }
- await page.waitForFunction(()=>document.querySelector("#resultLead").textContent.includes("19 заданий"));
- assert.match(await page.$eval("#adventureAssessment",e=>e.textContent),/начинается с уровня 42/);
+ await page.waitForFunction(()=>document.querySelector("#resultLead").textContent.includes("Правильно:"));
+ assert.match(await page.$eval("#adventureAssessment",e=>e.textContent),/старт: уровень 42/);
  await page.click("#repeat");
  await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("0 / 15–25"));
  assert.equal(await page.evaluate(()=>window.__v2Count),0);
