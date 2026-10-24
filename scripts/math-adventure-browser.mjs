@@ -17,7 +17,7 @@ try{
  await page.$eval(".node",el=>el.click());
  for(let i=0;i<10;i++){
   const prompt=await page.$eval("#question",el=>el.textContent);
-  const answer=prompt.includes("−")?Number(prompt.match(/^(\d+)/)[1])-Number(prompt.match(/− (\d+)/)[1]):Number(prompt.match(/^(\d+)/)[1])+Number(prompt.match(/\\+ (\d+)/)[1]);
+  const answer=prompt.includes("−")?Number(prompt.match(/^(\d+)/)[1])-Number(prompt.match(/− (\d+)/)[1]):Number(prompt.match(/^(\d+)/)[1])+Number(prompt.match(/\+ (\d+)/)[1]);
   const clicked=await page.$$eval("#choices button",(els,expected)=>{const el=els.find(e=>Number(e.textContent)===expected);if(!el)return false;el.click();return true},answer);
   assert.ok(clicked,"Correct answer must be available");
   await page.$eval("#next",el=>el.click());
