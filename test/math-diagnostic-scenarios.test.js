@@ -47,3 +47,40 @@ test("question IDs and canonical answers never leak into next question payload a
  assert.equal(typeof q.answer,"string");
  assert.ok(!Object.hasOwn(d.result(d.createSession()),"answers"));
 });
+
+test("diagnostic remains balanced across all seven skills for weak, strong and mixed students",()=>{
+ for(const strategy of [q=>q.answer,()=>"wrong",(q,s)=>s.answers.length%3===0?q.answer:"wrong"]){
+  const session=run(strategy);
+  const stats=d.result(session).skills;
+  assert.ok(Object.values(stats).every(x=>x.count>=2),"each skill must be sampled twice");
+  assert.ok(Math.max(...Object.values(stats).map(x=>x.count))-Math.min(...Object.values(stats).map(x=>x.count))<=1,"no skill should dominate");
+  assert.ok(d.result(session).confidence>=0.75,"completed placement should meet confidence threshold");
+ }
+});
+test("skill-specific weaknesses affect skill estimates and placement",()=>{
+ const strong=run(q=>q.answer);
+ const weakFractions=run(q=>q.skill==="fractions"?"wrong":q.answer);
+ const a=d.result(strong),b=d.result(weakFractions);
+ assert.ok(a.skills.fractions.estimate>b.skills.fractions.estimate);
+ assert.ok(a.level>b.level);
+ assert.ok(b.skills.fractions.estimate<b.skills.numbers.estimate);
+});
+test("question bank covers several mathematical operations and measurement concepts",()=>{
+ const prompts=d.BANK.map(q=>q.prompt);
+ assert.ok(prompts.some(p=>p.includes("×")),"multiplication");
+ assert.ok(prompts.some(p=>p.includes("Площадь")),"area");
+ assert.ok(prompts.some(p=>p.includes("Периметр")),"perimeter");
+ assert.ok(prompts.some(p=>p.includes("сантиметров")),"length conversion");
+ assert.ok(prompts.some(p=>p.includes("минут")),"time");
+ assert.ok(prompts.some(p=>p.includes("сдачи")),"multistep word problems");
+ for(const q of d.BANK)assert.ok(Number.isFinite(Number(q.answer)),"answer must be numeric: "+q.id);
+});
+test("empty, partial and finished assessments have coherent confidence and level",()=>{
+ const empty=d.result(d.createSession());
+ assert.equal(empty.answered,0);assert.equal(empty.confidence,0);assert.equal(empty.provisional,true);
+ const partial=d.createSession(),q=d.nextQuestion(partial),one=d.submitAnswer(partial,q.id,q.answer);
+ assert.equal(d.result(one).answered,1);assert.equal(d.result(one).provisional,true);
+ const done=run(q=>q.answer);
+ assert.equal(d.result(done).provisional,false);
+ assert.ok(d.result(done).level>=1&&d.result(done).level<=100);
+});
