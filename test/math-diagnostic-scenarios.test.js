@@ -93,7 +93,7 @@ test("number comparisons cannot be solved by always choosing the second operand"
 });
 test("advanced fractions include non-unit numerators and word problem answers vary",()=>{
  const fractions=d.BANK.filter(q=>q.skill==="fractions");
- assert.ok(fractions.some(q=>/равна [2-9]\\d*\\//.test(q.prompt)));
+ assert.ok(fractions.some(q=>q.prompt.includes("равна 2/")||q.prompt.includes("равна 3/")||q.prompt.includes("равна 4/")));
  const change=d.BANK.filter(q=>q.skill==="wordProblems"&&q.prompt.includes("сдачи"));
  assert.ok(new Set(change.map(q=>q.answer)).size>=5);
 });
