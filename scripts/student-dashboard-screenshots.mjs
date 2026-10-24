@@ -48,10 +48,10 @@ try {
     buttons:cards.map(c=>{const el=c.querySelector(".student-world-action"),s=getComputedStyle(el),before=getComputedStyle(el,"::before");
      return{...rect(el),background:s.backgroundImage,shadow:s.boxShadow,pseudo:before.content,text:el.textContent.trim()};})};
   });
-  assert.equal(metrics.cards.length,4,"World card count changed");
+  assert.equal(metrics.cards.length,5,"World card count changed");
   assert.ok(metrics.bodyWidth<=width+2,`Horizontal overflow at ${width}px`);
   for(const [index,c] of metrics.cards.entries())assert.ok(c.left>=-2&&c.right<=width+2,`Card ${index} escapes ${width}px viewport`);
-  const labels=["В путь","Играть","Исследовать","Открыть"];
+  const labels=["Играть","В путь","Играть","Исследовать","Открыть"];
   for(const [index,b] of metrics.buttons.entries()){
    assert.equal(b.text,labels[index]);
    assert.ok(b.background.includes("data:image/webp;base64,") || b.background.includes("btn-"),"Glossy asset missing");

@@ -11,13 +11,13 @@ const css = read("dashboard.css");
 const academy = read("math-academy.html");
 
 assert.equal((html.match(/id="studentMathPanel"/g) || []).length, 1, "Exactly one math-world hub");
-assert.equal((html.match(/class="student-world-card /g) || []).length, 4, "Exactly four math-world cards");
+assert.equal((html.match(/class="student-world-card /g) || []).length, 5, "Exactly five math-world cards");
 assert.doesNotMatch(html, /id="studentMathNav"/, "No duplicate Math tab in student header");
 assert.doesNotMatch(academy, /academy-world-grid/, "Academy cannot duplicate world-selection menu");
 assert.match(html, /href="\/math-academy#progress-map"/, "Progress must have a destination");
 assert.match(html, /href="\/math-academy#practice"/, "Training must have a destination");
 
-const worldLabels = ["В путь", "Играть", "Исследовать", "Открыть"];
+const worldLabels = ["Играть", "В путь", "Играть", "Исследовать", "Открыть"];
 for (const label of worldLabels) assert.ok(html.includes('class="student-world-action">' + label + "</span>"), "Missing arrow-free button " + label);
 const links = [["number-lab", "number"], ["fraction-builder", "fraction"]];
 for (const [game] of links) assert.match(read(game + ".html"), /href="\/cabinet#studentMathPanel">← К выбору игр/);
@@ -59,7 +59,7 @@ for (const width of [360, 412, 768]) {
  for (const [name,r] of [["header",result.header],["brand",result.brand],["account",result.account],...result.cards.map((r,i)=>["card"+i,r])])
   assert.ok(r.left>=-tolerance&&r.right<=result.screen+tolerance, `${width}px: ${name} escapes viewport: ${JSON.stringify(r)}`);
  assert.equal(result.navVisible,"none","Student must not see duplicate header nav");
- assert.equal(result.buttons.length,4);
+ assert.equal(result.buttons.length,5);
  const first=result.buttons[0];
  assert.ok(first.width>=110&&first.height>=38,`${width}px: game button shrank`);
  for (const [i,b] of result.buttons.entries()){
@@ -69,5 +69,5 @@ for (const width of [360, 412, 768]) {
   assert.equal(b.shadow,"none","Unexpected flat CSS shadow under image");
   assert.ok(b.pseudo==="none"||b.pseudo==="normal","Unexpected second button layer");
  }
- console.log("✓ student dashboard",width,"px: header fits, worlds fit, four identical single-image buttons");
+ console.log("✓ student dashboard",width,"px: header fits, worlds fit, five identical single-image buttons");
 }
