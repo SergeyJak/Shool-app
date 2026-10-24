@@ -9,12 +9,12 @@ const read=n=>fs.readFileSync(path.join(pub,n),"utf8");
 const chrome=[process.env.CHROME_BIN,"/usr/bin/google-chrome","/usr/bin/google-chrome-stable","/usr/bin/chromium","/usr/bin/chromium-browser"].filter(Boolean).find(fs.existsSync);
 assert.ok(chrome,"Chrome required");
 const mocks=`<script>
-window.__posts=[];window.__failSave=false;window.__v2Count=0;window.__v2Done=false;window.__v2Fail=false;
+window.__posts=[];window.__failSave=false;window.__v2Count=Number(localStorage.getItem("mock-v2-count")||0);window.__v2Done=window.__v2Count>=19;window.__v2Fail=false;
 const v2Response=()=>({question:window.__v2Done?null:{id:"d2-"+window.__v2Count,skill:"arithmetic",prompt:"Сколько будет 2 + 3?"},answered:window.__v2Count,finished:window.__v2Done,result:window.__v2Done?{level:42,provisional:true,skills:{arithmetic:{estimate:42,count:19}}}:null});
 window.fetch=async(url,opts={})=>{
  if(url==="/api/math/diagnostic-v2")return {ok:true,json:async()=>v2Response()};
- if(url==="/api/math/diagnostic-v2/restart"){window.__v2Count=0;window.__v2Done=false;return {ok:true,json:async()=>({ok:true})};}
- if(url==="/api/math/diagnostic-v2/answer"){if(window.__v2Fail)return {ok:false};window.__v2Count++;window.__v2Done=window.__v2Count>=19;return {ok:true,json:async()=>({...v2Response(),correct:true})};}
+ if(url==="/api/math/diagnostic-v2/restart"){window.__v2Count=0;window.__v2Done=false;localStorage.setItem("mock-v2-count","0");return {ok:true,json:async()=>({ok:true})};}
+ if(url==="/api/math/diagnostic-v2/answer"){if(window.__v2Fail)return {ok:false};window.__v2Count++;localStorage.setItem("mock-v2-count",String(window.__v2Count));window.__v2Done=window.__v2Count>=19;return {ok:true,json:async()=>({...v2Response(),correct:true})};}
  if(url==="/api/math/progress")return {ok:true,json:async()=>({attempts:[]})};
  if(url==="/api/math/skill-map")return {ok:true,json:async()=>({skills:{"Счёт":{percent:70,level:"Растёт"}},reviewOrigins:[1]})};
  if(url.startsWith("/api/math/adaptive"))return {ok:true,json:async()=>({skill:"Счёт",level:2,review:url.includes("review=1"),questions:[
