@@ -53,14 +53,14 @@ function renderDiagnosticV2(){
  if(diagnosticV2.finished){
   show("results");
   const result=diagnosticV2.result;
-  $("resultTitle").textContent="Отлично, ты справился!";
-  $("resultLead").textContent="Ты прошёл "+diagnosticV2.answered+" заданий. Теперь можно отправляться в приключение!";
+  $("resultTitle").textContent="Проверка закончена!";
+  $("resultLead").textContent="Правильно: "+result.correct+" · Не знаю: "+result.skipped+" · Ошибки: "+result.incorrect+". Теперь подберём задания для тебя.";
   $("adventureAssessment").textContent="Твой старт: уровень "+result.level;
   $("adventureLaunch").classList.remove("hidden");
   const entries=Object.entries(result.skills);
   const strongest=entries.reduce((best,item)=>item[1].estimate>best[1].estimate?item:best,entries[0]);
   const weakest=entries.reduce((best,item)=>item[1].estimate<best[1].estimate?item:best,entries[0]);
-  $("resultHighlights").textContent="Лучше всего: "+(skillLabels[strongest[0]]||strongest[0])+" · Потренируем: "+(skillLabels[weakest[0]]||weakest[0]);
+  $("resultHighlights").textContent=result.correct===0?"Начнём с самых простых заданий. Всё получится!":result.correct<=3?"Начнём с простых заданий и будем учиться постепенно.":"Получается лучше всего: "+(skillLabels[strongest[0]]||strongest[0])+". Потренируем: "+(skillLabels[weakest[0]]||weakest[0])+".";
   $("skills").replaceChildren();
   for(const [name,score] of entries){
    const item=document.createElement("div");item.className="skill";
