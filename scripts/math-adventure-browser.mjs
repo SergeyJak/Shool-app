@@ -15,7 +15,7 @@ try{
  await page.evaluateOnNewDocument(()=>{
   window.__adventurePosts=[];
   window.fetch=async(url,opts={})=>{
-   if(url==="/api/math/adventure"&&(!opts.method||opts.method==="GET"))return {ok:true,json:async()=>({progress:null})};
+   if(url==="/api/math/progress")return {ok:true,json:async()=>({attempts:[{mode:"diagnostic",correct:8,total:12}]})};\n   if(url==="/api/math/adventure"&&(!opts.method||opts.method==="GET"))return {ok:true,json:async()=>({progress:null})};
    if(url==="/api/math/adventure"&&opts.method==="POST"){
     const body=JSON.parse(opts.body);window.__adventurePosts.push(body);
     return {ok:true,json:async()=>({progress:{unlocked:1,stars:3,completed:[0]},passed:true})};
@@ -24,7 +24,7 @@ try{
   };
  });
  await page.goto(pathToFileURL(file).href);
- assert.equal(await page.$$eval(".node",els=>els.length),5);
+ await page.waitForFunction(()=>!document.getElementById("world").hidden);\n assert.equal(await page.$eval(".node",els=>els.length),5);\n assert.match(await page.$eval("#adventureLevelHeading",el=>el.textContent),/из 100/);
  assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),1);
  await page.$eval(".node",el=>el.click());
  for(let i=0;i<10;i++){
