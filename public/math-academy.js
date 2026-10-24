@@ -73,15 +73,21 @@ function renderDiagnosticV2(){
  $("question").textContent=q.prompt;$("feedback").textContent="";$("next").classList.add("hidden");
  const field=document.createElement("input");field.className="option";field.inputMode="decimal";field.setAttribute("aria-label","Ответ");
  const submit=document.createElement("button");submit.className="option";submit.textContent="Ответить";
+ const skip=document.createElement("button");skip.className="secondary";skip.type="button";skip.textContent="Не знаю · дальше →";
  submit.addEventListener("click",async()=>{
-  submit.disabled=true;
+  submit.disabled=true;skip.disabled=true;
   try{
    diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:field.value})});
    renderDiagnosticV2();
-  }catch(_){$("feedback").textContent="Ошибка сохранения. Повтори попытку.";submit.disabled=false;}
+  }catch(_){$("feedback").textContent="Ошибка сохранения. Повтори попытку.";submit.disabled=false;skip.disabled=false;}
+ });
+ skip.addEventListener("click",async()=>{
+  submit.disabled=true;skip.disabled=true;
+  try{diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:null})});renderDiagnosticV2();}
+  catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";submit.disabled=false;skip.disabled=false;}
  });
  field.addEventListener("keydown",event=>{if(event.key==="Enter")submit.click()});
- $("options").replaceChildren(field,submit);
+ $("options").replaceChildren(field,submit,skip);
 }
 async function startDiagnosticV2(restart=false){
  try{
