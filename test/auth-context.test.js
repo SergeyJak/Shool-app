@@ -75,7 +75,7 @@ test("expired session and guest tokens are rejected", () => {
   assert.equal(parseGuestToken(guest, SECRET), null);
 });
 
-test("cookies are HttpOnly, root-scoped, secure, with strict account and lax guest policy", () => {
+test("cookies are HttpOnly, root-scoped, secure, with lax account and guest policy", () => {
   const session = sessionCookie("token");
   const guest = guestCookie("token");
 
@@ -85,7 +85,7 @@ test("cookies are HttpOnly, root-scoped, secure, with strict account and lax gue
     assert.match(value, /Secure/);
     assert.match(value, /Max-Age=/);
   }
-  assert.match(session, /SameSite=Strict/);
+  assert.match(session, /SameSite=Lax/);
   assert.match(guest, /SameSite=Lax/);
 });
 
@@ -269,5 +269,5 @@ test("guest cookie is Lax so permanent links work from messaging apps", () => {
   assert.match(guest, /SameSite=Lax/);
   assert.match(guest, /HttpOnly/);
   assert.match(guest, /Secure/);
-  assert.match(session, /SameSite=Strict/);
+  assert.match(session, /SameSite=Lax/);
 });
