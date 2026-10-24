@@ -37,6 +37,7 @@ const {
 const { resolveIdentityFromCookies } = require("./lib/session-context");
 const { canAccessLesson } = require("./lib/lesson-access");
 const { validateAttempt } = require("./lib/math-assessment");
+const diagnosticV2 = require("./lib/math-diagnostic-v2");
 const { buildSession, buildReviewSession, QUESTIONS: ADAPTIVE_QUESTIONS } = require("./lib/math-adaptive");
 const { summarizeSkills, mistakes } = require("./lib/math-progress");
 const {
@@ -2028,6 +2029,37 @@ app.get("/api/math/adaptive", requireApiRole("student"), async (req,res,next)=>{
     const attempts=await mathAttempts.find({studentId:req.user._id},{projection:{_id:0}}).sort({createdAt:-1}).limit(20).toArray();
     res.json(req.query.review==="1"?buildReviewSession(attempts):buildSession(attempts));
   }catch(error){next(error);}
+});
+// Server-authoritative diagnostic: clients never submit their own score or question order.
+app.get("/api/math/diagnostic-v2", requireApiRole("student"), async (req,res,next)=>{
+ try{
+  const col=db.collection(collectionName("math_diagnostic_v2"));
+  const row=await col.findOne({studentId:req.user._id});
+  const session=row?.session||diagnosticV2.createSession();
+  const question=diagnosticV2.nextQuestion(session);
+  res.json({question:question?{id:question.id,skill:question.skill,prompt:question.prompt}:null,answered:session.answers.length,finished:session.finished,result:session.finished?diagnosticV2.result(session):null});
+ }catch(error){next(error);}
+});
+app.post("/api/math/diagnostic-v2/answer", requireApiRole("student"), async (req,res,next)=>{
+ try{
+  if(typeof req.body?.id!=="string"||!["string","number"].includes(typeof req.body?.value)||String(req.body.value).length>50)return res.status(400).json({error:"INVALID_ANSWER"});
+  const col=db.collection(collectionName("math_diagnostic_v2"));
+  const row=await col.findOne({studentId:req.user._id});
+  const session=row?.session||diagnosticV2.createSession();
+  let updated;
+  try{updated=diagnosticV2.submitAnswer(session,req.body.id,req.body.value);}catch(_){return res.status(409).json({error:"QUESTION_MISMATCH"});}
+  const query=row?{_id:row._id,"session.asked":session.asked}:{studentId:req.user._id,session:{$exists:false}};
+  const write=await col.updateOne(query,{$set:{session:updated,updatedAt:new Date()}},{upsert:!row});
+  if(!write.modifiedCount&&!write.upsertedCount)return res.status(409).json({error:"CONCURRENT_ANSWER"});
+  const question=diagnosticV2.nextQuestion(updated);
+  res.json({correct:updated.answers.at(-1).correct,question:question?{id:question.id,skill:question.skill,prompt:question.prompt}:null,answered:updated.answers.length,finished:updated.finished,result:updated.finished?diagnosticV2.result(updated):null});
+ }catch(error){next(error);}
+});
+app.post("/api/math/diagnostic-v2/restart", requireApiRole("student"), async (req,res,next)=>{
+ try{
+  await db.collection(collectionName("math_diagnostic_v2")).updateOne({studentId:req.user._id},{$set:{session:diagnosticV2.createSession(),updatedAt:new Date()}},{upsert:true});
+  res.json({ok:true});
+ }catch(error){next(error);}
 });
 app.get("/api/math/progress", requireApiRole("student"), async (req,res,next)=>{
   try {
