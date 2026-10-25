@@ -1,8 +1,8 @@
 "use strict";
 const test=require("node:test"),assert=require("node:assert/strict");
 const d=require("../lib/math-diagnostic-v2");
-test("bank has 210 unique, answerable questions across seven skills",()=>{
- assert.equal(d.BANK.length,210);assert.equal(new Set(d.BANK.map(q=>q.id)).size,210);
+test("bank has 230 unique, answerable questions across seven skills",()=>{
+ assert.equal(d.BANK.length,230);assert.equal(new Set(d.BANK.map(q=>q.id)).size,230);
  assert.equal(new Set(d.BANK.map(q=>q.skill)).size,7);
  assert.ok(d.BANK.every(q=>q.explanation&&q.difficulty>=1&&q.difficulty<=100));
 });
@@ -37,4 +37,11 @@ test("diagnostic review exposes only missed questions with verified answers",()=
  assert.equal(summary.review[1].skipped,true);
  assert.equal(summary.review[1].expectedAnswer,third.answer);
  assert.equal(summary.correct+summary.incorrect+summary.skipped,summary.answered);
+});
+
+test("diagnostic asks at least two multiplication and division questions",()=>{
+ let s=d.createSession();while(!s.finished){const q=d.nextQuestion(s);s=d.submitAnswer(s,q.id,q.answer);}
+ const arithmetic=s.answers.filter(a=>a.skill==="arithmetic");
+ assert.ok(arithmetic.filter(a=>a.prompt.includes("×")).length>=2);
+ assert.ok(arithmetic.filter(a=>a.prompt.includes("Раздели")).length>=2);
 });
