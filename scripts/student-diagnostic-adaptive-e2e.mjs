@@ -37,7 +37,7 @@ try{
  await page.waitForFunction(()=>document.querySelector("#skillMap .skill")!==null);
  assert.match(await page.$eval("#skillMapStatus",e=>e.textContent),/30 занятий/);
  await page.click("#start");
- await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("15–25"));
+ await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("до 42 вопросов"));
  assert.match(await page.$eval("#question",e=>e.textContent),/2 \+ 3/);
  await page.$eval("#options input",el=>{el.value="5";el.dispatchEvent(new Event("input",{bubbles:true}));});
  await page.evaluate(()=>window.__v2Fail=true);
@@ -49,9 +49,9 @@ try{
  await page.waitForFunction(()=>window.__v2Count===1);
  await page.reload({waitUntil:"load"});
  await page.click("#start");
- await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("1 / 15–25"));
+ await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("1 · до 42 вопросов"));
  for(let i=1;i<19;i++){
-  await page.waitForFunction(expected=>document.querySelector("#options input")!==null&&document.querySelector("#progress")?.textContent.includes(expected+" / 15–25"),{timeout:10000},i);
+  await page.waitForFunction(expected=>document.querySelector("#options input")!==null&&document.querySelector("#progress")?.textContent.includes(expected+" · до 42 вопросов"),{timeout:10000},i);
   await page.$eval("#options input",el=>{el.value="5";el.dispatchEvent(new Event("input",{bubbles:true}));});
   await page.click("#options button");
   await page.waitForFunction(expected=>window.__v2Count===expected,{},i+1);
@@ -60,7 +60,7 @@ try{
  assert.match(await page.$eval("#resultTitle",e=>e.textContent),/Задания пройдены/);
  assert.match(await page.$eval("#adventureAssessment",e=>e.textContent),/старт: уровень 42/);
  await page.click("#repeat");
- await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("0 / 15–25"));
+ await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("0 · до 42 вопросов"));
  assert.equal(await page.evaluate(()=>window.__v2Count),0);
  await page.click("#adaptiveStart");
  await page.waitForFunction(()=>document.querySelector("#adaptivePanel").hidden===false);
