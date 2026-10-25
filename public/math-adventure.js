@@ -64,8 +64,8 @@ function renderApples(){
  const [inBasket,toAdd]=appleTasks[appleStep];appleCount=0;answered=false;
  $("counter").textContent="Игра "+(appleStep+1)+" из "+appleTasks.length;
  $("meterFill").style.width=(appleStep/appleTasks.length*100)+"%";
- $("question").textContent="Помоги совёнку собрать яблоки!";
- $("feedback").textContent="В корзине уже "+inBasket+" яблока. Добавь ещё "+toAdd+".";
+ $("question").textContent="Нажми на "+toAdd+" "+(toAdd===1?"яблоко":toAdd<5?"яблока":"яблок")+" внизу, чтобы положить их в корзину.";
+ $("feedback").textContent="Нажимай на яблоки внизу. Каждое нажатие добавляет одно яблоко в корзину.";
  $("next").classList.add("hidden");
  const area=$("choices");area.replaceChildren();area.classList.add("apple-training");
  const existing=document.createElement("div");existing.className="apple-existing";existing.setAttribute("aria-label","В корзине "+inBasket+" яблок");
@@ -73,8 +73,8 @@ function renderApples(){
  const orchard=document.createElement("div");orchard.className="apple-orchard";
  const counter=document.createElement("p");counter.className="apple-counter";
  const hint=document.createElement("button");hint.type="button";hint.className="apple-hint";hint.textContent="Подсказка";
- const update=()=>{basket.textContent="🧺 "+ "🍎".repeat(appleCount);counter.textContent="Добавлено: "+appleCount+" из "+toAdd;};
- existing.textContent="Уже есть: "+ "🍎".repeat(inBasket);
+ const update=()=>{basket.textContent="🧺 "+ "🍎".repeat(appleCount);counter.textContent="Положено: "+appleCount+" из "+toAdd;};
+ existing.textContent="В корзине: "+ "🍎".repeat(inBasket);
  for(let i=0;i<toAdd+3;i++){
   const apple=document.createElement("button");apple.type="button";apple.className="apple-pick";apple.textContent="🍎";apple.setAttribute("aria-label","Положить яблоко в корзину");
   apple.addEventListener("click",()=>{if(answered)return;if(appleCount>=toAdd){$("feedback").textContent="В корзине уже достаточно яблок. Можно убрать лишнее.";return}appleCount++;apple.disabled=true;update();if(appleCount===toAdd){answered=true;correct++;$("feedback").textContent="Получилось! "+inBasket+" + "+toAdd+" = "+(inBasket+toAdd)+". Посчитай все яблоки вместе."; $("next").classList.remove("hidden")}});
