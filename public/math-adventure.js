@@ -2,7 +2,7 @@
 (()=>{
 const KEY="school-math-adventure-v2";
 const LEGACY_KEY="school-math-adventure-v1";
-const BUILD="20261025-bridge-first-map-r2";
+const BUILD="20261025-log-truck-visual-r4";
 const TOTAL_LEVELS=100;
 const themes=[{name:"Солнечная поляна",x:18,y:80,type:"numbers"},{name:"Мост примеров",x:38,y:60,type:"numbers"},{name:"Развилка задач",x:68,y:75,type:"word"},{name:"Тропа фигур",x:72,y:36,type:"geometry"},{name:"Дракон знаний",x:43,y:22,type:"boss"}];
 const levels=Array.from({length:TOTAL_LEVELS},(_,i)=>({...themes[i%5],name:themes[i%5].name+" · "+(i+1),index:i}));
@@ -103,7 +103,7 @@ function renderBridge(){
  $("feedback").textContent="Нажимай на брёвна 🪵 в кузове. Машина поедет, когда останется ровно "+safe+".";
  $("next").classList.add("hidden");
  const area=$("choices");area.replaceChildren();area.classList.add("apple-training");
- const bridge=document.createElement("div");bridge.className="bridge-board";bridge.setAttribute("aria-label","Брёвна в кузове грузовика");
+ const bridge=document.createElement("div");bridge.className="bridge-board truck-scene";bridge.setAttribute("aria-label","Брёвна в кузове грузовика");
  const count=document.createElement("p");count.className="apple-counter";
  const hint=document.createElement("button");hint.type="button";hint.className="apple-hint";hint.textContent="Подсказка";
  const update=()=>{
@@ -123,7 +123,7 @@ function renderBridge(){
    board.classList.add("removed");bridgeRemaining--;update();
    if(bridgeRemaining===total-remove){
     answered=true;correct++;
-    $("feedback").textContent="🚚 Поехали! "+total+" − "+remove+" = "+bridgeRemaining+". Грузовик отправился в путь!";
+    bridge.classList.add("truck-ready");cab.classList.add("truck-driving");status.textContent="✅ Можно ехать!";$("feedback").textContent="🚚 Поехали! "+total+" − "+remove+" = "+bridgeRemaining+". Грузовик отправился в путь!";
     $("next").classList.remove("hidden");
    }
   });
@@ -133,7 +133,9 @@ function renderBridge(){
   const removed=total-bridgeRemaining;
   $("feedback").textContent="В кузове было "+total+" брёвен, а машина везёт не больше "+safe+". Нажми ещё на "+(remove-removed)+" брёвен, чтобы выгрузить их.";
  });
- area.append(bridge,count,hint);update();
+ const cab=document.createElement("div");cab.className="truck-cab";cab.textContent="🚚";cab.setAttribute("aria-hidden","true");
+ const status=document.createElement("div");status.className="truck-status";status.textContent="⛔ Перегруз";
+ bridge.prepend(status);area.append(cab,bridge,count,hint);update();
 }
 function finishBridge(){
  if(!saved.completed.includes(1)){saved.completed.push(1);saved.stars+=3}
