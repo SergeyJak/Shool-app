@@ -95,12 +95,12 @@ function finishApples(){
  void syncResult(0,10);
 }
 function renderBridge(){
- const [total,remove]=bridgeTasks[bridgeStep];
+ const [total,remove]=bridgeTasks[bridgeStep];const safe=total-remove;const friend=["🐿️ Белочка","🐰 Зайчик","🦔 Ёжик","🐻 Медвежонок","🦊 Лисёнок"][bridgeStep];
  bridgeRemaining=total;answered=false;
  $("counter").textContent="Мост "+(bridgeStep+1)+" из "+bridgeTasks.length;
  $("meterFill").style.width=(bridgeStep/bridgeTasks.length*100)+"%";
- $("question").textContent="Помоги совёнку убрать лишние доски!";
- $("feedback").textContent="На мосту "+total+" досок. Убери "+remove+", чтобы остались только нужные.";
+ $("question").textContent=friend+" хочет перейти ручей. На старом мосту "+total+" досок, а для нового нужно оставить "+safe+". Убери лишние доски!";
+ $("feedback").textContent="Нажимай на доски 🪵, чтобы убрать их. Цель: оставить ровно "+safe+" досок.";
  $("next").classList.add("hidden");
  const area=$("choices");area.replaceChildren();area.classList.add("apple-training");
  const bridge=document.createElement("div");bridge.className="bridge-board";bridge.setAttribute("aria-label","Доски на мосту");
@@ -108,7 +108,7 @@ function renderBridge(){
  const hint=document.createElement("button");hint.type="button";hint.className="apple-hint";hint.textContent="Подсказка";
  const update=()=>{
   const removed=total-bridgeRemaining;
-  count.textContent="Убрано "+removed+" из "+remove+". Осталось "+bridgeRemaining+".";
+  count.textContent="На мосту: "+bridgeRemaining+" · Нужно: "+safe;
  };
  for(let j=0;j<total;j++){
   const board=document.createElement("button");board.type="button";board.className="bridge-plank";
@@ -123,7 +123,7 @@ function renderBridge(){
    board.classList.add("removed");bridgeRemaining--;update();
    if(bridgeRemaining===total-remove){
     answered=true;correct++;
-    $("feedback").textContent="Мост готов! "+total+" − "+remove+" = "+bridgeRemaining+".";
+    $("feedback").textContent="Мост готов! "+total+" − "+remove+" = "+bridgeRemaining+". "+friend+" может перейти ручей!";
     $("next").classList.remove("hidden");
    }
   });
@@ -131,7 +131,7 @@ function renderBridge(){
  }
  hint.addEventListener("click",()=>{
   const removed=total-bridgeRemaining;
-  $("feedback").textContent="Вычитание означает убрать часть. Уже убрано "+removed+". Убери ещё "+(remove-removed)+" досок, нажимая на них.";
+  $("feedback").textContent="Вычитание означает убрать часть. Было "+total+" досок, должно остаться "+safe+". Убери ещё "+(remove-removed)+" досок, нажимая на них.";
  });
  area.append(bridge,count,hint);update();
 }
