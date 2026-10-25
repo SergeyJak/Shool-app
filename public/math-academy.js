@@ -103,7 +103,7 @@ function renderDiagnosticV2(){
  $("progress").textContent=diagnosticV2.answered+" · до 42 вопросов";
  $("progressFill").style.width=(diagnosticV2.answered/42*100)+"%";
  $("question").textContent=q.prompt;$("feedback").textContent="";$("next").classList.add("hidden");
- const field=document.createElement("input");field.className="option";field.inputMode="decimal";field.setAttribute("aria-label","Твой ответ");field.placeholder="Ответ";field.autocomplete="off";
+ const field=document.createElement("input");field.className="option";field.inputMode="decimal";field.setAttribute("aria-label","Твой ответ");field.placeholder="Введи число…";field.autocomplete="off";
  const submit=document.createElement("button");submit.className="option";submit.textContent="Ответить";submit.disabled=true;
  const syncSubmit=()=>{submit.disabled=field.value.trim().length===0;};
  field.addEventListener("input",syncSubmit);
@@ -128,7 +128,8 @@ function renderDiagnosticV2(){
   try{diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:"__MISUNDERSTOOD__"})});renderDiagnosticV2();}
   catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";syncSubmit();skip.disabled=false;unclear.disabled=false;}
  });
- $("options").replaceChildren(field,submit,skip,unclear);
+ const answerLabel=document.createElement("label");answerLabel.className="diagnostic-answer-label";answerLabel.textContent="Твой ответ";answerLabel.htmlFor="diagnostic-answer";field.id="diagnostic-answer";
+ $("options").replaceChildren(answerLabel,field,submit,skip,unclear);
 }
 async function startDiagnosticV2(restart=false){
  try{
