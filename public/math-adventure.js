@@ -88,12 +88,16 @@ function renderApples(){
  basket.addEventListener("animationend",()=>{if(answered){receiver.textContent=friend+" получил "+goal+" яблок! 🎉";$("feedback").textContent="Ура! "+friend+" получил все "+goal+" яблок. "+inBasket+" + "+toAdd+" = "+goal+".";}});
  area.append(existing,basket,receiver,orchard,counter,hint);update();
 }
+function celebrateLevel(){
+ const panel=$("result");let stage=panel.querySelector(".level-celebration");if(!stage){stage=document.createElement("div");stage.className="level-celebration";stage.setAttribute("aria-hidden","true");const owl=document.createElement("img");owl.className="celebration-owl";owl.src="/assets/math-adventure/characters/owl-mascot.svg";owl.alt="";stage.append(owl);for(let i=0;i<18;i++){const spark=document.createElement("span");spark.className="celebration-spark";spark.style.setProperty("--i",String(i));spark.style.setProperty("--angle",(i*137.5)+"deg");spark.style.setProperty("--distance",(70+i%4*18)+"px");spark.textContent=["✦","★","✳","✧"][i%4];stage.append(spark)}panel.insertBefore(stage,$("resultTitle"));}
+ stage.classList.remove("celebration-play");void stage.offsetWidth;stage.classList.add("celebration-play");
+}
 function finishApples(){
  if(!saved.completed.includes(0)){saved.completed.push(0);saved.stars+=3}
  saved.unlocked=Math.max(saved.unlocked,1);persist();
  $("resultTitle").textContent="Яблоки собраны!";
  $("resultText").textContent="Ты научился складывать яблоки в корзину. Подсказки можно использовать сколько угодно. Следующая остановка открыта.";
- $("meterFill").style.width="100%";show("result");chapter=0;map();$("result").scrollIntoView({block:"start",behavior:"instant"});
+ $("meterFill").style.width="100%";show("result");celebrateLevel();chapter=0;map();$("result").scrollIntoView({block:"start",behavior:"instant"});
  void syncResult(0,10);
 }
 function renderBridge(){
@@ -144,7 +148,7 @@ function finishBridge(){
  saved.unlocked=Math.max(saved.unlocked,2);persist();
  $("resultTitle").textContent="Мост построен!";
  $("resultText").textContent="Ты научился вычитать: убирать часть и считать, сколько осталось. Следующая остановка открыта.";
- $("meterFill").style.width="100%";show("result");chapter=0;map();
+ $("meterFill").style.width="100%";show("result");celebrateLevel();chapter=0;map();
  $("result").scrollIntoView({block:"start",behavior:"instant"});void syncResult(1,10);
 }
 function render(){answered=false;$("feedback").textContent="";$("next").classList.add("hidden");$("counter").textContent=`Задание ${round+1} из ${questions.length}`;$("meterFill").style.width=round/questions.length*100+"%";const [q,answer]=questions[round];$("question").textContent=q;$("choices").replaceChildren();for(const val of options(answer,round)){const btn=document.createElement("button");btn.textContent=val;btn.addEventListener("click",()=>{if(answered)return;answered=true;if(val===answer)correct++;$("feedback").textContent=val===answer?"Правильно! ⭐":`Пока нет. Правильный ответ: ${answer}`;for(const b of $("choices").children)b.disabled=true;$("next").classList.remove("hidden");$("next").scrollIntoView({block:"nearest",behavior:"smooth"})});$("choices").append(btn)}}
