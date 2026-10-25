@@ -61,11 +61,11 @@ async function checkAssessment(){
 function map(){document.querySelectorAll(".node").forEach(n=>n.remove());const first=chapter*5;const scenes=["forest","river","mountains","castle","clearing","cave","sunset","boss-arena"];$("world").style.backgroundImage=`url("/assets/math-adventure/backgrounds/${scenes[chapter%scenes.length]}.svg")`;$("chapterTitle").textContent=`Глава ${chapter+1} из 20`;$("chapterPrev").disabled=chapter===0;$("chapterNext").disabled=chapter>=Math.floor(saved.unlocked/5);levels.slice(first,first+5).forEach((level,j)=>{const i=first+j;const btn=document.createElement("button");btn.className="node";btn.style.left=themes[j].x+"%";btn.style.top=themes[j].y+"%";btn.disabled=i>saved.unlocked;btn.setAttribute("aria-label",level.name+(btn.disabled?", закрыт":""));const img=document.createElement("img");img.alt="";img.src="/assets/math-adventure/map/"+(j===4?"boss-node.svg":i>saved.unlocked?"locked-node.svg":saved.completed.includes(i)?"node-complete.svg":"path-node.svg");const label=document.createElement("span");label.textContent=level.name;const number=document.createElement("b");number.className="node-number";number.textContent=saved.completed.includes(i)?"✓":i<=saved.unlocked?String(i+1):"";btn.append(img,number,label);btn.addEventListener("click",()=>start(i));$("world").append(btn)});$("summary").textContent=`Твой стартовый уровень: ${startingLevel} из 100. Открыт этап ${saved.unlocked+1} из ${levels.length}. Звёзд: ${saved.stars}. Первая остановка — обучающая игра без штрафов.`}
 function start(i){if(i>saved.unlocked)return;current=i;round=0;correct=0;questions=Array.from({length:10},(_,j)=>task(levels[i].type,j,i));$("levelName").textContent=levels[i].name;show("game");if(i===0){appleStep=0;appleHints=0;renderApples()}else if(i===1){bridgeStep=0;renderBridge()}else render();$("game").scrollIntoView({block:"start",behavior:"instant"})}
 function renderApples(){
- const [inBasket,toAdd]=appleTasks[appleStep];appleCount=0;answered=false;
+ const [inBasket,toAdd]=appleTasks[appleStep];const friend=["🐿️ Белочка","🐰 Зайчик","🦔 Ёжик","🐻 Медвежонок","🦊 Лисёнок"][appleStep];const goal=inBasket+toAdd;appleCount=0;answered=false;
  $("counter").textContent="Игра "+(appleStep+1)+" из "+appleTasks.length;
  $("meterFill").style.width=(appleStep/appleTasks.length*100)+"%";
- $("question").textContent="Помоги совёнку собрать яблоки!";
- $("feedback").textContent="В корзине уже "+inBasket+" яблока. Добавь ещё "+toAdd+".";
+ $("question").textContent=friend+" ждёт "+goal+" яблок. В корзине уже "+inBasket+". Нажми на яблоки внизу и собери ровно "+goal+"!";
+ $("feedback").textContent="Цель: угостить друга "+goal+" яблоками. Нажимай на яблоки внизу, они попадут в корзину.";
  $("next").classList.add("hidden");
  const area=$("choices");area.replaceChildren();area.classList.add("apple-training");
  const existing=document.createElement("div");existing.className="apple-existing";existing.setAttribute("aria-label","В корзине "+inBasket+" яблок");
@@ -73,17 +73,17 @@ function renderApples(){
  const orchard=document.createElement("div");orchard.className="apple-orchard";
  const counter=document.createElement("p");counter.className="apple-counter";
  const hint=document.createElement("button");hint.type="button";hint.className="apple-hint";hint.textContent="Подсказка";
- const update=()=>{basket.textContent="🧺 "+ "🍎".repeat(appleCount);counter.textContent="Добавлено: "+appleCount+" из "+toAdd;};
- existing.textContent="Уже есть: "+ "🍎".repeat(inBasket);
+ const update=()=>{basket.textContent="🧺 "+ "🍎".repeat(inBasket+appleCount);counter.textContent="Собрано: "+(inBasket+appleCount)+" из "+goal;};
+ existing.textContent="🎯 Нужно: "+goal+" 🍎 · Уже есть: "+inBasket+" 🍎";
  for(let i=0;i<toAdd+3;i++){
   const apple=document.createElement("button");apple.type="button";apple.className="apple-pick";apple.textContent="🍎";apple.setAttribute("aria-label","Положить яблоко в корзину");
-  apple.addEventListener("click",()=>{if(answered)return;if(appleCount>=toAdd){$("feedback").textContent="В корзине уже достаточно яблок. Можно убрать лишнее.";return}appleCount++;apple.disabled=true;update();if(appleCount===toAdd){answered=true;correct++;$("feedback").textContent="Получилось! "+inBasket+" + "+toAdd+" = "+(inBasket+toAdd)+". Посчитай все яблоки вместе."; $("next").classList.remove("hidden")}});
+  apple.addEventListener("click",()=>{if(answered)return;if(appleCount>=toAdd){$("feedback").textContent="В корзине уже достаточно яблок. Можно убрать лишнее.";return}appleCount++;apple.disabled=true;update();if(appleCount===toAdd){answered=true;correct++;$("feedback").textContent="Получилось! "+inBasket+" + "+toAdd+" = "+goal+". "+friend+" получил угощение!"; $("next").classList.remove("hidden")}});
   orchard.append(apple);
  }
  basket.addEventListener("click",()=>{if(answered||appleCount===0)return;appleCount--;for(const b of orchard.children){if(b.disabled){b.disabled=false;break}}update()});
  basket.setAttribute("role","button");basket.setAttribute("tabindex","0");basket.setAttribute("aria-label","Убрать последнее яблоко из корзины");
  basket.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();basket.click()}});
- hint.addEventListener("click",()=>{appleHints++;$("feedback").textContent="Посчитай: "+inBasket+" уже в корзине, нужно положить ещё "+toAdd+". Осталось добавить "+(toAdd-appleCount)+". Нажимай на яблоки по одному.";});
+ hint.addEventListener("click",()=>{appleHints++;$("feedback").textContent="Осталось добавить "+(toAdd-appleCount)+" яблок. В корзине "+(inBasket+appleCount)+", а другу нужно "+goal+". Нажимай на яблоки по одному.";});
  area.append(existing,basket,orchard,counter,hint);update();
 }
 function finishApples(){
