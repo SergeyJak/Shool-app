@@ -69,9 +69,9 @@ try{
  await page.waitForFunction(()=>window.__adventurePosts.length===1);
  assert.deepEqual(await page.evaluate(()=>window.__adventurePosts[0]),{level:1,correct:10,total:10});
  await page.$eval("#return",el=>el.click());
- assert.equal(await page.$eval(".node:not(:disabled)",els=>els.length),3);
+ assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),3);
  await page.reload();
- assert.equal(await page.$eval(".node:not(:disabled)",els=>els.length),3);
+ assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),3);
  console.log("✓ adventure: apple and bridge training, hints, unlock, persisted progress");
  await page.close();
 }finally{await browser.close();}
