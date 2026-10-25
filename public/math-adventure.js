@@ -213,16 +213,16 @@ function renderDragon(){
  const area=$("choices");area.replaceChildren();area.className="choices dragon-game";
  const scene=document.createElement("div");scene.className="dragon-scene";const dragon=document.createElement("div");dragon.className="dragon-character";dragon.textContent="🐉";dragon.setAttribute("aria-hidden","true");
  const shield=document.createElement("div");shield.className="dragon-shields";shield.textContent="⭐".repeat(4-stage)+"☆".repeat(stage);scene.append(shield,dragon);
- const activity=document.createElement("div");activity.className="dragon-activity";scene.append(activity);
+ const activity=document.createElement("div");activity.className="dragon-activity";scene.append(activity);const wrong=document.createElement("div");wrong.className="dragon-error-banner";wrong.setAttribute("role","alert");wrong.setAttribute("aria-live","assertive");wrong.textContent="Попробуй ещё раз!";scene.append(wrong);
  const controls=document.createElement("div");controls.className="dragon-controls";const note=document.createElement("p");note.className="dragon-instruction";
  const actions=document.createElement("div");actions.className="dragon-actions";
  const check=document.createElement("button");check.type="button";check.className="dragon-check";check.textContent="Проверить";check.disabled=true;
  const reset=document.createElement("button");reset.type="button";reset.className="dragon-reset";reset.textContent="Сбросить";
  const complete=message=>{answered=true;correct++;scene.classList.add("dragon-success");shield.textContent="⭐".repeat(3-stage)+"☆".repeat(stage+1);$("feedback").textContent="✨ "+message;check.disabled=true;reset.disabled=true;$("next").classList.remove("hidden")};
- const key=(value,callback)=>{const b=document.createElement("button");b.type="button";b.className="dragon-key";b.textContent=String(value);b.addEventListener("click",()=>{if(!answered)callback(b)});controls.append(b);return b};
+ const key=(value,callback)=>{const b=document.createElement("button");b.type="button";b.className="dragon-key";b.textContent=String(value);b.addEventListener("click",()=>{if(!answered){scene.classList.remove("dragon-error");callback(b)}});controls.append(b);return b};
  let selected=0,correctAnswer=0,paint=()=>{},validate=()=>false;
- const attempt=()=>{if(answered)return;if(validate()){complete(["Дракон сыт!","Повозка поехала!","Все соседи дома!","Мост восстановлен!"][stage]);return}
- $("feedback").textContent="🐉 Дракон заметил ошибку. Попробуй ещё раз!";scene.classList.remove("dragon-shake");void scene.offsetWidth;scene.classList.add("dragon-shake");resetSelection()};
+ const attempt=()=>{if(answered)return;scene.classList.remove("dragon-error");if(validate()){complete(["Дракон сыт!","Повозка поехала!","Все соседи дома!","Мост восстановлен!"][stage]);return}
+ $("feedback").textContent="🐉 Дракон заметил ошибку. Попробуй ещё раз!";scene.classList.remove("dragon-shake");void scene.offsetWidth;scene.classList.add("dragon-shake","dragon-error");resetSelection()};
  let resetSelection=()=>{};check.addEventListener("click",attempt);
  if(stage===0){
   const existing=2,need=3;correctAnswer=need;note.textContent="Дракону нужно "+(existing+need)+" яблок. У него уже есть "+existing+". Сколько яблок нужно добавить? Выбери яблоки и нажми «Проверить».";
