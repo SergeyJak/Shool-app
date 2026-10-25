@@ -32,14 +32,20 @@ try{
  await page.$eval(".node",el=>el.click());
  assert.equal(await page.$eval("#world",el=>el.classList.contains("hidden")),true,"Map must hide while answering");
  assert.equal(await page.$eval("#game",el=>el.classList.contains("hidden")),false);
- for(let i=0;i<10;i++){
-  const prompt=await page.$eval("#question",el=>el.textContent);
-  const answer=prompt.includes("−")?Number(prompt.match(/^(\d+)/)[1])-Number(prompt.match(/− (\d+)/)[1]):Number(prompt.match(/^(\d+)/)[1])+Number(prompt.match(/\+ (\d+)/)[1]);
-  const clicked=await page.$$eval("#choices button",(els,expected)=>{const el=els.find(e=>Number(e.textContent)===expected);if(!el)return false;el.click();return true},answer);
-  assert.ok(clicked,"Correct answer must be available");
+ for(let i=0;i<5;i++){
+  assert.match(await page.$eval("#counter",el=>el.textContent),new RegExp("Игра "+(i+1)+" из 5"));
+  const target=[1,2,3,4,5][i];
+  await page.$eval(".apple-hint",el=>el.click());
+  assert.match(await page.$eval("#feedback",el=>el.textContent),/Осталось добавить/);
+  assert.equal(await page.$eval("#next",el=>el.classList.contains("hidden")),true);
+  for(let j=0;j<target;j++){
+   await page.$eval(".apple-pick:not(:disabled)",el=>el.click());
+  }
+  assert.match(await page.$eval("#feedback",el=>el.textContent),/Получилось/);
+  assert.equal(await page.$eval("#next",el=>el.classList.contains("hidden")),false);
   await page.$eval("#next",el=>el.click());
  }
- assert.match(await page.$eval("#resultTitle",el=>el.textContent),/пройден/);
+ assert.match(await page.$eval("#resultTitle",el=>el.textContent),/Яблоки собраны/);
  await page.waitForFunction(()=>window.__adventurePosts.length===1);
  assert.deepEqual(await page.evaluate(()=>window.__adventurePosts[0]),{level:0,correct:10,total:10});
  assert.match(await page.$eval("#resultText",el=>el.textContent),/сервере/);
@@ -49,6 +55,6 @@ try{
  await page.reload();
  assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),2);
  assert.match(await page.$eval("#summary",el=>el.textContent),/Звёзд: 3/);
- console.log("✓ adventure: locked nodes, 10 correct answers, unlock, stars, persisted progress");
+ console.log("✓ adventure: locked nodes, interactive apple training, hints, unlock, stars, persisted progress");
  await page.close();
 }finally{await browser.close();}
