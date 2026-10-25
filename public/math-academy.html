@@ -76,6 +76,23 @@ html.journey-mode body{
 .journey-mode #results .result-action-secondary{background:#e9e5ff;color:#4c3ac7}
 .journey-mode #results .result-action-tertiary{background:#fff;border:2px solid #ded8f5;color:#5848be}
 @media(max-width:360px){.journey-mode #results .result-stats{gap:7px}.journey-mode #results .result-action{font-size:16px}}
+</style><style>
+/* Compact, child-friendly diagnostic task layout */
+.journey-mode main{max-width:650px;background:#e9f9ffed!important;border-color:#fff!important}
+.journey-mode #play{padding:clamp(20px,4.5vw,30px)!important;border-radius:28px}
+.journey-mode #play .top{display:grid;grid-template-columns:1fr auto;align-items:start;gap:4px 12px}
+.journey-mode #mode{grid-column:1/-1;font-size:clamp(13px,3.2vw,17px);font-weight:800;color:#7461c7}
+.journey-mode #progress{font-size:clamp(23px,6vw,33px);font-weight:850;color:#26365c;white-space:normal}
+.journey-mode #play .meter{margin:16px 0 20px;height:9px}
+.journey-mode #question{font-size:clamp(22px,5.5vw,32px)!important;line-height:1.32!important;margin:0!important;padding:24px 18px;background:#f7f5ff;border-radius:22px;text-align:center;color:#27375f}
+.journey-mode #play #options:has(input.option){grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0 0}
+.journey-mode #play #options input.option{grid-column:1/-1;min-height:60px;background:#fff;font-size:24px}
+.journey-mode #play #options button:not(.secondary){grid-column:1/-1;min-height:60px;background:#715dea;color:#fff;font-size:21px;box-shadow:none;border-radius:18px}
+.journey-mode #play #options button.secondary{grid-column:auto;min-height:58px;font-size:clamp(14px,3.6vw,18px);padding:10px 6px;border-radius:18px}
+.journey-mode #play #options button.secondary:last-child{font-size:clamp(13px,3.4vw,17px)}
+.journey-mode #play #options button:disabled{opacity:.55}
+.journey-mode #play .feedback{margin:12px 0 0}
+@media(max-width:370px){.journey-mode #question{padding:20px 12px}.journey-mode #play #options:has(input.option){gap:8px}}
 </style></head>
 <body><header><a href="/cabinet#studentMathPanel"> К выбору игр</a><strong>🦉 School App</strong></header>
 <main><section class="card" id="diagnosticLoading" style="display:none" role="status" aria-live="polite"><h1>Готовим первое задание…</h1><p>Совёнок подбирает вопросы.</p></section><section class="card academy-tools-intro"><span class="tag">ТВОЯ МАТЕМАТИКА</span><h1>Мои успехи и тренировки</h1><p>Здесь совёнок помогает подобрать новые задания, повторить сложное и увидеть твои достижения.</p><a class="academy-back-to-worlds" href="/cabinet#studentMathPanel"> К выбору игр</a></section>
@@ -90,4 +107,4 @@ html.journey-mode body{
 <section class="card hidden" id="results"><div class="result-mascot" aria-hidden="true">🦉 <span>✨</span></div><p class="result-eyebrow">Миссия выполнена!</p><h2 id="resultTitle">Твоя карта знаний</h2><p class="result-subtitle">Ты прошёл проверку. Посмотри, сколько всего получилось!</p><div id="resultStats" class="result-stats" aria-label="Итоги диагностики"></div><p id="resultLead" class="result-lead"></p><p id="resultHighlights" class="result-highlights"></p><details id="diagnosticReview" class="skill-details" hidden><summary id="diagnosticReviewTitle">Разобрать ответы</summary><div id="diagnosticReviewItems" class="skills"></div></details><details class="skill-details"><summary>Посмотреть все темы</summary><div id="skills" class="skills"></div></details>
 <p class="result-encouragement">Каждый новый вопрос делает тебя сильнее!</p><p id="adventureAssessment" class="result-level"></p><p id="syncStatus" class="small" role="status"></p><button id="retrySync" class="secondary" hidden>Повторить сохранение</button><div class="result-actions"><a id="adventureLaunch" href="/math-adventure" class="result-action result-action-primary hidden">К приключениям <span aria-hidden="true">➜</span></a><button id="practice" class="result-action result-action-secondary">Потренироваться</button><button class="result-action result-action-tertiary" id="repeat">Пройти заново</button></div></section>
 <footer></footer></main>
-<script src="/skill-map.js"></script><script src="/math-academy.js?v=20261025-progress-42"></script><script src="/adaptive-practice.js"></script></body></html>
+<script src="/skill-map.js"></script><script src="/math-academy.js?v=20261025-card-redesign"></script><script src="/adaptive-practice.js"></script></body></html>
