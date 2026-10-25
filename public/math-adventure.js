@@ -190,7 +190,12 @@ function renderNumberPath(){
  scene.append(stones);const tiles=document.createElement("div");tiles.className="path-tiles";
  const variants=[answer,answer+task.step,answer-task.step,answer+2*task.step].filter((v,i,a)=>v>=0&&a.indexOf(v)===i).sort((a,b)=>((a*3+pathStep)%7)-((b*3+pathStep)%7));
  for(const value of variants){const tile=document.createElement("button");tile.type="button";tile.className="path-choice";tile.textContent=String(value);tile.addEventListener("click",()=>{if(answered)return;if(value!==answer){tile.classList.remove("path-wrong");void tile.offsetWidth;tile.classList.add("path-wrong");$("feedback").textContent="Этот камень не подходит. Попробуй посчитать шаг между числами.";return}
- answered=true;correct++;const gap=stones.children[task.missing];gap.textContent=String(answer);gap.classList.remove("path-gap");gap.classList.add("path-repaired");tile.disabled=true;scene.classList.add("path-success");$("feedback").textContent="🌟 Тропинка снова целая! Шаг "+task.step+". Совёнок может пройти!";$("next").classList.remove("hidden")});tiles.append(tile)}
+ answered=true;correct++;const gap=stones.children[task.missing];const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ const finish=()=>{gap.textContent=String(answer);gap.classList.remove("path-gap");gap.classList.add("path-repaired");tile.classList.add("path-used");scene.classList.add("path-success");$("feedback").textContent="🌟 Тропинка снова целая! Шаг "+task.step+". Совёнок может пройти!";$("next").classList.remove("hidden")};
+ if(reduced){finish();return}
+ const from=tile.getBoundingClientRect(),to=gap.getBoundingClientRect();const flying=tile.cloneNode(true);flying.disabled=true;flying.className="path-choice path-flying";flying.setAttribute("aria-hidden","true");flying.style.left=from.left+"px";flying.style.top=from.top+"px";flying.style.width=from.width+"px";flying.style.height=from.height+"px";document.body.append(flying);tile.classList.add("path-used");
+ const flight=flying.animate([{transform:"translate(0,0) scale(1) rotate(0deg)"},{transform:"translate("+((to.left+to.width/2)-(from.left+from.width/2))+"px,"+((to.top+to.height/2)-(from.top+from.height/2))+"px) scale("+(to.width/from.width)+") rotate(360deg)"}],{duration:850,easing:"cubic-bezier(.22,.8,.3,1)",fill:"forwards"});
+ flight.finished.then(()=>{flying.remove();finish()}).catch(()=>{flying.remove();finish()})});tiles.append(tile)}
  const hint=document.createElement("button");hint.type="button";hint.className="path-hint";hint.textContent="Подсказка";hint.addEventListener("click",()=>{$("feedback").textContent="Каждый следующий камень больше на "+task.step+". Посчитай от первого камня."});
  area.append(scene,tiles,hint);
 }
