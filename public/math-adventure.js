@@ -95,35 +95,35 @@ function finishApples(){
  void syncResult(0,10);
 }
 function renderBridge(){
- const [total,remove]=bridgeTasks[bridgeStep];const safe=total-remove;const friend=["🐿️ Белочка","🐰 Зайчик","🦔 Ёжик","🐻 Медвежонок","🦊 Лисёнок"][bridgeStep];
+ const [total,remove]=bridgeTasks[bridgeStep];const safe=total-remove;
  bridgeRemaining=total;answered=false;
- $("counter").textContent="Мост "+(bridgeStep+1)+" из "+bridgeTasks.length;
+ $("counter").textContent="Рейс "+(bridgeStep+1)+" из "+bridgeTasks.length;
  $("meterFill").style.width=(bridgeStep/bridgeTasks.length*100)+"%";
- $("question").textContent=friend+" хочет перейти ручей. На старом мосту "+total+" досок, а для нового нужно оставить "+safe+". Убери лишние доски!";
- $("feedback").textContent="Нажимай на доски 🪵, чтобы убрать их. Цель: оставить ровно "+safe+" досок.";
+ $("question").textContent="🚚 Грузовик может увезти только "+safe+" брёвен. Сейчас в кузове "+total+", поэтому машина не едет. Убери лишние!";
+ $("feedback").textContent="Нажимай на брёвна 🪵 в кузове. Машина поедет, когда останется ровно "+safe+".";
  $("next").classList.add("hidden");
  const area=$("choices");area.replaceChildren();area.classList.add("apple-training");
- const bridge=document.createElement("div");bridge.className="bridge-board";bridge.setAttribute("aria-label","Доски на мосту");
+ const bridge=document.createElement("div");bridge.className="bridge-board";bridge.setAttribute("aria-label","Брёвна в кузове грузовика");
  const count=document.createElement("p");count.className="apple-counter";
  const hint=document.createElement("button");hint.type="button";hint.className="apple-hint";hint.textContent="Подсказка";
  const update=()=>{
   const removed=total-bridgeRemaining;
-  count.textContent="На мосту: "+bridgeRemaining+" · Нужно: "+safe;
+  count.textContent="В кузове: "+bridgeRemaining+" · Можно увезти: "+safe;
  };
  for(let j=0;j<total;j++){
   const board=document.createElement("button");board.type="button";board.className="bridge-plank";
-  board.textContent="🪵";board.setAttribute("aria-label","Убрать доску "+(j+1));
+  board.textContent="🪵";board.setAttribute("aria-label","Выгрузить бревно "+(j+1));
   board.addEventListener("click",()=>{
    if(answered)return;
    const removed=total-bridgeRemaining;
    if(board.classList.contains("removed")){
-    board.classList.remove("removed");bridgeRemaining++;$("feedback").textContent="Доска вернулась на мост.";update();return;
+    board.classList.remove("removed");bridgeRemaining++;$("feedback").textContent="Бревно снова в кузове.";update();return;
    }
-   if(removed>=remove){$("feedback").textContent="Достаточно! Ты уже убрал "+remove+" досок.";return}
+   if(removed>=remove){$("feedback").textContent="Готово! Больше выгружать не нужно.";return}
    board.classList.add("removed");bridgeRemaining--;update();
    if(bridgeRemaining===total-remove){
     answered=true;correct++;
-    $("feedback").textContent="Мост готов! "+total+" − "+remove+" = "+bridgeRemaining+". "+friend+" может перейти ручей!";
+    $("feedback").textContent="🚚 Поехали! "+total+" − "+remove+" = "+bridgeRemaining+". Грузовик отправился в путь!";
     $("next").classList.remove("hidden");
    }
   });
@@ -131,7 +131,7 @@ function renderBridge(){
  }
  hint.addEventListener("click",()=>{
   const removed=total-bridgeRemaining;
-  $("feedback").textContent="Вычитание означает убрать часть. Было "+total+" досок, должно остаться "+safe+". Убери ещё "+(remove-removed)+" досок, нажимая на них.";
+  $("feedback").textContent="В кузове было "+total+" брёвен, а машина везёт не больше "+safe+". Нажми ещё на "+(remove-removed)+" брёвен, чтобы выгрузить их.";
  });
  area.append(bridge,count,hint);update();
 }
