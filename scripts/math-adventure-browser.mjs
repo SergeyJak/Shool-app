@@ -66,8 +66,8 @@ try{
   await page.$eval("#next",el=>el.click());
  }
  assert.match(await page.$eval("#resultTitle",el=>el.textContent),/Мост построен/);
- await page.waitForFunction(()=>window.__adventurePosts.length===2);
- assert.deepEqual(await page.evaluate(()=>window.__adventurePosts[1]),{level:1,correct:10,total:10});
+ await page.waitForFunction(()=>window.__adventurePosts.length===1);
+ assert.deepEqual(await page.evaluate(()=>window.__adventurePosts[0]),{level:1,correct:10,total:10});
  await page.$eval("#return",el=>el.click());
  assert.equal(await page.$eval(".node:not(:disabled)",els=>els.length),3);
  await page.reload();
