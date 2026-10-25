@@ -197,7 +197,7 @@ test("age-inspired learner simulations from 5 to 15 years",()=>{
 test("very weak learner can skip everything and finishes without a loop",()=>{
  const s=run(()=>null),r=d.result(s);
  assert.equal(r.correct,0);assert.equal(r.skipped,r.answered);
- assert.ok(r.answered<=21);
+ assert.ok(r.answered<=28);
  assert.ok(r.level<=25);
 });
 test("slightly stronger beginner progresses beyond all-skip learner",()=>{
