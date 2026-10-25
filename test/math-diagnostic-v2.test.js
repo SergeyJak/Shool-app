@@ -2,7 +2,7 @@
 const test=require("node:test"),assert=require("node:assert/strict");
 const d=require("../lib/math-diagnostic-v2");
 test("bank has 230 unique, answerable questions across seven skills",()=>{
- assert.equal(d.BANK.length,230);assert.equal(new Set(d.BANK.map(q=>q.id)).size,210);
+ assert.equal(d.BANK.length,230);assert.equal(new Set(d.BANK.map(q=>q.id)).size,230);
  assert.equal(new Set(d.BANK.map(q=>q.skill)).size,7);
  assert.ok(d.BANK.every(q=>q.explanation&&q.difficulty>=1&&q.difficulty<=100));
 });
