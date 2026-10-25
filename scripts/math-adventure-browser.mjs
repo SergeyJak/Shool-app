@@ -19,7 +19,7 @@ try{
    if(url==="/api/math/adventure"&&(!opts.method||opts.method==="GET"))return {ok:true,json:async()=>({progress:{unlocked:0,stars:0,completed:[],startLevel:1}})};
    if(url==="/api/math/adventure"&&opts.method==="POST"){
     const body=JSON.parse(opts.body);window.__adventurePosts.push(body);
-    return {ok:true,json:async()=>({progress:{unlocked:1,stars:3,completed:[0]},passed:true})};
+    return {ok:true,json:async()=>({progress:body.level===1?{unlocked:2,stars:6,completed:[0,1]}:{unlocked:1,stars:3,completed:[0]},passed:true})};
    }
    throw Error("Unexpected fetch "+url);
   };
@@ -55,6 +55,23 @@ try{
  await page.reload();
  assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),2);
  assert.match(await page.$eval("#summary",el=>el.textContent),/Звёзд: 3/);
- console.log("✓ adventure: locked nodes, interactive apple training, hints, unlock, stars, persisted progress");
+ await page.$eval(".node:not(:disabled)",els=>{const nodes=document.querySelectorAll(".node:not(:disabled)");nodes[1].click()});
+ for(let i=0;i<5;i++){
+  assert.match(await page.$eval("#counter",el=>el.textContent),new RegExp("Мост "+(i+1)+" из 5"));
+  const target=[2,3,4,5,7][i];
+  await page.$eval(".apple-hint",el=>el.click());
+  assert.match(await page.$eval("#feedback",el=>el.textContent),/Вычитание означает/);
+  for(let j=0;j<target;j++)await page.$eval(".bridge-plank:not(.removed)",el=>el.click());
+  assert.match(await page.$eval("#feedback",el=>el.textContent),/Мост готов/);
+  await page.$eval("#next",el=>el.click());
+ }
+ assert.match(await page.$eval("#resultTitle",el=>el.textContent),/Мост построен/);
+ await page.waitForFunction(()=>window.__adventurePosts.length===1);
+ assert.deepEqual(await page.evaluate(()=>window.__adventurePosts[0]),{level:1,correct:10,total:10});
+ await page.$eval("#return",el=>el.click());
+ assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),3);
+ await page.reload();
+ assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),3);
+ console.log("✓ adventure: apple and bridge training, hints, unlock, persisted progress");
  await page.close();
 }finally{await browser.close();}
