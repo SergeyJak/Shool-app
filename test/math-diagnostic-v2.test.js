@@ -21,3 +21,20 @@ test("rejects replayed or out-of-order answers",()=>{
  const q=d.nextQuestion(s),next=d.submitAnswer(s,q.id,q.answer);
  assert.throws(()=>d.submitAnswer(next,q.id,q.answer));
 });
+
+test("diagnostic review exposes only missed questions with verified answers",()=>{
+ let session=d.createSession();
+ const first=d.nextQuestion(session);session=d.submitAnswer(session,first.id,"not an answer");
+ const second=d.nextQuestion(session);session=d.submitAnswer(session,second.id,second.answer);
+ const third=d.nextQuestion(session);session=d.submitAnswer(session,third.id,null);
+ const summary=d.result(session);
+ assert.equal(summary.correct,1);assert.equal(summary.incorrect,1);assert.equal(summary.skipped,1);
+ assert.equal(summary.review.length,2);
+ assert.equal(summary.review[0].prompt,first.prompt);
+ assert.equal(summary.review[0].answer,"not an answer");
+ assert.equal(summary.review[0].expectedAnswer,first.answer);
+ assert.equal(summary.review[0].explanation,first.explanation);
+ assert.equal(summary.review[1].skipped,true);
+ assert.equal(summary.review[1].expectedAnswer,third.answer);
+ assert.equal(summary.correct+summary.incorrect+summary.skipped,summary.answered);
+});
