@@ -124,7 +124,7 @@ function renderDiagnosticV2(){
  });
  field.addEventListener("keydown",event=>{if(event.key==="Enter"&&!submit.disabled)submit.click()});
  unclear.addEventListener("click",()=>{
-  $("question").textContent="Попробуй прочитать вопрос по-другому: "+q.prompt;
+  $("question").textContent=(q.skill==="arithmetic"?q.prompt.replace("Вычисли:","Реши пример:").replace("Сколько будет","Посчитай"):q.skill==="patterns"?q.prompt.replace("Продолжи ряд:","Найди правило и следующее число:"):q.skill==="geometry"?q.prompt.replace("Сколько будет периметр","Найди периметр").replace("Сколько будет площадь","Найди площадь"):q.skill==="fractions"?q.prompt.replace("Чему равна","Найди"):q.skill==="numbers"?q.prompt.replace("Какое число больше:","Выбери большее число:"):q.skill==="measurements"?q.prompt.replace("Сколько","Какое количество"):q.prompt);
   $("feedback").textContent="Это тот же вопрос. Можешь ответить или выбрать «Не знаю».";
   unclear.disabled=true;
  });
