@@ -1,0 +1,1807 @@
+{
+  "version": 1,
+  "maps": [
+    {
+      "id": 1,
+      "title": "Лес первых чисел",
+      "topic": "Числа до 20",
+      "skillIds": [
+        "numbers-to-20"
+      ],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 2,
+      "title": "Долина десятков",
+      "topic": "Числа до 100",
+      "skillIds": [
+        "numbers-to-100"
+      ],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 3,
+      "title": "Город сотен",
+      "topic": "Числа до 1000",
+      "skillIds": [
+        "place-value-1000"
+      ],
+      "diagnosticEvidence": [
+        "numbers"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 4,
+      "title": "Остров умножения",
+      "topic": "Таблица умножения",
+      "skillIds": [
+        "multiplication"
+      ],
+      "diagnosticEvidence": [
+        "arithmetic",
+        "wordProblems"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 5,
+      "title": "Пещера деления",
+      "topic": "Деление",
+      "skillIds": [
+        "division"
+      ],
+      "diagnosticEvidence": [],
+      "diagnosticCoverage": "none"
+    },
+    {
+      "id": 6,
+      "title": "Королевство больших чисел",
+      "topic": "Четыре действия",
+      "skillIds": [
+        "mixed-arithmetic"
+      ],
+      "diagnosticEvidence": [
+        "arithmetic"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 7,
+      "title": "Башня задач",
+      "topic": "Текстовые задачи",
+      "skillIds": [
+        "word-problems"
+      ],
+      "diagnosticEvidence": [
+        "wordProblems"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 8,
+      "title": "Город измерений",
+      "topic": "Длина, масса, объём",
+      "skillIds": [
+        "measurement"
+      ],
+      "diagnosticEvidence": [
+        "measurements"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 9,
+      "title": "Часовой остров",
+      "topic": "Время и календарь",
+      "skillIds": [
+        "time"
+      ],
+      "diagnosticEvidence": [
+        "measurements"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 10,
+      "title": "Лес геометрии",
+      "topic": "Фигуры и периметр",
+      "skillIds": [
+        "shapes-perimeter"
+      ],
+      "diagnosticEvidence": [
+        "geometry"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 11,
+      "title": "Остров площадей",
+      "topic": "Площадь",
+      "skillIds": [
+        "area"
+      ],
+      "diagnosticEvidence": [
+        "geometry"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 12,
+      "title": "Страна дробей",
+      "topic": "Доли и дроби",
+      "skillIds": [
+        "fractions-intro"
+      ],
+      "diagnosticEvidence": [
+        "fractions"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 13,
+      "title": "Река дробей",
+      "topic": "Действия с дробями",
+      "skillIds": [
+        "fractions-operations"
+      ],
+      "diagnosticEvidence": [],
+      "diagnosticCoverage": "none"
+    },
+    {
+      "id": 14,
+      "title": "Город десятичных чисел",
+      "topic": "Десятичные дроби",
+      "skillIds": [
+        "decimals"
+      ],
+      "diagnosticEvidence": [],
+      "diagnosticCoverage": "none"
+    },
+    {
+      "id": 15,
+      "title": "Гора процентов",
+      "topic": "Проценты",
+      "skillIds": [
+        "percent"
+      ],
+      "diagnosticEvidence": [],
+      "diagnosticCoverage": "none"
+    },
+    {
+      "id": 16,
+      "title": "Долина отношений",
+      "topic": "Пропорции и масштаб",
+      "skillIds": [
+        "ratio-scale"
+      ],
+      "diagnosticEvidence": [],
+      "diagnosticCoverage": "none"
+    },
+    {
+      "id": 17,
+      "title": "Лаборатория неизвестного",
+      "topic": "Уравнения",
+      "skillIds": [
+        "equations"
+      ],
+      "diagnosticEvidence": [],
+      "diagnosticCoverage": "none"
+    },
+    {
+      "id": 18,
+      "title": "Город координат",
+      "topic": "Координаты и графики",
+      "skillIds": [
+        "coordinates-graphs"
+      ],
+      "diagnosticEvidence": [],
+      "diagnosticCoverage": "none"
+    },
+    {
+      "id": 19,
+      "title": "Академия логики",
+      "topic": "Закономерности и данные",
+      "skillIds": [
+        "logic-data"
+      ],
+      "diagnosticEvidence": [
+        "patterns"
+      ],
+      "diagnosticCoverage": "partial"
+    },
+    {
+      "id": 20,
+      "title": "Замок мастеров",
+      "topic": "Комплексные задачи",
+      "skillIds": [
+        "mixed-application"
+      ],
+      "diagnosticEvidence": [],
+      "diagnosticCoverage": "none"
+    }
+  ],
+  "games": [
+    {
+      "level": 1,
+      "map": 1,
+      "title": "Собери яблоки",
+      "skillIds": [
+        "numbers-to-20"
+      ],
+      "prerequisites": [],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 2,
+      "map": 1,
+      "title": "Мост вычитания",
+      "skillIds": [
+        "numbers-to-20"
+      ],
+      "prerequisites": [
+        1
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 3,
+      "map": 1,
+      "title": "Соседи числа",
+      "skillIds": [
+        "numbers-to-20"
+      ],
+      "prerequisites": [
+        2
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 4,
+      "map": 1,
+      "title": "Сравни башни",
+      "skillIds": [
+        "numbers-to-20"
+      ],
+      "prerequisites": [
+        3
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 5,
+      "map": 1,
+      "title": "Почини числовую тропу",
+      "skillIds": [
+        "numbers-to-20"
+      ],
+      "prerequisites": [
+        4
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "numbers-to-20"
+      ],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 6,
+      "map": 2,
+      "title": "Собери десятки",
+      "skillIds": [
+        "numbers-to-100"
+      ],
+      "prerequisites": [
+        5
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 7,
+      "map": 2,
+      "title": "Магазин монет",
+      "skillIds": [
+        "numbers-to-100"
+      ],
+      "prerequisites": [
+        6
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 8,
+      "map": 2,
+      "title": "Числовой поезд",
+      "skillIds": [
+        "numbers-to-100"
+      ],
+      "prerequisites": [
+        7
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 9,
+      "map": 2,
+      "title": "Лабиринт сложения",
+      "skillIds": [
+        "numbers-to-100"
+      ],
+      "prerequisites": [
+        8
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 10,
+      "map": 2,
+      "title": "Спаси воздушный шар",
+      "skillIds": [
+        "numbers-to-100"
+      ],
+      "prerequisites": [
+        9
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "numbers-to-100"
+      ],
+      "diagnosticEvidence": [
+        "numbers",
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 11,
+      "map": 3,
+      "title": "Построй число",
+      "skillIds": [
+        "place-value-1000"
+      ],
+      "prerequisites": [
+        10
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers"
+      ]
+    },
+    {
+      "level": 12,
+      "map": 3,
+      "title": "Почтовые посылки",
+      "skillIds": [
+        "place-value-1000"
+      ],
+      "prerequisites": [
+        11
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers"
+      ]
+    },
+    {
+      "level": 13,
+      "map": 3,
+      "title": "Разряды в башне",
+      "skillIds": [
+        "place-value-1000"
+      ],
+      "prerequisites": [
+        12
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers"
+      ]
+    },
+    {
+      "level": 14,
+      "map": 3,
+      "title": "Счётчик расстояний",
+      "skillIds": [
+        "place-value-1000"
+      ],
+      "prerequisites": [
+        13
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "numbers"
+      ]
+    },
+    {
+      "level": 15,
+      "map": 3,
+      "title": "Найди клад",
+      "skillIds": [
+        "place-value-1000"
+      ],
+      "prerequisites": [
+        14
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "place-value-1000"
+      ],
+      "diagnosticEvidence": [
+        "numbers"
+      ]
+    },
+    {
+      "level": 16,
+      "map": 4,
+      "title": "Ряды сокровищ",
+      "skillIds": [
+        "multiplication"
+      ],
+      "prerequisites": [
+        15
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "arithmetic",
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 17,
+      "map": 4,
+      "title": "Ферма массивов",
+      "skillIds": [
+        "multiplication"
+      ],
+      "prerequisites": [
+        16
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "arithmetic",
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 18,
+      "map": 4,
+      "title": "Умножительный лабиринт",
+      "skillIds": [
+        "multiplication"
+      ],
+      "prerequisites": [
+        17
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "arithmetic",
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 19,
+      "map": 4,
+      "title": "Поймай произведение",
+      "skillIds": [
+        "multiplication"
+      ],
+      "prerequisites": [
+        18
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "arithmetic",
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 20,
+      "map": 4,
+      "title": "Битва с пиратами",
+      "skillIds": [
+        "multiplication"
+      ],
+      "prerequisites": [
+        19
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "multiplication"
+      ],
+      "diagnosticEvidence": [
+        "arithmetic",
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 21,
+      "map": 5,
+      "title": "Раздели кристаллы",
+      "skillIds": [
+        "division"
+      ],
+      "prerequisites": [
+        20
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 22,
+      "map": 5,
+      "title": "Накорми зверят",
+      "skillIds": [
+        "division"
+      ],
+      "prerequisites": [
+        21
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 23,
+      "map": 5,
+      "title": "Собери команды",
+      "skillIds": [
+        "division"
+      ],
+      "prerequisites": [
+        22
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 24,
+      "map": 5,
+      "title": "Найди пропуск",
+      "skillIds": [
+        "division"
+      ],
+      "prerequisites": [
+        23
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 25,
+      "map": 5,
+      "title": "Открой пещеру",
+      "skillIds": [
+        "division"
+      ],
+      "prerequisites": [
+        24
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "division"
+      ],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 26,
+      "map": 6,
+      "title": "Большие покупки",
+      "skillIds": [
+        "mixed-arithmetic"
+      ],
+      "prerequisites": [
+        25
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 27,
+      "map": 6,
+      "title": "Столбики строителя",
+      "skillIds": [
+        "mixed-arithmetic"
+      ],
+      "prerequisites": [
+        26
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 28,
+      "map": 6,
+      "title": "Калькулятор без кнопок",
+      "skillIds": [
+        "mixed-arithmetic"
+      ],
+      "prerequisites": [
+        27
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 29,
+      "map": 6,
+      "title": "Числовые цепочки",
+      "skillIds": [
+        "mixed-arithmetic"
+      ],
+      "prerequisites": [
+        28
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 30,
+      "map": 6,
+      "title": "Сейф короля",
+      "skillIds": [
+        "mixed-arithmetic"
+      ],
+      "prerequisites": [
+        29
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "mixed-arithmetic"
+      ],
+      "diagnosticEvidence": [
+        "arithmetic"
+      ]
+    },
+    {
+      "level": 31,
+      "map": 7,
+      "title": "Детектив условий",
+      "skillIds": [
+        "word-problems"
+      ],
+      "prerequisites": [
+        30
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 32,
+      "map": 7,
+      "title": "Выбери действие",
+      "skillIds": [
+        "word-problems"
+      ],
+      "prerequisites": [
+        31
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 33,
+      "map": 7,
+      "title": "Два шага к цели",
+      "skillIds": [
+        "word-problems"
+      ],
+      "prerequisites": [
+        32
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 34,
+      "map": 7,
+      "title": "Лишняя подсказка",
+      "skillIds": [
+        "word-problems"
+      ],
+      "prerequisites": [
+        33
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 35,
+      "map": 7,
+      "title": "Расследование",
+      "skillIds": [
+        "word-problems"
+      ],
+      "prerequisites": [
+        34
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "word-problems"
+      ],
+      "diagnosticEvidence": [
+        "wordProblems"
+      ]
+    },
+    {
+      "level": 36,
+      "map": 8,
+      "title": "Мастерская линеек",
+      "skillIds": [
+        "measurement"
+      ],
+      "prerequisites": [
+        35
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 37,
+      "map": 8,
+      "title": "Весы торговца",
+      "skillIds": [
+        "measurement"
+      ],
+      "prerequisites": [
+        36
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 38,
+      "map": 8,
+      "title": "Наполни сосуды",
+      "skillIds": [
+        "measurement"
+      ],
+      "prerequisites": [
+        37
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 39,
+      "map": 8,
+      "title": "Перевези груз",
+      "skillIds": [
+        "measurement"
+      ],
+      "prerequisites": [
+        38
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 40,
+      "map": 8,
+      "title": "Инженерный заказ",
+      "skillIds": [
+        "measurement"
+      ],
+      "prerequisites": [
+        39
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "measurement"
+      ],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 41,
+      "map": 9,
+      "title": "Почини часы",
+      "skillIds": [
+        "time"
+      ],
+      "prerequisites": [
+        40
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 42,
+      "map": 9,
+      "title": "Расписание поезда",
+      "skillIds": [
+        "time"
+      ],
+      "prerequisites": [
+        41
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 43,
+      "map": 9,
+      "title": "Календарный квест",
+      "skillIds": [
+        "time"
+      ],
+      "prerequisites": [
+        42
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 44,
+      "map": 9,
+      "title": "Сколько прошло?",
+      "skillIds": [
+        "time"
+      ],
+      "prerequisites": [
+        43
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 45,
+      "map": 9,
+      "title": "Спаси расписание",
+      "skillIds": [
+        "time"
+      ],
+      "prerequisites": [
+        44
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "time"
+      ],
+      "diagnosticEvidence": [
+        "measurements"
+      ]
+    },
+    {
+      "level": 46,
+      "map": 10,
+      "title": "Узнай фигуру",
+      "skillIds": [
+        "shapes-perimeter"
+      ],
+      "prerequisites": [
+        45
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 47,
+      "map": 10,
+      "title": "Построй забор",
+      "skillIds": [
+        "shapes-perimeter"
+      ],
+      "prerequisites": [
+        46
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 48,
+      "map": 10,
+      "title": "Собери многоугольник",
+      "skillIds": [
+        "shapes-perimeter"
+      ],
+      "prerequisites": [
+        47
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 49,
+      "map": 10,
+      "title": "Геометрический танграм",
+      "skillIds": [
+        "shapes-perimeter"
+      ],
+      "prerequisites": [
+        48
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 50,
+      "map": 10,
+      "title": "Замок фигур",
+      "skillIds": [
+        "shapes-perimeter"
+      ],
+      "prerequisites": [
+        49
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "shapes-perimeter"
+      ],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 51,
+      "map": 11,
+      "title": "Закрой плитками",
+      "skillIds": [
+        "area"
+      ],
+      "prerequisites": [
+        50
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 52,
+      "map": 11,
+      "title": "Построй комнату",
+      "skillIds": [
+        "area"
+      ],
+      "prerequisites": [
+        51
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 53,
+      "map": 11,
+      "title": "Найди площадь",
+      "skillIds": [
+        "area"
+      ],
+      "prerequisites": [
+        52
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 54,
+      "map": 11,
+      "title": "Сравни участки",
+      "skillIds": [
+        "area"
+      ],
+      "prerequisites": [
+        53
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 55,
+      "map": 11,
+      "title": "Архитектор",
+      "skillIds": [
+        "area"
+      ],
+      "prerequisites": [
+        54
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "area"
+      ],
+      "diagnosticEvidence": [
+        "geometry"
+      ]
+    },
+    {
+      "level": 56,
+      "map": 12,
+      "title": "Раздели пиццу",
+      "skillIds": [
+        "fractions-intro"
+      ],
+      "prerequisites": [
+        55
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "fractions"
+      ]
+    },
+    {
+      "level": 57,
+      "map": 12,
+      "title": "Раскрась долю",
+      "skillIds": [
+        "fractions-intro"
+      ],
+      "prerequisites": [
+        56
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "fractions"
+      ]
+    },
+    {
+      "level": 58,
+      "map": 12,
+      "title": "Дробная линия",
+      "skillIds": [
+        "fractions-intro"
+      ],
+      "prerequisites": [
+        57
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "fractions"
+      ]
+    },
+    {
+      "level": 59,
+      "map": 12,
+      "title": "Сравни пироги",
+      "skillIds": [
+        "fractions-intro"
+      ],
+      "prerequisites": [
+        58
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "fractions"
+      ]
+    },
+    {
+      "level": 60,
+      "map": 12,
+      "title": "Праздничный стол",
+      "skillIds": [
+        "fractions-intro"
+      ],
+      "prerequisites": [
+        59
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "fractions-intro"
+      ],
+      "diagnosticEvidence": [
+        "fractions"
+      ]
+    },
+    {
+      "level": 61,
+      "map": 13,
+      "title": "Равные кусочки",
+      "skillIds": [
+        "fractions-operations"
+      ],
+      "prerequisites": [
+        60
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 62,
+      "map": 13,
+      "title": "Дробное домино",
+      "skillIds": [
+        "fractions-operations"
+      ],
+      "prerequisites": [
+        61
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 63,
+      "map": 13,
+      "title": "Собери целое",
+      "skillIds": [
+        "fractions-operations"
+      ],
+      "prerequisites": [
+        62
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 64,
+      "map": 13,
+      "title": "Дробные рецепты",
+      "skillIds": [
+        "fractions-operations"
+      ],
+      "prerequisites": [
+        63
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 65,
+      "map": 13,
+      "title": "Переправа",
+      "skillIds": [
+        "fractions-operations"
+      ],
+      "prerequisites": [
+        64
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "fractions-operations"
+      ],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 66,
+      "map": 14,
+      "title": "Ценники магазина",
+      "skillIds": [
+        "decimals"
+      ],
+      "prerequisites": [
+        65
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 67,
+      "map": 14,
+      "title": "Десятичная шкала",
+      "skillIds": [
+        "decimals"
+      ],
+      "prerequisites": [
+        66
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 68,
+      "map": 14,
+      "title": "Собери сумму",
+      "skillIds": [
+        "decimals"
+      ],
+      "prerequisites": [
+        67
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 69,
+      "map": 14,
+      "title": "Гонки запятых",
+      "skillIds": [
+        "decimals"
+      ],
+      "prerequisites": [
+        68
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 70,
+      "map": 14,
+      "title": "Касса супермаркета",
+      "skillIds": [
+        "decimals"
+      ],
+      "prerequisites": [
+        69
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "decimals"
+      ],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 71,
+      "map": 15,
+      "title": "Раскрась сотню",
+      "skillIds": [
+        "percent"
+      ],
+      "prerequisites": [
+        70
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 72,
+      "map": 15,
+      "title": "Скидки магазина",
+      "skillIds": [
+        "percent"
+      ],
+      "prerequisites": [
+        71
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 73,
+      "map": 15,
+      "title": "Заряд батареи",
+      "skillIds": [
+        "percent"
+      ],
+      "prerequisites": [
+        72
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 74,
+      "map": 15,
+      "title": "Процентный маршрут",
+      "skillIds": [
+        "percent"
+      ],
+      "prerequisites": [
+        73
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 75,
+      "map": 15,
+      "title": "Ярмарка скидок",
+      "skillIds": [
+        "percent"
+      ],
+      "prerequisites": [
+        74
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "percent"
+      ],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 76,
+      "map": 16,
+      "title": "Смешай краски",
+      "skillIds": [
+        "ratio-scale"
+      ],
+      "prerequisites": [
+        75
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 77,
+      "map": 16,
+      "title": "Увеличь рецепт",
+      "skillIds": [
+        "ratio-scale"
+      ],
+      "prerequisites": [
+        76
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 78,
+      "map": 16,
+      "title": "Карта сокровищ",
+      "skillIds": [
+        "ratio-scale"
+      ],
+      "prerequisites": [
+        77
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 79,
+      "map": 16,
+      "title": "Масштабный конструктор",
+      "skillIds": [
+        "ratio-scale"
+      ],
+      "prerequisites": [
+        78
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 80,
+      "map": 16,
+      "title": "Экспедиция",
+      "skillIds": [
+        "ratio-scale"
+      ],
+      "prerequisites": [
+        79
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "ratio-scale"
+      ],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 81,
+      "map": 17,
+      "title": "Тайный ящик",
+      "skillIds": [
+        "equations"
+      ],
+      "prerequisites": [
+        80
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 82,
+      "map": 17,
+      "title": "Весы равенства",
+      "skillIds": [
+        "equations"
+      ],
+      "prerequisites": [
+        81
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 83,
+      "map": 17,
+      "title": "Обратный ход",
+      "skillIds": [
+        "equations"
+      ],
+      "prerequisites": [
+        82
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 84,
+      "map": 17,
+      "title": "Числовой код",
+      "skillIds": [
+        "equations"
+      ],
+      "prerequisites": [
+        83
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 85,
+      "map": 17,
+      "title": "Открой лабораторию",
+      "skillIds": [
+        "equations"
+      ],
+      "prerequisites": [
+        84
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "equations"
+      ],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 86,
+      "map": 18,
+      "title": "Найди точку",
+      "skillIds": [
+        "coordinates-graphs"
+      ],
+      "prerequisites": [
+        85
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 87,
+      "map": 18,
+      "title": "Управляй роботом",
+      "skillIds": [
+        "coordinates-graphs"
+      ],
+      "prerequisites": [
+        86
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 88,
+      "map": 18,
+      "title": "Построй маршрут",
+      "skillIds": [
+        "coordinates-graphs"
+      ],
+      "prerequisites": [
+        87
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 89,
+      "map": 18,
+      "title": "Прочитай график",
+      "skillIds": [
+        "coordinates-graphs"
+      ],
+      "prerequisites": [
+        88
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 90,
+      "map": 18,
+      "title": "Космическая навигация",
+      "skillIds": [
+        "coordinates-graphs"
+      ],
+      "prerequisites": [
+        89
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "coordinates-graphs"
+      ],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 91,
+      "map": 19,
+      "title": "Продолжи узор",
+      "skillIds": [
+        "logic-data"
+      ],
+      "prerequisites": [
+        90
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "patterns"
+      ]
+    },
+    {
+      "level": 92,
+      "map": 19,
+      "title": "Сортировка предметов",
+      "skillIds": [
+        "logic-data"
+      ],
+      "prerequisites": [
+        91
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "patterns"
+      ]
+    },
+    {
+      "level": 93,
+      "map": 19,
+      "title": "Диаграмма исследователя",
+      "skillIds": [
+        "logic-data"
+      ],
+      "prerequisites": [
+        92
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "patterns"
+      ]
+    },
+    {
+      "level": 94,
+      "map": 19,
+      "title": "Логический детектив",
+      "skillIds": [
+        "logic-data"
+      ],
+      "prerequisites": [
+        93
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": [
+        "patterns"
+      ]
+    },
+    {
+      "level": 95,
+      "map": 19,
+      "title": "Секретный механизм",
+      "skillIds": [
+        "logic-data"
+      ],
+      "prerequisites": [
+        94
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "logic-data"
+      ],
+      "diagnosticEvidence": [
+        "patterns"
+      ]
+    },
+    {
+      "level": 96,
+      "map": 20,
+      "title": "Построй поселение",
+      "skillIds": [
+        "mixed-application"
+      ],
+      "prerequisites": [
+        95
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 97,
+      "map": 20,
+      "title": "Управляй бюджетом",
+      "skillIds": [
+        "mixed-application"
+      ],
+      "prerequisites": [
+        96
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 98,
+      "map": 20,
+      "title": "Спланируй путешествие",
+      "skillIds": [
+        "mixed-application"
+      ],
+      "prerequisites": [
+        97
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 99,
+      "map": 20,
+      "title": "Большая головоломка",
+      "skillIds": [
+        "mixed-application"
+      ],
+      "prerequisites": [
+        98
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [],
+      "diagnosticEvidence": []
+    },
+    {
+      "level": 100,
+      "map": 20,
+      "title": "Финальное приключение",
+      "skillIds": [
+        "mixed-application"
+      ],
+      "prerequisites": [
+        99
+      ],
+      "gameType": "interactive-training",
+      "checkpointSkillIds": [
+        "mixed-application"
+      ],
+      "diagnosticEvidence": []
+    }
+  ]
+}
