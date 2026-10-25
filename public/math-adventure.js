@@ -209,20 +209,46 @@ function finishNumberPath(){
 function renderDragon(){
  answered=false;const stage=dragonStep;
  const titles=["🍎 Накорми дракона","🚚 Разгрузи повозку","🏡 Найди соседей","🪨 Почини мост к замку"];
- $("counter").textContent="Испытание "+(stage+1)+" из 4";$("meterFill").style.width=stage*25+"%";$("question").textContent=titles[stage];$("feedback").textContent="Помоги дракончику открыть ворота!";$("next").classList.add("hidden");
- const area=$("choices");area.replaceChildren();area.className="choices dragon-game";const scene=document.createElement("div");scene.className="dragon-scene";
- const dragon=document.createElement("div");dragon.className="dragon-character";dragon.textContent="🐉";dragon.setAttribute("aria-hidden","true");
+ $("counter").textContent="Испытание "+(stage+1)+" из 4";$("meterFill").style.width=stage*25+"%";$("question").textContent=titles[stage];$("feedback").textContent="Сначала выбери ответ, затем нажми «Проверить».";$("next").classList.add("hidden");
+ const area=$("choices");area.replaceChildren();area.className="choices dragon-game";
+ const scene=document.createElement("div");scene.className="dragon-scene";const dragon=document.createElement("div");dragon.className="dragon-character";dragon.textContent="🐉";dragon.setAttribute("aria-hidden","true");
  const shield=document.createElement("div");shield.className="dragon-shields";shield.textContent="⭐".repeat(4-stage)+"☆".repeat(stage);scene.append(shield,dragon);
  const activity=document.createElement("div");activity.className="dragon-activity";scene.append(activity);
- const controls=document.createElement("div");controls.className="dragon-controls";
- const note=document.createElement("p");note.className="dragon-instruction";
- const complete=message=>{answered=true;correct++;scene.classList.add("dragon-success");shield.textContent="⭐".repeat(3-stage)+"☆".repeat(stage+1);$("feedback").textContent="✨ "+message;$("next").classList.remove("hidden")};
+ const controls=document.createElement("div");controls.className="dragon-controls";const note=document.createElement("p");note.className="dragon-instruction";
+ const actions=document.createElement("div");actions.className="dragon-actions";
+ const check=document.createElement("button");check.type="button";check.className="dragon-check";check.textContent="Проверить";check.disabled=true;
+ const reset=document.createElement("button");reset.type="button";reset.className="dragon-reset";reset.textContent="Сбросить";
+ const complete=message=>{answered=true;correct++;scene.classList.add("dragon-success");shield.textContent="⭐".repeat(3-stage)+"☆".repeat(stage+1);$("feedback").textContent="✨ "+message;check.disabled=true;reset.disabled=true;$("next").classList.remove("hidden")};
  const key=(value,callback)=>{const b=document.createElement("button");b.type="button";b.className="dragon-key";b.textContent=String(value);b.addEventListener("click",()=>{if(!answered)callback(b)});controls.append(b);return b};
- if(stage===0){let apples=0;note.textContent="У дракона уже 2 яблока. Добавь ещё 3, нажимая на яблоки.";activity.textContent="🧺 🍎🍎";for(let i=0;i<5;i++)key("🍎",b=>{b.disabled=true;apples++;activity.textContent="🧺 "+"🍎".repeat(2+apples);if(apples===3)complete("Дракон сыт! 2 + 3 = 5. Он улыбается!")});}
- if(stage===1){let remaining=7;note.textContent="Повозка везёт 7 брёвен, а можно только 4. Выгрузи лишние.";activity.textContent="🚚 "+"🪵".repeat(remaining);for(let i=0;i<7;i++)key("🪵",b=>{if(remaining<=4)return;b.disabled=true;remaining--;activity.textContent="🚚 "+"🪵".repeat(remaining);if(remaining===4)complete("Повозка поехала! 7 − 3 = 4.")});}
- if(stage===2){let left=false,right=false;note.textContent="У домика номер 9. Найди его соседей слева и справа.";activity.textContent="🏠 ?     🏠 9     🏠 ?";for(const n of [7,8,10,11])key(n,b=>{if(n===8&&!left){left=true;b.disabled=true}else if(n===10&&!right){right=true;b.disabled=true}else{$("feedback").textContent="Посмотри: слева число на 1 меньше, справа на 1 больше.";return}activity.textContent="🏠 "+(left?"8":"?")+"     🏠 9     🏠 "+(right?"10":"?");if(left&&right)complete("Все жители нашли свои дома!")});}
- if(stage===3){note.textContent="Мост ведёт к замку. Какой камень пропущен?";activity.textContent="🪨 2   🪨 4   ❔   🪨 8   🏰";for(const n of [5,6,7,9])key(n,b=>{if(n!==6){$("feedback").textContent="Числа растут на 2. Попробуй ещё!";return}b.disabled=true;activity.textContent="🪨 2   🪨 4   🪨 6   🪨 8   🏰";complete("Мост восстановлен, ворота открываются!")});}
- const hint=document.createElement("button");hint.type="button";hint.className="dragon-hint";hint.textContent="Подсказка";hint.addEventListener("click",()=>{$("feedback").textContent=["Добавь ровно три яблока к двум.","Убери три бревна, чтобы осталось четыре.","Перед 9 стоит 8, после 9 стоит 10.","Считай через два: 2, 4, 6, 8."][stage]});area.append(scene,note,controls,hint);
+ let selected=0,correctAnswer=0,paint=()=>{},validate=()=>false;
+ const attempt=()=>{if(answered)return;if(validate()){complete(["Дракон сыт!","Повозка поехала!","Все соседи дома!","Мост восстановлен!"][stage]);return}
+ $("feedback").textContent="🐉 Дракон заметил ошибку. Попробуй ещё раз!";scene.classList.remove("dragon-shake");void scene.offsetWidth;scene.classList.add("dragon-shake");resetSelection()};
+ let resetSelection=()=>{};check.addEventListener("click",attempt);
+ if(stage===0){
+  const existing=2,need=3;correctAnswer=need;note.textContent="У дракона уже 2 яблока. Выбери, сколько ещё добавить, и проверь ответ.";
+  paint=()=>{activity.textContent="🧺 "+"🍎".repeat(existing+selected);check.disabled=selected===0};
+  const buttons=[];for(let i=0;i<6;i++)buttons.push(key("🍎",b=>{b.classList.toggle("dragon-picked");selected=buttons.filter(x=>x.classList.contains("dragon-picked")).length;paint()}));
+  resetSelection=()=>{buttons.forEach(b=>b.classList.remove("dragon-picked"));selected=0;paint()};validate=()=>selected===correctAnswer;paint();
+ }else if(stage===1){
+  const total=7,safe=4;correctAnswer=total-safe;note.textContent="В повозке 7 брёвен. Можно оставить только 4. Выбери лишние брёвна и проверь.";
+  paint=()=>{activity.textContent="🚚 "+"🪵".repeat(total-selected);check.disabled=selected===0};
+  const buttons=[];for(let i=0;i<total;i++)buttons.push(key("🪵",b=>{b.classList.toggle("dragon-picked");selected=buttons.filter(x=>x.classList.contains("dragon-picked")).length;paint()}));
+  resetSelection=()=>{buttons.forEach(b=>b.classList.remove("dragon-picked"));selected=0;paint()};validate=()=>selected===correctAnswer;paint();
+ }else if(stage===2){
+  let left=null,right=null,side="left";note.textContent="У домика номер 9. Сначала выбери левого соседа, затем правого.";
+  paint=()=>{activity.textContent="🏠 "+(left===null?"?":left)+"     🏠 9     🏠 "+(right===null?"?":right);check.disabled=left===null||right===null};
+  for(const n of [7,8,10,11])key(n,()=>{if(side==="left"){left=n;side="right"}else{right=n;side="left"}paint()});
+  resetSelection=()=>{left=null;right=null;side="left";paint()};validate=()=>left===8&&right===10;paint();
+ }else{
+  let chosen=null;note.textContent="Мост ведёт к замку. Какой камень пропущен?";
+  paint=()=>{activity.textContent="🪨 2   🪨 4   "+(chosen===null?"❔":"🪨 "+chosen)+"   🪨 8   🏰";check.disabled=chosen===null};
+  for(const n of [5,6,7,9])key(n,()=>{chosen=n;paint()});
+  resetSelection=()=>{chosen=null;paint()};validate=()=>chosen===6;paint();
+ }
+ reset.addEventListener("click",()=>{if(!answered){resetSelection();$("feedback").textContent="Выбор очищен. Попробуй ещё раз."}});
+ actions.append(check,reset);
+ const hint=document.createElement("button");hint.type="button";hint.className="dragon-hint";hint.textContent="Подсказка";hint.addEventListener("click",()=>{$("feedback").textContent=["Посчитай: от двух яблок до пяти сколько не хватает?","Сколько надо убрать из семи, чтобы осталось четыре?","Слева число меньше 9 на один, справа больше на один.","Считай через два: 2, 4, ?, 8."][stage]});
+ area.append(scene,note,controls,actions,hint);
 }
 function finishDragon(){if(!saved.completed.includes(4)){saved.completed.push(4);saved.stars+=3}saved.unlocked=Math.max(saved.unlocked,5);persist();$("resultTitle").textContent="Дракон стал другом!";$("resultText").textContent="Ты прошёл четыре испытания, открыл ворота и завершил первую главу! Впереди новая история.";$("meterFill").style.width="100%";show("result");celebrateLevel();chapter=1;map();$("result").scrollIntoView({block:"start",behavior:"instant"});void syncResult(4,10)}
 function render(){answered=false;$("feedback").textContent="";$("next").classList.add("hidden");$("counter").textContent=`Задание ${round+1} из ${questions.length}`;$("meterFill").style.width=round/questions.length*100+"%";const [q,answer]=questions[round];$("question").textContent=q;$("choices").replaceChildren();for(const val of options(answer,round)){const btn=document.createElement("button");btn.textContent=val;btn.addEventListener("click",()=>{if(answered)return;answered=true;if(val===answer)correct++;$("feedback").textContent=val===answer?"Правильно! ⭐":`Пока нет. Правильный ответ: ${answer}`;for(const b of $("choices").children)b.disabled=true;$("next").classList.remove("hidden");$("next").scrollIntoView({block:"nearest",behavior:"smooth"})});$("choices").append(btn)}}
