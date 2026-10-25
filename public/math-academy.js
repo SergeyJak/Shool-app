@@ -123,10 +123,10 @@ function renderDiagnosticV2(){
   catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";syncSubmit();skip.disabled=false;unclear.disabled=false;}
  });
  field.addEventListener("keydown",event=>{if(event.key==="Enter"&&!submit.disabled)submit.click()});
- unclear.addEventListener("click",async()=>{
-  submit.disabled=true;skip.disabled=true;unclear.disabled=true;
-  try{diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:"__MISUNDERSTOOD__"})});renderDiagnosticV2();}
-  catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";syncSubmit();skip.disabled=false;unclear.disabled=false;}
+ unclear.addEventListener("click",()=>{
+  $("question").textContent=(q.skill==="arithmetic"?q.prompt.replace("Вычисли:","Реши пример:").replace("Сколько будет","Посчитай"):q.skill==="patterns"?q.prompt.replace("Продолжи ряд:","Найди правило и следующее число:"):q.skill==="geometry"?q.prompt.replace("Сколько будет периметр","Найди периметр").replace("Сколько будет площадь","Найди площадь"):q.skill==="fractions"?q.prompt.replace("Чему равна","Найди"):q.skill==="numbers"?q.prompt.replace("Какое число больше:","Выбери большее число:"):q.skill==="measurements"?q.prompt.replace("Сколько","Какое количество"):q.prompt);
+  $("feedback").textContent="Это тот же вопрос. Можешь ответить или выбрать «Не знаю».";
+  unclear.disabled=true;
  });
  $("options").replaceChildren(field,submit,skip,unclear);
 }
