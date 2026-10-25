@@ -68,8 +68,8 @@ test("skill-specific weaknesses affect skill estimates and placement",()=>{
 test("question bank covers several mathematical operations and measurement concepts",()=>{
  const prompts=d.BANK.map(q=>q.prompt);
  assert.ok(prompts.some(p=>p.includes("×")),"multiplication");
- assert.ok(prompts.some(p=>p.includes("Площадь")),"area");
- assert.ok(prompts.some(p=>p.includes("четырёх сторон")),"perimeter");
+ assert.ok(prompts.some(p=>p.includes("площадь")),"area");
+ assert.ok(prompts.some(p=>p.includes("периметр")),"perimeter");
  assert.ok(prompts.some(p=>p.includes("сантиметров")),"length conversion");
  assert.ok(prompts.some(p=>p.includes("минут")),"time");
  assert.ok(prompts.some(p=>p.includes("сдачи")),"multistep word problems");
