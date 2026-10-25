@@ -150,11 +150,11 @@ test("completed diagnostic with two answers and seventeen skips reports reality"
 test("simulated student profiles: strong, weak, mixed and skip-heavy",()=>{
  const profiles=[
   {name:"all correct",answer:q=>q.answer,min:28,max:42},
-  {name:"all skipped",answer:()=>null,min:14,max:21},
-  {name:"all wrong",answer:()=>"__wrong__",min:14,max:21},
+  {name:"all skipped",answer:()=>null,min:18,max:28},
+  {name:"all wrong",answer:()=>"__wrong__",min:18,max:28},
   {name:"alternating",answer:(q,s)=>s.answers.length%2?q.answer:null,min:14,max:42},
   {name:"mostly correct",answer:(q,s)=>s.answers.length%10===0?null:q.answer,min:28,max:42},
-  {name:"mostly skipped",answer:(q,s)=>s.answers.length%10===0?q.answer:null,min:14,max:21}
+  {name:"mostly skipped",answer:(q,s)=>s.answers.length%10===0?q.answer:null,min:18,max:28}
  ];
  const levels={};
  for(const p of profiles){const session=run(p.answer);const r=d.result(session);levels[p.name]=r.level;assert.ok(r.answered>=p.min&&r.answered<=p.max,p.name+": "+r.answered);assert.equal(r.correct+r.incorrect+r.skipped,r.answered);assert.equal(new Set(session.asked).size,r.answered);}
