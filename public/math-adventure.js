@@ -254,26 +254,41 @@ function renderDragon(){
 }
 function finishDragon(){if(!saved.completed.includes(4)){saved.completed.push(4);saved.stars+=3}saved.unlocked=Math.max(saved.unlocked,5);persist();$("resultTitle").textContent="Дракон стал другом!";$("resultText").textContent="Ты прошёл четыре испытания, открыл ворота и завершил первую главу! Впереди новая история.";$("meterFill").style.width="100%";show("result");celebrateLevel();chapter=1;map();$("result").scrollIntoView({block:"start",behavior:"instant"});void syncResult(4,10)}
 function renderTensValley(){
- const target=tensTasks[tensStep],tens=Math.floor(target/10),ones=target%10;let pickedTens=0,pickedOnes=0;answered=false;
- $("counter").textContent="Домик "+(tensStep+1)+" из "+tensTasks.length;$("meterFill").style.width=tensStep/tensTasks.length*100+"%";
- $("question").textContent="🏘️ Собери материалы для домика!";
- $("feedback").textContent="Одна связка — это 10 брёвнышек. Собери десятки и единицы.";
- $("next").classList.add("hidden");const area=$("choices");area.replaceChildren();area.className="choices tens-valley";
- const scene=document.createElement("div");scene.className="tens-scene";const house=document.createElement("div");house.className="tens-house";house.textContent="";const badge=document.createElement("div");badge.className="tens-target";badge.textContent="Нужно "+target;
- const yard=document.createElement("div");yard.className="tens-yard";scene.append(badge,house,yard);
- const status=document.createElement("div");status.className="tens-status";const controls=document.createElement("div");controls.className="tens-controls";
- const renderYard=()=>{yard.replaceChildren();house.textContent=answered?"🏡":"";for(let i=0;i<pickedTens;i++){const b=document.createElement("span");b.className="tens-bundle";b.textContent="🪵";b.title="Связка из 10 брёвен";yard.append(b)}for(let i=0;i<pickedOnes;i++){const b=document.createElement("span");b.className="tens-single";b.textContent="🪵";yard.append(b)}status.textContent="Связки: "+pickedTens+" (по 10)  •  Брёвна: "+pickedOnes+"  •  Всего: "+(pickedTens*10+pickedOnes)};
- const make=(label,kind)=>{const b=document.createElement("button");b.type="button";b.className="tens-button";b.textContent=label;b.addEventListener("click",()=>{if(answered)return;if(kind==="ten"){if(pickedTens<9)pickedTens++}else if(pickedOnes<9)pickedOnes++;renderYard();const piece=yard.lastElementChild;if(piece&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches)piece.animate([{transform:"translateY(-80px) scale(.5)",opacity:0},{transform:"translateY(7px) scale(1.14)",opacity:1},{transform:"translateY(0) scale(1)",opacity:1}],{duration:540,easing:"cubic-bezier(.2,.85,.3,1)"});$("feedback").textContent="Собери ровно "+target+" и нажми «Проверить»."});controls.append(b)};
- make("🪵 ×10","ten");make("🪵 +1","one");
- const actions=document.createElement("div");actions.className="tens-actions";
- const check=document.createElement("button");check.type="button";check.className="tens-check";check.textContent="Проверить";
- const clear=document.createElement("button");clear.type="button";clear.className="tens-clear";clear.textContent="Сбросить";
- const reset=()=>{pickedTens=0;pickedOnes=0;scene.classList.remove("tens-error");renderYard()};
- clear.addEventListener("click",()=>{if(!answered){reset();$("feedback").textContent="Начни собирать домик заново."}});
- check.addEventListener("click",()=>{if(answered)return;if(pickedTens===tens&&pickedOnes===ones){answered=true;correct++;scene.classList.remove("tens-error");scene.classList.add("tens-success");house.textContent="🏡";$("feedback").textContent="🎉 Верно! "+tens+" десятков и "+ones+" единиц — это "+target+"!";$("next").classList.remove("hidden");return}scene.classList.remove("tens-error");void scene.offsetWidth;scene.classList.add("tens-error");$("feedback").textContent="Попробуй ещё! Для "+target+" нужно "+tens+" десятков и "+ones+" единиц. Поправь свой домик."});
- actions.append(check,clear);
- const hint=document.createElement("button");hint.type="button";hint.className="tens-hint";hint.textContent="Подсказка";hint.addEventListener("click",()=>{$("feedback").textContent="Первая цифра "+tens+" — это десятки, вторая "+ones+" — единицы."});
- area.append(scene,status,controls,actions,hint);renderYard();
+ const target=tensTasks[tensStep];let remaining=target,animating=false;answered=false;
+ $("counter").textContent="Домик "+(tensStep+1)+" из "+tensTasks.length;
+ $("meterFill").style.width=tensStep/tensTasks.length*100+"%";
+ $("question").textContent="🏡 Помоги заселить домик!";
+ $("feedback").textContent="Нажимай на жителей: 10 или 1. Засели ровно "+target+"!";
+ $("next").classList.add("hidden");
+ const area=$("choices");area.replaceChildren();area.className="choices tens-valley tens-residents-game";
+ const scene=document.createElement("div");scene.className="tens-scene resident-scene";
+ const badge=document.createElement("div");badge.className="resident-count";badge.setAttribute("aria-live","polite");
+ const house=document.createElement("div");house.className="resident-house";house.setAttribute("aria-label","Домик ждёт жителей");
+ const roof=document.createElement("div");roof.className="resident-roof";const walls=document.createElement("div");walls.className="resident-walls";
+ const windowLeft=document.createElement("div");windowLeft.className="resident-window";const windowRight=document.createElement("div");windowRight.className="resident-window";const door=document.createElement("div");door.className="resident-door";
+ walls.append(windowLeft,windowRight,door);house.append(roof,walls);
+ const residents=document.createElement("div");residents.className="resident-arrivals";scene.append(badge,house,residents);
+ const prompt=document.createElement("p");prompt.className="resident-prompt";prompt.textContent="Кто переедет в домик?";
+ const controls=document.createElement("div");controls.className="tens-controls resident-controls";
+ const reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ const buttons=[];
+ const render=()=>{badge.textContent=String(remaining);for(const b of buttons)b.disabled=answered||animating;};
+ const celebrate=()=>{answered=true;correct++;scene.classList.add("resident-complete");badge.textContent="0 🎉";$("feedback").textContent="🎉 Ура! Все "+target+" жителей дома!";$("next").classList.remove("hidden");render()};
+ const add=(value,button)=>{
+  if(answered||animating)return;
+  if(value>remaining){scene.classList.remove("resident-wrong");void scene.offsetWidth;scene.classList.add("resident-wrong");$("feedback").textContent="Столько жителей уже не поместится! Осталось "+remaining+". Выбери "+(remaining>=10?"10 или 1.":"1.");return}
+  scene.classList.remove("resident-wrong");animating=true;render();
+  const arrival=document.createElement("span");arrival.className="resident-arrival";arrival.textContent=value===10?"👨‍👩‍👧‍👦":"🧒";residents.append(arrival);
+  const finish=()=>{remaining-=value;badge.textContent=String(remaining);arrival.classList.add("resident-home");animating=false;render();if(remaining===0)celebrate();else $("feedback").textContent="Отлично! Осталось заселить "+remaining+"."};
+  if(reduce){finish();return}
+  const from=button.getBoundingClientRect(),to=door.getBoundingClientRect();
+  const dx=from.left+from.width/2-(to.left+to.width/2),dy=from.top+from.height/2-(to.top+to.height/2);
+  const flight=arrival.animate([{transform:"translate("+dx+"px,"+dy+"px) scale(1.2)",opacity:1},{transform:"translate(0,-35px) scale(1.1)",opacity:1,offset:.75},{transform:"translate(0,0) scale(.35)",opacity:0}],{duration:780,easing:"cubic-bezier(.25,.75,.3,1)",fill:"forwards"});
+  flight.finished.then(finish).catch(finish);
+ };
+ for(const value of [10,1]){const b=document.createElement("button");b.type="button";b.className="tens-button resident-button";b.textContent=(value===10?"👨‍👩‍👧‍👦 ":"🧒 ")+value;b.setAttribute("aria-label",value===10?"Заселить десять жителей":"Заселить одного жителя");b.addEventListener("click",()=>add(value,b));buttons.push(b);controls.append(b)}
+ const hint=document.createElement("button");hint.type="button";hint.className="tens-hint";hint.textContent="Подсказка";hint.addEventListener("click",()=>{$("feedback").textContent=remaining>=10?"Нажми 10, чтобы заселить сразу десять жителей. Когда останется меньше 10, нажимай 1.":"Осталось "+remaining+". Нажимай кнопку 1."});
+ area.append(scene,prompt,controls,hint);render();
 }
 function finishTensValley(){
  if(!saved.completed.includes(5)){saved.completed.push(5);saved.stars+=3}saved.unlocked=Math.max(saved.unlocked,6);persist();
