@@ -77,16 +77,16 @@ function renderApples(){
  existing.textContent="🎯 Нужно: "+goal+" 🍎 · Уже есть: "+inBasket+" 🍎";
  for(let i=0;i<toAdd+3;i++){
   const apple=document.createElement("button");apple.type="button";apple.className="apple-pick";apple.textContent="🍎";apple.setAttribute("aria-label","Положить яблоко в корзину");
-  apple.addEventListener("click",()=>{if(answered)return;if(appleCount>=toAdd){$("feedback").textContent="В корзине уже достаточно яблок. Можно убрать лишнее.";return}appleCount++;apple.disabled=true;update();if(appleCount===toAdd){answered=true;correct++;area.classList.add("apple-delivering");$("feedback").textContent="Получилось! "+inBasket+" + "+toAdd+" = "+goal+". "+friend+" получил угощение!"; $("next").classList.remove("hidden")}});
+  apple.addEventListener("click",()=>{if(answered)return;if(appleCount>=toAdd){$("feedback").textContent="В корзине уже достаточно яблок. Можно убрать лишнее.";return}appleCount++;apple.disabled=true;update();if(appleCount===toAdd){answered=true;correct++;area.classList.add("apple-delivering");$("feedback").textContent="Отлично! "+inBasket+" + "+toAdd+" = "+goal+". Корзинка едет к другу!"; $("next").classList.remove("hidden")}});
   orchard.append(apple);
  }
  basket.addEventListener("click",()=>{if(answered||appleCount===0)return;appleCount--;for(const b of orchard.children){if(b.disabled){b.disabled=false;break}}update()});
  basket.setAttribute("role","button");basket.setAttribute("tabindex","0");basket.setAttribute("aria-label","Убрать последнее яблоко из корзины");
  basket.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();basket.click()}});
  hint.addEventListener("click",()=>{appleHints++;$("feedback").textContent="Осталось добавить "+(toAdd-appleCount)+" яблок. В корзине "+(inBasket+appleCount)+", а другу нужно "+goal+". Нажимай на яблоки по одному.";});
- const delivery=document.createElement("div");delivery.className="apple-delivery";delivery.setAttribute("aria-hidden","true");delivery.textContent="🧺🍎";
  const receiver=document.createElement("div");receiver.className="apple-receiver";receiver.textContent=friend+" ждёт угощение";
- area.append(existing,basket,receiver,delivery,orchard,counter,hint);update();
+ basket.addEventListener("animationend",()=>{if(answered){receiver.textContent=friend+" получил "+goal+" яблок! 🎉";$("feedback").textContent="Ура! "+friend+" получил все "+goal+" яблок. "+inBasket+" + "+toAdd+" = "+goal+".";}});
+ area.append(existing,basket,receiver,orchard,counter,hint);update();
 }
 function finishApples(){
  if(!saved.completed.includes(0)){saved.completed.push(0);saved.stars+=3}

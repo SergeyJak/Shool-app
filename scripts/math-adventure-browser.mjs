@@ -41,7 +41,7 @@ try{
   for(let j=0;j<target;j++){
    await page.$eval(".apple-pick:not(:disabled)",el=>el.click());
   }
-  assert.match(await page.$eval("#feedback",el=>el.textContent),/Получилось/);
+  assert.match(await page.$eval("#feedback",el=>el.textContent),/Отлично|Ура/);
   assert.equal(await page.$eval("#next",el=>el.classList.contains("hidden")),false);
   await page.$eval("#next",el=>el.click());
  }
