@@ -44,4 +44,23 @@ body::before{content:"";position:fixed;z-index:-1;inset:0;background:#b8eaf5 url
 #adventure:not(.locked) .copy h2{color:#38245e!important}
 #adventure:not(.locked) .copy p{color:#344565!important}
 @media(max-width:580px){#adventure{display:block!important}#adventure .art{height:auto!important;aspect-ratio:16/9!important}#adventure .copy{padding:23px!important}#adventure .copy h2{font-size:30px!important}}
-</style></head><body><header><a href="/cabinet"> В кабинет</a></header><main><section class="hero"><div><span class="eyebrow">МАТЕМАТИЧЕСКАЯ АКАДЕМИЯ</span><h1>Твоё математическое приключение!</h1><p>Пройди проверку знаний и открой свою карту из 100 уровней.</p></div></section><div class="grid"><a class="card" href="/math-academy.html?start=1&v=3" id="diagnostic"><div class="art"><img src="/assets/student-worlds/number-trail.webp" alt="Волшебная тропинка знаний"></div><div class="copy"><span class="eyebrow">ТВОЁ ПЕРВОЕ ЗАДАНИЕ</span><h2>Узнаем твою суперсилу!</h2><p>Ответь на 15–25 вопросов, и совёнок подберёт тебе подходящий старт приключения.</p><span class="status" id="diagnosticStatus">Готово к приключению</span><span class="action" id="diagnosticAction">Начать путешествие</span></div></a><a class="card locked" href="#" id="adventure" aria-disabled="true" tabindex="-1"><div class="art"><img src="/assets/student-worlds/number-trail.webp" alt="Сказочная карта приключений"></div><span class="lock" id="lockLabel">🔒 Пока закрыто</span><div class="copy"><span class="eyebrow">СЛЕДУЮЩАЯ ГЛАВА</span><h2>Волшебная карта</h2><p>100 уровней, новые миры и награды. Сначала совёнок поможет выбрать твою отправную точку.</p><span class="status" id="adventureStatus">Сначала пройди проверку</span><span class="action" id="adventureAction">Сначала проверка знаний</span></div></a></div></main><script src="/math-hub.js?v=20261024-2"></script></body></html>
+</style><style>
+/* Two clearly different choices, compact and readable on a phone. */
+#diagnostic .art img{object-position:64% 48%!important}
+#adventure .art img{object-position:center 45%!important}
+#diagnostic .copy,#adventure .copy{min-width:0}
+#diagnostic .copy p,#adventure .copy p{flex:0 0 auto}
+#adventure .lock{z-index:2;top:12px;right:12px}
+@media(max-width:580px){
+ .grid{gap:14px!important;margin-top:15px!important}
+ #diagnostic,#adventure{border-radius:26px!important;border-width:5px!important;min-height:0!important}
+ #diagnostic .art,#adventure .art{aspect-ratio:2.05/1!important;height:auto!important;min-height:0!important}
+ #diagnostic .art:after,#adventure .art:after{bottom:9px!important;padding:7px 11px!important;border-width:2px!important;font-size:11px!important;letter-spacing:0!important;white-space:normal!important;text-align:center;max-width:82%!important}
+ #diagnostic .copy,#adventure .copy{padding:17px 18px 19px!important;gap:8px!important}
+ #diagnostic .copy h2,#adventure .copy h2{font-size:clamp(23px,6vw,28px)!important;line-height:1.13!important}
+ #diagnostic .copy p,#adventure .copy p{font-size:15px!important;line-height:1.35!important}
+ #diagnostic .eyebrow,#adventure .eyebrow{font-size:11px!important;letter-spacing:.09em!important}
+ #diagnostic .action,#adventure .action{font-size:18px!important;padding:13px 12px!important;margin-top:5px!important}
+ #adventure .lock{font-size:13px;padding:8px 11px}
+}
+</style></head><body><header><a href="/cabinet"> В кабинет</a></header><main><section class="hero"><div><span class="eyebrow">МАТЕМАТИЧЕСКАЯ АКАДЕМИЯ</span><h1>Твоё математическое приключение!</h1><p>Пройди проверку знаний и открой свою карту из 100 уровней.</p></div></section><div class="grid"><a class="card" href="/math-academy.html?start=1&v=3" id="diagnostic"><div class="art"><img src="/assets/student-worlds/hero-owl.webp" alt="Совёнок приглашает проверить математические знания"></div><div class="copy"><span class="eyebrow">ТВОЁ ПЕРВОЕ ЗАДАНИЕ</span><h2>Узнаем твою суперсилу!</h2><p>Ответь на вопросы, и совёнок поможет выбрать подходящий уровень.</p><span class="status" id="diagnosticStatus">Готово к приключению</span><span class="action" id="diagnosticAction">Начать путешествие</span></div></a><a class="card locked" href="#" id="adventure" aria-disabled="true" tabindex="-1"><div class="art"><img src="/assets/student-worlds/number-trail.webp" alt="Сказочная карта приключений"></div><span class="lock" id="lockLabel">🔒 Пока закрыто</span><div class="copy"><span class="eyebrow">СЛЕДУЮЩАЯ ГЛАВА</span><h2>Волшебная карта</h2><p>100 уровней, новые миры и награды. Сначала совёнок поможет выбрать твою отправную точку.</p><span class="status" id="adventureStatus">Сначала пройди проверку</span><span class="action" id="adventureAction">Сначала проверка знаний</span></div></a></div></main><script src="/math-hub.js?v=20261024-2"></script></body></html>
