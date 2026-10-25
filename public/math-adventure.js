@@ -9,6 +9,7 @@ const levels=Array.from({length:TOTAL_LEVELS},(_,i)=>({...themes[i%5],name:theme
 levels[0].name="Собери яблоки";
 levels[1].name="Грузовик с брёвнами";
 levels[2].name="Соседи числа";
+levels[3].name="Почини числовую тропу";
 const $=id=>document.getElementById(id);
 let saved;try{saved=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){saved={}}
 if(!saved||!Number.isInteger(saved.unlocked))saved={unlocked:0,stars:0,completed:[]};
@@ -19,6 +20,7 @@ const appleTasks=[[2,1],[3,2],[4,3],[5,4],[6,5]];
 const bridgeTasks=[[5,2],[7,3],[9,4],[12,5],[15,7]];
 let bridgeStep=0,bridgeRemaining=0;
 const neighborTasks=[4,7,12,19,28];let neighborStep=0,neighborLeft=null,neighborRight=null;
+const pathTasks=[{start:1,step:1,missing:2},{start:2,step:2,missing:3},{start:5,step:5,missing:1},{start:10,step:10,missing:2},{start:3,step:3,missing:3}];let pathStep=0;
 function persist(){try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(_){}}
 function mergeProgress(remote){
  if(!remote||!Array.isArray(remote.completed))return;
@@ -61,7 +63,7 @@ async function checkAssessment(){
  $("world").hidden=true;$("intro").classList.add("hidden");$("diagnosticGate").classList.remove("hidden");
 }
 function map(){document.querySelectorAll(".node").forEach(n=>n.remove());const first=chapter*5;const scenes=["forest","river","mountains","castle","clearing","cave","sunset","boss-arena"];$("world").style.backgroundImage=`url("/assets/math-adventure/backgrounds/${scenes[chapter%scenes.length]}.svg")`;$("chapterTitle").textContent=`Глава ${chapter+1} из 20`;$("chapterPrev").disabled=chapter===0;$("chapterNext").disabled=chapter>=Math.floor(saved.unlocked/5);levels.slice(first,first+5).forEach((level,j)=>{const i=first+j;const btn=document.createElement("button");btn.className="node";btn.style.left=themes[j].x+"%";btn.style.top=themes[j].y+"%";btn.disabled=i>saved.unlocked;btn.setAttribute("aria-label",level.name+(btn.disabled?", закрыт":""));const img=document.createElement("img");img.alt="";img.src="/assets/math-adventure/map/"+(j===4?"boss-node.svg":i>saved.unlocked?"locked-node.svg":saved.completed.includes(i)?"node-complete.svg":"path-node.svg");const label=document.createElement("span");label.textContent=level.name;const number=document.createElement("b");number.className="node-number";number.textContent=saved.completed.includes(i)?"✓":i<=saved.unlocked?String(i+1):"";btn.append(img,number,label);btn.addEventListener("click",()=>start(i));$("world").append(btn)});$("summary").textContent=`Твой стартовый уровень: ${startingLevel} из 100. Открыт этап ${saved.unlocked+1} из ${levels.length}. Звёзд: ${saved.stars}. Первая остановка — обучающая игра без штрафов.`}
-function start(i){if(i>saved.unlocked)return;current=i;round=0;correct=0;questions=Array.from({length:10},(_,j)=>task(levels[i].type,j,i));$("levelName").textContent=levels[i].name;show("game");if(i===0){appleStep=0;appleHints=0;renderApples()}else if(i===1){bridgeStep=0;renderBridge()}else if(i===2){neighborStep=0;renderNeighbors()}else render();$("game").scrollIntoView({block:"start",behavior:"instant"})}
+function start(i){if(i>saved.unlocked)return;current=i;round=0;correct=0;questions=Array.from({length:10},(_,j)=>task(levels[i].type,j,i));$("levelName").textContent=levels[i].name;show("game");if(i===0){appleStep=0;appleHints=0;renderApples()}else if(i===1){bridgeStep=0;renderBridge()}else if(i===2){neighborStep=0;renderNeighbors()}else if(i===3){pathStep=0;renderNumberPath()}else render();$("game").scrollIntoView({block:"start",behavior:"instant"})}
 function renderApples(){
  const [inBasket,toAdd]=appleTasks[appleStep];const friend=["🐿️ Белочка","🐰 Зайчик","🦔 Ёжик","🐻 Медвежонок","🦊 Лисёнок"][appleStep];const goal=inBasket+toAdd;appleCount=0;answered=false;
  $("counter").textContent="Игра "+(appleStep+1)+" из "+appleTasks.length;
@@ -175,7 +177,35 @@ function finishNeighbors(){
  $("resultTitle").textContent="Улица заселена!";$("resultText").textContent="Ты нашёл соседей чисел и помог совёнку вернуть номера домикам. Следующая остановка открыта.";
  $("meterFill").style.width="100%";show("result");celebrateLevel();chapter=0;map();$("result").scrollIntoView({block:"start",behavior:"instant"});void syncResult(2,10);
 }
+function renderNumberPath(){
+ const task=pathTasks[pathStep],answer=task.start+task.step*task.missing;answered=false;
+ $("counter").textContent="Тропа "+(pathStep+1)+" из "+pathTasks.length;
+ $("meterFill").style.width=pathStep/pathTasks.length*100+"%";
+ $("question").textContent="🌉 У совёнка пропала плитка на тропинке. Найди число, чтобы можно было пройти дальше!";
+ $("feedback").textContent="Посмотри, как меняются числа на камнях. Вставь пропущенное число.";
+ $("next").classList.add("hidden");const area=$("choices");area.replaceChildren();area.className="choices number-path-game";
+ const scene=document.createElement("div");scene.className="number-path-scene";const owl=document.createElement("div");owl.className="path-owl";owl.textContent="🦉";owl.setAttribute("aria-hidden","true");scene.append(owl);
+ const stones=document.createElement("div");stones.className="path-stones";const missing=document.createElement("div");
+ for(let i=0;i<5;i++){const stone=document.createElement("div");stone.className="path-stone"+(i===task.missing?" path-gap":"");stone.textContent=i===task.missing?"?":String(task.start+task.step*i);if(i===task.missing){missing.className="path-stone path-gap";missing.replaceWith(stone)}stones.append(stone)}
+ scene.append(stones);const tiles=document.createElement("div");tiles.className="path-tiles";
+ const variants=[answer,answer+task.step,answer-task.step,answer+2*task.step].filter((v,i,a)=>v>=0&&a.indexOf(v)===i).sort((a,b)=>((a*3+pathStep)%7)-((b*3+pathStep)%7));
+ for(const value of variants){const tile=document.createElement("button");tile.type="button";tile.className="path-choice";tile.textContent=String(value);tile.addEventListener("click",()=>{if(answered)return;if(value!==answer){tile.classList.remove("path-wrong");void tile.offsetWidth;tile.classList.add("path-wrong");$("feedback").textContent="Этот камень не подходит. Попробуй посчитать шаг между числами.";return}
+ answered=true;correct++;const gap=stones.children[task.missing];const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ const finish=()=>{gap.textContent=String(answer);gap.classList.remove("path-gap");gap.classList.add("path-repaired");tile.classList.add("path-used");scene.classList.add("path-success");$("feedback").textContent="🌟 Тропинка снова целая! Шаг "+task.step+". Совёнок может пройти!";$("next").classList.remove("hidden")};
+ if(reduced){finish();return}
+ const from=tile.getBoundingClientRect(),to=gap.getBoundingClientRect();const flying=tile.cloneNode(true);flying.disabled=true;flying.className="path-choice path-flying";flying.setAttribute("aria-hidden","true");flying.style.left=from.left+"px";flying.style.top=from.top+"px";flying.style.width=from.width+"px";flying.style.height=from.height+"px";document.body.append(flying);tile.classList.add("path-used");
+ const flight=flying.animate([{transform:"translate(0,0) scale(1) rotate(0deg)"},{transform:"translate("+((to.left+to.width/2)-(from.left+from.width/2))+"px,"+((to.top+to.height/2)-(from.top+from.height/2))+"px) scale("+(to.width/from.width)+") rotate(360deg)"}],{duration:850,easing:"cubic-bezier(.22,.8,.3,1)",fill:"forwards"});
+ flight.finished.then(()=>{flying.remove();finish()}).catch(()=>{flying.remove();finish()})});tiles.append(tile)}
+ const hint=document.createElement("button");hint.type="button";hint.className="path-hint";hint.textContent="Подсказка";hint.addEventListener("click",()=>{$("feedback").textContent="Каждый следующий камень больше на "+task.step+". Посчитай от первого камня."});
+ area.append(scene,tiles,hint);
+}
+function finishNumberPath(){
+ if(!saved.completed.includes(3)){saved.completed.push(3);saved.stars+=3}
+ saved.unlocked=Math.max(saved.unlocked,4);persist();
+ $("resultTitle").textContent="Тропа спасена!";$("resultText").textContent="Ты восстановил числовые дорожки, а совёнок добрался до следующей остановки.";
+ $("meterFill").style.width="100%";show("result");celebrateLevel();chapter=0;map();$("result").scrollIntoView({block:"start",behavior:"instant"});void syncResult(3,10);
+}
 function render(){answered=false;$("feedback").textContent="";$("next").classList.add("hidden");$("counter").textContent=`Задание ${round+1} из ${questions.length}`;$("meterFill").style.width=round/questions.length*100+"%";const [q,answer]=questions[round];$("question").textContent=q;$("choices").replaceChildren();for(const val of options(answer,round)){const btn=document.createElement("button");btn.textContent=val;btn.addEventListener("click",()=>{if(answered)return;answered=true;if(val===answer)correct++;$("feedback").textContent=val===answer?"Правильно! ⭐":`Пока нет. Правильный ответ: ${answer}`;for(const b of $("choices").children)b.disabled=true;$("next").classList.remove("hidden");$("next").scrollIntoView({block:"nearest",behavior:"smooth"})});$("choices").append(btn)}}
-$("next").addEventListener("click",()=>{if(!answered)return;if(current===0){appleStep++;if(appleStep<appleTasks.length)renderApples();else finishApples();return}if(current===1){bridgeStep++;if(bridgeStep<bridgeTasks.length)renderBridge();else finishBridge();return}if(current===2){neighborStep++;if(neighborStep<neighborTasks.length)renderNeighbors();else finishNeighbors();return}round++;if(round<questions.length){render();return}const passed=correct>=8;if(passed){if(!saved.completed.includes(current)){saved.completed.push(current);saved.stars+=Math.min(3,Math.floor(correct/2)-2)}saved.unlocked=Math.max(saved.unlocked,Math.min(levels.length-1,current+1));persist()}$("resultTitle").textContent=passed?"Уровень пройден!":"Попробуем ещё раз";$("resultText").textContent=`Правильных ответов: ${correct} из ${questions.length}. `+(passed?"Следующая остановка открыта.":"Для открытия пути нужно 8 правильных ответов из 10.");$("meterFill").style.width="100%";show("result");chapter=Math.floor(current/5);map();$("result").scrollIntoView({block:"start",behavior:"instant"});void syncResult(current,correct)});
+$("next").addEventListener("click",()=>{if(!answered)return;if(current===0){appleStep++;if(appleStep<appleTasks.length)renderApples();else finishApples();return}if(current===1){bridgeStep++;if(bridgeStep<bridgeTasks.length)renderBridge();else finishBridge();return}if(current===2){neighborStep++;if(neighborStep<neighborTasks.length)renderNeighbors();else finishNeighbors();return}if(current===3){pathStep++;if(pathStep<pathTasks.length)renderNumberPath();else finishNumberPath();return}round++;if(round<questions.length){render();return}const passed=correct>=8;if(passed){if(!saved.completed.includes(current)){saved.completed.push(current);saved.stars+=Math.min(3,Math.floor(correct/2)-2)}saved.unlocked=Math.max(saved.unlocked,Math.min(levels.length-1,current+1));persist()}$("resultTitle").textContent=passed?"Уровень пройден!":"Попробуем ещё раз";$("resultText").textContent=`Правильных ответов: ${correct} из ${questions.length}. `+(passed?"Следующая остановка открыта.":"Для открытия пути нужно 8 правильных ответов из 10.");$("meterFill").style.width="100%";show("result");chapter=Math.floor(current/5);map();$("result").scrollIntoView({block:"start",behavior:"instant"});void syncResult(current,correct)});
 $("chapterPrev").addEventListener("click",()=>{chapter=Math.max(0,chapter-1);map()});$("chapterNext").addEventListener("click",()=>{chapter=Math.min(Math.floor(saved.unlocked/5),chapter+1);map()});$("return").addEventListener("click",()=>{chapter=Math.floor(Math.max(0,current)/5);show("intro");$("world").scrollIntoView({block:"start",behavior:"instant"})});$("world").hidden=true;$("intro").classList.add("hidden");void checkAssessment();void loadCloud();
 })();
