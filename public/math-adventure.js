@@ -102,7 +102,7 @@ function renderBridge(){
  $("question").textContent="🚚 Грузовик может увезти только "+safe+" брёвен. Сейчас в кузове "+total+", поэтому машина не едет. Убери лишние!";
  $("feedback").textContent="Нажимай на брёвна 🪵 в кузове. Машина поедет, когда останется ровно "+safe+".";
  $("next").classList.add("hidden");
- const area=$("choices");area.replaceChildren();area.classList.add("apple-training");
+ const area=$("choices");area.replaceChildren();area.classList.add("apple-training");area.classList.remove("truck-departing");
  const bridge=document.createElement("div");bridge.className="bridge-board truck-scene";bridge.setAttribute("aria-label","Брёвна в кузове грузовика");
  const count=document.createElement("p");count.className="apple-counter";
  const hint=document.createElement("button");hint.type="button";hint.className="apple-hint";hint.textContent="Подсказка";
@@ -123,7 +123,7 @@ function renderBridge(){
    board.classList.add("removed");bridgeRemaining--;update();
    if(bridgeRemaining===total-remove){
     answered=true;correct++;
-    bridge.classList.add("truck-ready");cab.classList.add("truck-driving");status.textContent="✅ Можно ехать!";$("feedback").textContent="🚚 Поехали! "+total+" − "+remove+" = "+bridgeRemaining+". Грузовик отправился в путь!";
+    bridge.classList.add("truck-ready");area.classList.add("truck-departing");cab.classList.add("truck-driving");status.textContent="✅ Можно ехать!";$("feedback").textContent="🚚 Поехали! "+total+" − "+remove+" = "+bridgeRemaining+". Грузовик отправился в путь!";
     $("next").classList.remove("hidden");
    }
   });
