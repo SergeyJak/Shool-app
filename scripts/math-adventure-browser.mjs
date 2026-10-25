@@ -57,12 +57,12 @@ try{
  assert.match(await page.$eval("#summary",el=>el.textContent),/Звёзд: 3/);
  await page.$eval(".node:not(:disabled)",els=>{const nodes=document.querySelectorAll(".node:not(:disabled)");nodes[1].click()});
  for(let i=0;i<5;i++){
-  assert.match(await page.$eval("#counter",el=>el.textContent),new RegExp("Мост "+(i+1)+" из 5"));
+  assert.match(await page.$eval("#counter",el=>el.textContent),new RegExp("Рейс "+(i+1)+" из 5"));
   const target=[2,3,4,5,7][i];
   await page.$eval(".apple-hint",el=>el.click());
-  assert.match(await page.$eval("#feedback",el=>el.textContent),/Вычитание означает/);
+  assert.match(await page.$eval("#feedback",el=>el.textContent),/В кузове было/);
   for(let j=0;j<target;j++)await page.$eval(".bridge-plank:not(.removed)",el=>el.click());
-  assert.match(await page.$eval("#feedback",el=>el.textContent),/Мост готов/);
+  assert.match(await page.$eval("#feedback",el=>el.textContent),/Поехали/);
   await page.$eval("#next",el=>el.click());
  }
  assert.match(await page.$eval("#resultTitle",el=>el.textContent),/Мост построен/);
