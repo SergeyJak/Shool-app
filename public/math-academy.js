@@ -123,10 +123,10 @@ function renderDiagnosticV2(){
   catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";syncSubmit();skip.disabled=false;unclear.disabled=false;}
  });
  field.addEventListener("keydown",event=>{if(event.key==="Enter"&&!submit.disabled)submit.click()});
- unclear.addEventListener("click",async()=>{
-  submit.disabled=true;skip.disabled=true;unclear.disabled=true;
-  try{diagnosticV2=await diagnosticApi("/api/math/diagnostic-v2/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:q.id,value:"__MISUNDERSTOOD__"})});renderDiagnosticV2();}
-  catch(_){$("feedback").textContent="Не удалось перейти дальше. Попробуй ещё раз.";syncSubmit();skip.disabled=false;unclear.disabled=false;}
+ unclear.addEventListener("click",()=>{
+  $("question").textContent="Попробуй прочитать вопрос по-другому: "+q.prompt;
+  $("feedback").textContent="Это тот же вопрос. Можешь ответить или выбрать «Не знаю».";
+  unclear.disabled=true;
  });
  $("options").replaceChildren(field,submit,skip,unclear);
 }
