@@ -225,7 +225,7 @@ function renderDragon(){
  $("feedback").textContent="🐉 Дракон заметил ошибку. Попробуй ещё раз!";scene.classList.remove("dragon-shake");void scene.offsetWidth;scene.classList.add("dragon-shake");resetSelection()};
  let resetSelection=()=>{};check.addEventListener("click",attempt);
  if(stage===0){
-  const existing=2,need=3;correctAnswer=need;note.textContent="У дракона уже 2 яблока. Выбери, сколько ещё добавить, и проверь ответ.";
+  const existing=2,need=3;correctAnswer=need;note.textContent="Дракону нужно "+(existing+need)+" яблок. У него уже есть "+existing+". Сколько яблок нужно добавить? Выбери яблоки и нажми «Проверить».";
   paint=()=>{activity.textContent="🧺 "+"🍎".repeat(existing+selected);check.disabled=selected===0};
   const buttons=[];for(let i=0;i<6;i++)buttons.push(key("🍎",b=>{b.classList.toggle("dragon-picked");selected=buttons.filter(x=>x.classList.contains("dragon-picked")).length;paint()}));
   resetSelection=()=>{buttons.forEach(b=>b.classList.remove("dragon-picked"));selected=0;paint()};validate=()=>selected===correctAnswer;paint();
