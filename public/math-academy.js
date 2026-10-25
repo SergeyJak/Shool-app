@@ -67,6 +67,20 @@ function renderDiagnosticV2(){
     const name=document.createElement("span");name.textContent=label;
     tile.append(value,name);stats.append(tile);
   }
+  const review=Array.isArray(result.review)?result.review:[];
+  const reviewPanel=$("diagnosticReview");
+  reviewPanel.hidden=review.length===0;
+  $("diagnosticReviewTitle").textContent="Разобрать ответы ("+review.length+")";
+  const reviewItems=$("diagnosticReviewItems");reviewItems.replaceChildren();
+  for(const [index,item] of review.entries()){
+   const card=document.createElement("div");card.className="diagnostic-review-item";
+   const heading=document.createElement("strong");heading.textContent=(index+1)+". "+(skillLabels[item.skill]||item.skill);
+   const prompt=document.createElement("span");prompt.textContent=item.prompt;
+   const answer=document.createElement("span");answer.textContent="Твой ответ: "+(item.misunderstood?"Не понял вопрос":item.skipped?"Не знаю":item.answer??"Нет ответа");
+   const expected=document.createElement("span");expected.className="review-correct";expected.textContent="Правильный ответ: "+item.expectedAnswer;
+   const explanation=document.createElement("span");explanation.textContent=item.explanation;
+   card.append(heading,prompt,answer,expected,explanation);reviewItems.append(card);
+  }
   $("resultLead").textContent="Совёнок запомнил твои ответы и подберёт следующие задания.";
   $("adventureAssessment").textContent="Твой старт: уровень "+result.level;
   $("adventureLaunch").classList.remove("hidden");
