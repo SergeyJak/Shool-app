@@ -68,3 +68,10 @@ button{box-shadow:0 4px 0 #4539b2}button.secondary{box-shadow:0 4px 0 #c4bfee}
 .academy-tools-intro{background:linear-gradient(100deg,#e8f9ff,#f3e8ff);border:4px solid #fff;padding:clamp(20px,4vw,36px);}
 .academy-tools-intro h1{font-size:clamp(27px,4.5vw,38px);margin:12px 0;}
 .academy-back-to-worlds{display:inline-flex;margin-top:10px;align-items:center;min-height:44px;color:#5543c9;font-weight:850;}
+
+
+/* Map companions: several transparent owl poses placed around chapter nodes. */
+.map-owl-companion{position:absolute;z-index:3;width:clamp(58px,13vw,104px);height:auto;transform:translate(-50%,-50%);object-fit:contain;pointer-events:none;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 5px 5px #27355a33)}
+.map-owl-companion.map-owl-current{z-index:5;width:clamp(72px,16vw,120px);filter:drop-shadow(0 6px 7px #27355a55)}
+.map-owl-companion.map-owl-complete{opacity:.92}
+@media(max-width:560px){.map-owl-companion{width:72px}.map-owl-companion.map-owl-current{width:88px}}
