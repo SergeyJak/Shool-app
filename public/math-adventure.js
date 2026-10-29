@@ -70,6 +70,8 @@ $("world").querySelectorAll(".map-owl-companion").forEach(o=>o.remove());
 const firstIncomplete=Array.from({length:saved.unlocked+1},(_,i)=>i).find(i=>!saved.completed.includes(i));
 const owlLevel=firstIncomplete===undefined?saved.unlocked:firstIncomplete;
 const currentInChapter=owlLevel-first;
+$("world").dataset.owlLevel=String(owlLevel+1);
+$("world").dataset.owlChapter=String(Math.floor(owlLevel/5)+1);
 if(currentInChapter>=0&&currentInChapter<5){
  const marker=$("world").querySelectorAll(".node")[currentInChapter];
  if(marker){
