@@ -4,7 +4,7 @@ const KEY="school-math-adventure-v2";
 const LEGACY_KEY="school-math-adventure-v1";
 const BUILD="20261025-log-truck-visual-r4";
 const TOTAL_LEVELS=100;
-const themes=[{name:"Солнечная поляна",x:35,y:86,type:"numbers"},{name:"Мост примеров",x:51,y:82,type:"numbers"},{name:"Развилка задач",x:79,y:67,type:"word"},{name:"Тропа фигур",x:61,y:51,type:"geometry"},{name:"Дракон знаний",x:43,y:34,type:"boss"}];
+const themes=[{name:"Солнечная поляна",x:32,y:85,type:"numbers"},{name:"Мост примеров",x:54,y:77,type:"numbers"},{name:"Развилка задач",x:79,y:67,type:"word"},{name:"Тропа фигур",x:66,y:48,type:"geometry"},{name:"Дракон знаний",x:40,y:31,type:"boss"}];
 const levels=Array.from({length:TOTAL_LEVELS},(_,i)=>({...themes[i%5],name:themes[i%5].name+" · "+(i+1),index:i}));
 levels[0].name="Собери яблоки";
 levels[1].name="Грузовик с брёвнами";
