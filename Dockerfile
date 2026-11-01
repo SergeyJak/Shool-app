@@ -1,4 +1,4 @@
-FROM node:20-bookworm-slim
+FROM node:22-bookworm-slim
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ghostscript unzip \
@@ -6,7 +6,7 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 COPY . .
 RUN mkdir -p public/assets/math-adventure/art-pack \
   && unzip -oq public/math_adventure_art_pack.zip "maps/*" -d public/assets/math-adventure/art-pack

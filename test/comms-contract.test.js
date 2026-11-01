@@ -11,8 +11,8 @@ test("WebRTC signaling is scoped to the authenticated lesson room", () => {
   const connectionStart = server.indexOf('io.on("connection"');
   const connection = server.slice(connectionStart);
 
-  assert.match(connection, /socket\.on\("rtc:ready"/);
-  assert.match(connection, /socket\.on\("rtc:signal"/);
+  assert.match(connection, /(?:socket\.on|onEvent)\("rtc:ready"/);
+  assert.match(connection, /(?:socket\.on|onEvent)\("rtc:signal"/);
   assert.match(connection, /target\.data\.lessonId !== lessonId/);
   assert.match(connection, /target\.data\.rtcReady !== true/);
   assert.match(connection, /socket\.to\(room\)\.emit\("rtc:peer-ready"/);
@@ -21,9 +21,9 @@ test("WebRTC signaling is scoped to the authenticated lesson room", () => {
 
 test("observer cannot participate in calls or chat", () => {
   const server = read("server.js");
-  assert.match(server, /socket\.on\("rtc:ready"[\s\S]*role === "observer"/);
-  assert.match(server, /socket\.on\("chat:history"[\s\S]*role === "observer"/);
-  assert.match(server, /socket\.on\("chat:send"[\s\S]*role === "observer"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc:ready"[\s\S]*role === "observer"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("chat:history"[\s\S]*role === "observer"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("chat:send"[\s\S]*role === "observer"/);
 });
 
 test("chat messages are persisted per lesson and indexed", () => {
@@ -47,12 +47,12 @@ test("ICE config is protected and supports TURN environment variables", () => {
 
 test("server routes call request accept decline and cancel only inside lesson room", () => {
   const server = read("server.js");
-  assert.match(server, /socket\.on\("rtc:call"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc:call"/);
   assert.match(server, /socket\.to\(room\)\.emit\("rtc:incoming-call"/);
-  assert.match(server, /socket\.on\("rtc:accept"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc:accept"/);
   assert.match(server, /call\.caller\.emit\("rtc:accepted"/);
-  assert.match(server, /socket\.on\("rtc:decline"/);
-  assert.match(server, /socket\.on\("rtc:cancel"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc:decline"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc:cancel"/);
 });
 
 test("incoming call has a prominent ringing indicator and explicit actions", () => {
@@ -73,7 +73,7 @@ test("lesson client exposes ICE diagnostics and retries remote playback", () => 
   assert.match(client, /iceconnectionstatechange/);
   assert.match(client, /icecandidateerror/);
   assert.match(client, /remoteVideo\.play\(\)/);
-  assert.match(server, /socket\.on\("rtc:debug"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc:debug"/);
   assert.match(server, /stun:stun\.cloudflare\.com:3478/);
 });
 
@@ -397,7 +397,7 @@ test("RTC v2 routes signaling by stable client id instead of socket id", () => {
 
   assert.match(server, /const rtc2CallsByLesson = new Map\(\)/);
   assert.match(server, /function rtc2SocketForClient\(lessonId, clientId\)/);
-  assert.match(server, /socket\.on\("rtc2:signal"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc2:signal"/);
   assert.match(server, /targetClientId/);
   assert.match(client, /socket\.emit\("rtc2:signal"/);
   assert.match(client, /targetClientId/);
@@ -411,14 +411,14 @@ test("RTC v2 has one caller offerer and fresh peer per offer", () => {
   assert.match(client, /destroyPeer\(\);[\s\S]{0,200}peerClientId = targetClientId/);
   assert.match(client, /async function startOffer\(targetClientId/);
   assert.match(client, /const pc = await createFreshPeer\(targetClientId\)/);
-  assert.match(client, /socket\.on\("rtc2:accepted"/);
+  assert.match(client, /(?:socket\.on|onEvent)\("rtc2:accepted"/);
 });
 
 test("RTC v2 reconnect resumes by stable call session", () => {
   const server = read("server.js");
   const client = read("public/lesson-comms.mjs");
 
-  assert.match(server, /socket\.on\("rtc2:resume"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc2:resume"/);
   assert.match(client, /function resumeRtc2Session/);
   assert.match(client, /resumeRtc2Session\("socket-reconnect"\)/);
   assert.match(client, /scheduleRtc2Resume\("network-change"\)/);
@@ -426,17 +426,17 @@ test("RTC v2 reconnect resumes by stable call session", () => {
 
 test("RTC v2 is cache-busted on lesson pages", () => {
   assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets3/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-huawei-pdf3/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261004-huawei-pdf3/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261101-pdf-local/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261101-pdf-local/);
 });
 
 
 test("RTC v2 requires explicit accept before caller starts negotiation", () => {
   const client = read("public/lesson-comms.mjs");
   assert.match(client, /socket\.emit\("rtc2:call"/);
-  assert.match(client, /socket\.on\("rtc2:incoming-call"/);
+  assert.match(client, /(?:socket\.on|onEvent)\("rtc2:incoming-call"/);
   assert.match(client, /socket\.emit\("rtc2:accept"/);
-  assert.match(client, /socket\.on\("rtc2:accepted"[\s\S]{0,700}startOffer\(peer\.clientId, "accepted"\)/);
+  assert.match(client, /(?:socket\.on|onEvent)\("rtc2:accepted"[\s\S]{0,700}startOffer\(peer\.clientId, "accepted"\)/);
 });
 
 test("RTC v2 preserves ringtone and explicit hangup behavior", () => {
@@ -470,7 +470,7 @@ test("RTC v2 tunes lesson capture and sender bitrate", () => {
 test("RTC v2 reconnect recovery is stable-client based and watchdog bounded", () => {
   const server = read("server.js");
   const client = read("public/lesson-comms.mjs");
-  assert.match(server, /socket\.on\("rtc2:resume"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("rtc2:resume"/);
   assert.match(client, /let connectWatchdogTimer = null/);
   assert.match(client, /event: "connect-timeout-v2"/);
   assert.match(client, /resumeRtc2Session\("connect-timeout"\)/);
@@ -494,8 +494,8 @@ test("RTC v2 diagnostics keep network context and omit raw SDP or candidates fro
 
 test("RTC v2 cache bust is active on both lesson pages", () => {
   assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261004-assets3/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261004-huawei-pdf3/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261004-huawei-pdf3/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261101-pdf-local/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261101-pdf-local/);
 });
 
 
@@ -704,7 +704,7 @@ test("chat history reloads after socket connects when chat is already open", () 
   const source = fs.readFileSync(path.join(__dirname, "..", "public", "lesson-comms.mjs"), "utf8");
   assert.match(
     source,
-    /socket\.on\("connect", \(\) => \{[\s\S]*?currentView === "chat"[\s\S]*?historyLoaded = false;[\s\S]*?loadChatHistory\(\)/
+    /(?:socket\.on|onEvent)\("connect", \(\) => \{[\s\S]*?currentView === "chat"[\s\S]*?historyLoaded = false;[\s\S]*?loadChatHistory\(\)/
   );
 });
 
@@ -739,7 +739,7 @@ test("persistent connection room broadcasts both sides presence", () => {
   assert.match(server, /connection:presence/);
   assert.match(client, /presence-me/);
   assert.match(client, /presence-peer/);
-  assert.match(client, /socket\.on\("connection:presence"/);
+  assert.match(client, /(?:socket\.on|onEvent)\("connection:presence"/);
 });
 
 
