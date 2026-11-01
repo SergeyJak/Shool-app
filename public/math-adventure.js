@@ -1,7 +1,6 @@
 "use strict";
 (()=>{
-const KEY="school-math-adventure-v2";
-const LEGACY_KEY="school-math-adventure-v1";
+const progressStorage=MathProgressStorage.create(()=>window.localStorage);
 const BUILD="20261025-log-truck-visual-r4";
 const TOTAL_LEVELS=100;
 const themes=[{name:"Солнечная поляна",x:32,y:85,type:"numbers"},{name:"Мост примеров",x:54,y:77,type:"numbers"},{name:"Развилка задач",x:79,y:67,type:"word"},{name:"Тропа фигур",x:66,y:48,type:"geometry"},{name:"Дракон знаний",x:40,y:31,type:"boss"}];
@@ -13,9 +12,8 @@ levels[3].name="Почини числовую тропу";
 levels[4].name="Дракон знаний";
 levels[5].name="Долина десятков";
 const $=id=>document.getElementById(id);
-let saved;try{saved=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(_){saved={}}
-if(!saved||!Number.isInteger(saved.unlocked))saved={unlocked:0,stars:0,completed:[]};
-saved.unlocked=Math.max(0,Math.min(levels.length-1,saved.unlocked));saved.completed=Array.isArray(saved.completed)?saved.completed.filter(x=>Number.isInteger(x)&&x>=0&&x<levels.length):[];
+let saved={unlocked:0,stars:0,completed:[]};
+let accountId=null,sessionVersion=0,focusVersion=0,confirmedProgress=null;
 let current=-1,round=0,correct=0,answered=false,questions=[],assessed=false,startingLevel=1,chapter=0;
 let appleStep=0,appleCount=0,appleHints=0;
 const appleTasks=[[2,1],[3,2],[4,3],[5,4],[6,5]];
@@ -24,26 +22,90 @@ let bridgeStep=0,bridgeRemaining=0;
 const neighborTasks=[4,7,12,19,28];let neighborStep=0,neighborLeft=null,neighborRight=null;
 const pathTasks=[{start:1,step:1,missing:2},{start:2,step:2,missing:3},{start:5,step:5,missing:1},{start:10,step:10,missing:2},{start:3,step:3,missing:3}];let pathStep=0;let dragonStep=0;
 const tensTasks=[23,34,46,57,68];let tensStep=0;
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(saved))}catch(_){}}
-function mergeProgress(remote){
- if(!remote||!Array.isArray(remote.completed))return;
- saved.completed=[...new Set([...saved.completed,...remote.completed.filter(i=>Number.isInteger(i)&&i>=0&&i<levels.length)])];
- saved.unlocked=Math.max(saved.unlocked,Math.min(levels.length-1,remote.unlocked||0));
- if(Number.isInteger(remote.startLevel))startingLevel=remote.startLevel;
- saved.stars=Math.max(saved.stars,Number.isInteger(remote.stars)?remote.stars:0);
- persist();if(saved.unlocked>=5&&chapter===0&&saved.completed.includes(4))chapter=Math.floor(saved.unlocked/5);map();
+function persist(){return accountId!==null&&progressStorage.save(accountId,{...saved,startLevel:startingLevel})}
+function applyProgress(progress,initial=false){
+ saved=progress;startingLevel=progress.startLevel;confirmedProgress=structuredClone(progress);
+ persist();if(initial)setAssessment(startingLevel);
+ if(initial&&saved.unlocked>=5&&saved.completed.includes(4))chapter=Math.floor(saved.unlocked/5);
+ map();
+}
+function clearProgress(){
+ accountId=null;confirmedProgress=null;saved={unlocked:0,stars:0,completed:[]};assessed=false;startingLevel=1;chapter=0;current=-1;
+ document.querySelectorAll(".node,.map-owl-companion").forEach(node=>node.remove());
+ $("world").hidden=true;$("world").classList.remove("hidden");$("intro").classList.add("hidden");$("game").classList.add("hidden");$("result").classList.add("hidden");$("chapterNav").classList.add("hidden");$("diagnosticGate").classList.add("hidden");
+ $("summary").textContent="";$("adventureLevelHeading").textContent="Твоё приключение";
+ document.body.classList.remove("adventure-playing","adventure-map-view");
+}
+function unavailable(version){
+ if(version!==sessionVersion)return;
+ ++sessionVersion;++focusVersion;clearProgress();document.querySelector("main").hidden=false;$("intro").classList.remove("hidden");$("summary").textContent="Не удалось подтвердить аккаунт и загрузить прогресс. Обнови страницу, чтобы попробовать ещё раз.";
+}
+async function identity(){
+ const response=await fetch("/api/auth/me",{credentials:"same-origin",cache:"no-store"});
+ if(!response.ok)throw Error("IDENTITY_UNAVAILABLE");
+ const data=await response.json();
+ if(typeof data.user?.id!=="string"||!data.user.id)throw Error("IDENTITY_UNAVAILABLE");
+ return data.user.id;
+}
+async function sameSession(userId,version){
+ if(version!==sessionVersion)return false;
+ try{if(await identity()===userId&&version===sessionVersion)return true;}catch(_){}
+ unavailable(version);return false;
 }
 async function loadCloud(){
- try{const response=await fetch("/api/math/adventure",{credentials:"same-origin"});
- if(response.ok){const data=await response.json();mergeProgress(data.progress);if(data.progress?.startLevel)setAssessment(data.progress.startLevel)}
- }catch(_){}
+ const version=++sessionVersion;++focusVersion;document.querySelector("main").hidden=false;clearProgress();
+ try{
+  const userId=await identity();if(version!==sessionVersion)return;
+  let response,data;
+  try{
+   response=await fetch("/api/math/adventure",{credentials:"same-origin",cache:"no-store"});
+   if(response.ok)data=await response.json();
+  }catch(_){}
+  if(!await sameSession(userId,version))return;
+  if(response&&(response.status===401||response.status===403)){unavailable(version);return;}
+  accountId=userId;
+  if(response?.ok){
+   if(data?.userId!==userId){unavailable(version);return;}
+   const remote=MathProgressStorage.normalize(data.progress);
+   if(remote){applyProgress(remote,true);return;}
+   if(data.assessmentRequired&&data.progress===null){progressStorage.forget(userId);$("diagnosticGate").classList.remove("hidden");return;}
+   unavailable(version);return;
+  }
+  const local=progressStorage.load(userId);
+  if(local){applyProgress(local,true);return;}
+  unavailable(version);
+ }catch(_){unavailable(version);}
+}
+async function recheckAccount(){
+ const userId=accountId,version=sessionVersion,check=++focusVersion;
+ if(!userId)return;
+ const main=document.querySelector("main");main.hidden=true;
+ try{
+  const active=await identity();
+  if(check!==focusVersion||version!==sessionVersion)return;
+  main.hidden=false;
+  if(active!==userId)void loadCloud();
+ }catch(_){if(check===focusVersion&&version===sessionVersion)unavailable(version);}
 }
 async function syncResult(level,score){
- try{const response=await fetch("/api/math/adventure",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({level,correct:score,total:10})});
- if(!response.ok)throw Error("SYNC_FAILED");
- mergeProgress((await response.json()).progress);
- $("resultText").textContent+=" Прогресс сохранён на сервере.";
- }catch(_){$("resultText").textContent+=" Прогресс сохранён на устройстве; синхронизация пока недоступна.";}
+ const userId=accountId,version=sessionVersion;
+ if(!userId||!await sameSession(userId,version))return;
+ try{
+  const response=await fetch("/api/math/adventure",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({userId,level,correct:score,total:10})});
+  const data=response.ok?await response.json():null;
+  if(!await sameSession(userId,version))return;
+  if(response.ok&&data?.userId===userId){
+   const remote=MathProgressStorage.normalize(data.progress);
+   if(remote){applyProgress(remote);$("resultText").textContent+=" Прогресс сохранён на сервере.";return;}
+  }
+  // Explicit rejection cannot remain an unlocked level in the offline snapshot.
+  if(confirmedProgress){saved=structuredClone(confirmedProgress);persist();chapter=Math.min(chapter,Math.floor(saved.unlocked/5));map();}
+  $("resultText").textContent+=" Результат отклонён сервером; прогресс не сохранён.";
+ }catch(_){
+  if(!await sameSession(userId,version))return;
+  const stored=persist();
+  $("resultText").textContent+=stored?" Прогресс сохранён на устройстве; синхронизация пока недоступна.":" Синхронизация пока недоступна; сохранить прогресс на устройстве не удалось.";
+ }
 }
 function task(type,i,level=0){
  const tier=Math.floor(level/10);const a=i+2+tier*2,b=i%5+2+tier;
@@ -56,15 +118,6 @@ function task(type,i,level=0){
 function options(answer,i){const values=[answer,answer+1,answer+2,Math.max(0,answer-1)];return [...new Set(values)].sort((a,b)=>((a*7+i*3)%11)-((b*7+i*3)%11))}
 function show(id){for(const key of ["intro","game","result"])$(key).classList.toggle("hidden",key!==id);const playing=id!=="intro";$("world").classList.toggle("hidden",playing);$("chapterNav").classList.toggle("hidden",playing||!assessed);document.body.classList.toggle("adventure-playing",playing);document.body.classList.toggle("adventure-map-view",!playing&&assessed)}
 function setAssessment(level){assessed=true;document.body.classList.add("adventure-map-view");startingLevel=level;saved.unlocked=Math.max(saved.unlocked,level-1);chapter=0;$("chapterNav").classList.remove("hidden");$("diagnosticGate").classList.add("hidden");$("world").hidden=false;$("intro").classList.remove("hidden");$("adventureLevelHeading").textContent="Твой уровень: "+startingLevel+" из 100";map()}
-async function checkAssessment(){
- try{const v2=await fetch("/api/math/diagnostic-v2",{credentials:"same-origin"});if(v2.ok){const data=await v2.json();if(data.finished&&Number.isInteger(data.result?.level)){setAssessment(data.result.level);return}}}catch(_){}
- try{const response=await fetch("/api/math/progress",{credentials:"same-origin"});if(!response.ok)throw Error("PROGRESS_UNAVAILABLE");
- const data=await response.json();const attempts=(data.attempts||[]).filter(a=>a.mode==="diagnostic"&&Number.isFinite(a.correct)&&Number.isFinite(a.total)&&a.total>0);
- if(attempts.length){const last=attempts[0];setAssessment(Math.max(1,Math.min(100,Math.round(last.correct/last.total*99)+1)));return}
- }catch(_){const local=(()=>{try{return JSON.parse(localStorage.getItem("school-math-diagnostic-v1")||"null")}catch{return null}})();
- if(local?.mode==="diagnostic"&&local.answers?.length===12){setAssessment(Math.max(1,Math.min(100,Math.round(local.answers.filter(a=>a.correct).length/12*99)+1)));return}}
- $("world").hidden=true;$("intro").classList.add("hidden");$("diagnosticGate").classList.remove("hidden");
-}
 function map(){document.querySelectorAll(".node").forEach(n=>n.remove());const first=chapter*5;const artMaps=["file_0000000010088210bec1a86f70df189a.png","file_00000000117481f5b5e54d54b4daae0d.png","file_00000000592c81f48e55b8f80b387ab1.png","file_000000005a4081f4996c671f624baa64.png","file_000000006c288210890a5e6d9e788e9a.png","file_000000007b44821190697693273e7cc1.png","file_00000000895082119a61be10647d0eff.png","file_000000009dc481f5834b2be2ad8f595e.png","file_00000000ad1481f4b2f9e8ed135f6643.png","file_00000000ae2c81f583d012e3b451a436.png","file_00000000d33881f49f0ab5df09bd7005.png","file_00000000eac081f496d850cf23680574.png"];$("world").style.backgroundImage=`url("/assets/student-worlds/${artMaps[chapter%artMaps.length]}")`;$("chapterTitle").textContent=`Глава ${chapter+1} из 20`;$("chapterPrev").disabled=chapter===0;$("chapterNext").disabled=chapter>=Math.floor(saved.unlocked/5);levels.slice(first,first+5).forEach((level,j)=>{const i=first+j;const btn=document.createElement("button");btn.className="node checkpoint-slot-"+j;btn.style.left=themes[j].x+"%";btn.style.top=themes[j].y+"%";btn.disabled=i>saved.unlocked;btn.setAttribute("aria-label",level.name+(btn.disabled?", закрыт":""));const img=document.createElement("img");img.alt="";img.className="map-marker-art";img.src="/assets/math-adventure/map/"+(j===4?"node-boss.svg":i>saved.unlocked?"node-branch.svg":saved.completed.includes(i)?"node-complete.svg":"node-current.svg");const label=document.createElement("span");label.className="checkpoint-label";const glyph=document.createElement("span");glyph.className="checkpoint-glyph";glyph.setAttribute("aria-hidden","true");glyph.textContent=["🍎","🪵","🔢","🪧","🐉"][j];const caption=document.createElement("span");caption.className="checkpoint-caption";caption.textContent=level.name;label.append(glyph,caption);const number=document.createElement("b");number.className="node-number";number.textContent=String(i+1);const state=document.createElement("span");state.className="map-marker-state";state.textContent=saved.completed.includes(i)?"✓":i>saved.unlocked?"🔒":"★";btn.classList.add(saved.completed.includes(i)?"map-node-done":i>saved.unlocked?"map-node-locked":"map-node-active");btn.append(img,number,state,label);btn.addEventListener("click",()=>start(i));$("world").append(btn)});const oldOwl=$("world").querySelector(".owl");if(oldOwl)oldOwl.style.display="none";
 $("world").querySelectorAll(".map-owl-companion").forEach(o=>o.remove());
 const firstIncomplete=Array.from({length:saved.unlocked+1},(_,i)=>i).find(i=>!saved.completed.includes(i));
@@ -85,7 +138,7 @@ if(currentInChapter>=0&&currentInChapter<5){
  }
 }
 $("summary").textContent=`Твой стартовый уровень: ${startingLevel} из 100. Открыт этап ${saved.unlocked+1} из ${levels.length}. Звёзд: ${saved.stars}. Первая остановка — обучающая игра без штрафов.`}
-function start(i){if(i>saved.unlocked)return;current=i;round=0;correct=0;questions=Array.from({length:10},(_,j)=>task(levels[i].type,j,i));$("levelName").textContent=levels[i].name;show("game");if(i===0){appleStep=0;appleHints=0;renderApples()}else if(i===1){bridgeStep=0;renderBridge()}else if(i===2){neighborStep=0;renderNeighbors()}else if(i===3){pathStep=0;renderNumberPath()}else if(i===4){dragonStep=0;renderDragon()}else if(i===5){tensStep=0;renderTensValley()}else render();$("game").scrollIntoView({block:"start",behavior:"instant"})}
+function start(i){if(!accountId||!assessed||i>saved.unlocked)return;current=i;round=0;correct=0;questions=Array.from({length:10},(_,j)=>task(levels[i].type,j,i));$("levelName").textContent=levels[i].name;show("game");if(i===0){appleStep=0;appleHints=0;renderApples()}else if(i===1){bridgeStep=0;renderBridge()}else if(i===2){neighborStep=0;renderNeighbors()}else if(i===3){pathStep=0;renderNumberPath()}else if(i===4){dragonStep=0;renderDragon()}else if(i===5){tensStep=0;renderTensValley()}else render();$("game").scrollIntoView({block:"start",behavior:"instant"})}
 function renderApples(){
  const [inBasket,toAdd]=appleTasks[appleStep];const friend=["🐿️ Белочка","🐰 Зайчик","🦔 Ёжик","🐻 Медвежонок","🦊 Лисёнок"][appleStep];const goal=inBasket+toAdd;appleCount=0;answered=false;
  $("counter").textContent="Игра "+(appleStep+1)+" из "+appleTasks.length;
@@ -316,5 +369,8 @@ function finishTensValley(){
 }
 function render(){answered=false;$("feedback").textContent="";$("next").classList.add("hidden");$("counter").textContent=`Задание ${round+1} из ${questions.length}`;$("meterFill").style.width=round/questions.length*100+"%";const [q,answer]=questions[round];$("question").textContent=q;$("choices").replaceChildren();for(const val of options(answer,round)){const btn=document.createElement("button");btn.textContent=val;btn.addEventListener("click",()=>{if(answered)return;answered=true;if(val===answer)correct++;$("feedback").textContent=val===answer?"Правильно! ⭐":`Пока нет. Правильный ответ: ${answer}`;for(const b of $("choices").children)b.disabled=true;$("next").classList.remove("hidden");$("next").scrollIntoView({block:"nearest",behavior:"smooth"})});$("choices").append(btn)}}
 $("next").addEventListener("click",()=>{if(!answered)return;if(current===0){appleStep++;if(appleStep<appleTasks.length)renderApples();else finishApples();return}if(current===1){bridgeStep++;if(bridgeStep<bridgeTasks.length)renderBridge();else finishBridge();return}if(current===2){neighborStep++;if(neighborStep<neighborTasks.length)renderNeighbors();else finishNeighbors();return}if(current===3){pathStep++;if(pathStep<pathTasks.length)renderNumberPath();else finishNumberPath();return}if(current===4){dragonStep++;if(dragonStep<4)renderDragon();else finishDragon();return}if(current===5){tensStep++;if(tensStep<tensTasks.length)renderTensValley();else finishTensValley();return}round++;if(round<questions.length){render();return}const passed=correct>=8;if(passed){if(!saved.completed.includes(current)){saved.completed.push(current);saved.stars+=Math.min(3,Math.floor(correct/2)-2)}saved.unlocked=Math.max(saved.unlocked,Math.min(levels.length-1,current+1));persist()}$("resultTitle").textContent=passed?"Уровень пройден!":"Попробуем ещё раз";$("resultText").textContent=`Правильных ответов: ${correct} из ${questions.length}. `+(passed?"Следующая остановка открыта.":"Для открытия пути нужно 8 правильных ответов из 10.");$("meterFill").style.width="100%";show("result");chapter=Math.floor(current/5);map();$("result").scrollIntoView({block:"start",behavior:"instant"});void syncResult(current,correct)});
-$("chapterPrev").addEventListener("click",()=>{chapter=Math.max(0,chapter-1);map()});$("chapterNext").addEventListener("click",()=>{chapter=Math.min(Math.floor(saved.unlocked/5),chapter+1);map()});$("return").addEventListener("click",()=>{chapter=Math.floor(Math.max(0,current)/5);show("intro");$("world").scrollIntoView({block:"start",behavior:"instant"})});$("world").hidden=true;$("intro").classList.add("hidden");void checkAssessment();void loadCloud();
+$("chapterPrev").addEventListener("click",()=>{chapter=Math.max(0,chapter-1);map()});$("chapterNext").addEventListener("click",()=>{chapter=Math.min(Math.floor(saved.unlocked/5),chapter+1);map()});$("return").addEventListener("click",()=>{chapter=Math.floor(Math.max(0,current)/5);show("intro");$("world").scrollIntoView({block:"start",behavior:"instant"})});$("world").hidden=true;$("intro").classList.add("hidden");void loadCloud();
+window.addEventListener("pageshow",event=>{if(event.persisted)void loadCloud()});
+window.addEventListener("focus",()=>{void recheckAccount()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")void recheckAccount()});
 })();
