@@ -68,10 +68,10 @@ test("client keeps PDF cache versioning, loading progress and page persistence",
   assert.match(js, /forcedByTeacher/);
 });
 
-test("server protects the PDF role gate, versioned cache and health route", () => {
+test("server protects the PDF role gate, private cache and health route", () => {
   const js = read("server.js");
   assert.match(js, /TEACHER_ONLY/);
-  assert.match(js, /Cache-Control", "public, max-age=31536000, immutable"/);
+  assert.match(js, /Cache-Control", "private, no-store"/);
   assert.match(js, /Accept-Ranges", "bytes"/);
   assert.match(js, /Content-Range/);
   assert.match(js, /status\(206\)/);
@@ -114,8 +114,8 @@ test("live performance metrics cover RTT page render and remote stroke latency",
   assert.match(client, /perfMetrics\.page/);
   assert.match(client, /perfMetrics\.stroke/);
   assert.match(client, /renderStarted = performance\.now\(\)/);
-  assert.match(server, /socket\.on\("perf:ping"/);
-  assert.match(server, /socket\.on\("perf:preview:seen"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("perf:ping"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("perf:preview:seen"/);
   assert.match(server, /perfOriginId/);
 });
 
@@ -172,7 +172,7 @@ test("teacher keyboard text annotations can be selected, saved, synced and erase
   assert.match(client, /erasePathHitsTextBox/);
   assert.match(client, /Ctrl|ctrlKey|metaKey/);
   assert.match(server, /isValidTextAnnotation/);
-  assert.match(server, /socket\.on\("text:commit"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("text:commit"/);
   assert.match(server, /type: "text"/);
   assert.match(server, /fontScale/);
   assert.match(server, /erasePathHitsBox/);
@@ -518,9 +518,8 @@ test("root is login and cabinet preserves account-aware lesson navigation", () =
   assert.match(server, /requirePageAuth/);
   assert.match(server, /requireApiRole/);
   assert.match(server, /io\.use\(async \(socket, next\)/);
-  assert.match(server, /username: "admin"/);
-  assert.match(server, /username: "Darya"/);
-  assert.match(server, /username: "Alisa"/);
+  assert.match(server, /ensureAdminBootstrap\(users, process\.env\)/);
+  assert.doesNotMatch(server, /username: "(?:admin|Darya|Alisa)"/);
   assert.doesNotMatch(server, /Parole\.123!/);
   assert.doesNotMatch(server, /12345678/);
   assert.match(server, /db\.collection\("users"\)/);
@@ -707,7 +706,7 @@ test("control mode shows the teacher's live lesson page without taking write con
   assert.match(client, /observerTeacherPage\.textContent/);
   assert.match(client, /role === "teacher"[\s\S]*teacher:monitor:page/);
   assert.match(server, /teacherPageByLesson/);
-  assert.match(server, /socket\.on\("teacher:monitor:page"/);
+  assert.match(server, /(?:socket\.on|onEvent)\("teacher:monitor:page"/);
   assert.match(server, /socket\.to\(room\)\.emit\("teacher:monitor:page"/);
 });
 
@@ -740,6 +739,7 @@ test("admin payment ledger exposes deposits, teacher allocation, balances and le
   const html = read("public/dashboard.html");
   const cabinet = read("public/cabinet.js");
   const server = read("server.js");
+  const ledger = read("lib/payment-ledger.js");
 
   assert.match(html, /data-admin-view="payments"/);
   assert.match(html, /id="paymentDepositForm"/);
@@ -758,8 +758,8 @@ test("admin payment ledger exposes deposits, teacher allocation, balances and le
   assert.match(server, /app\.get\("\/api\/admin\/payments"/);
   assert.match(server, /app\.post\("\/api\/admin\/payments\/deposits"/);
   assert.match(server, /app\.post\("\/api\/admin\/payments\/allocations"/);
-  assert.match(server, /INSUFFICIENT_BROTHER_BALANCE/);
-  assert.match(server, /INSUFFICIENT_TEACHER_BALANCE/);
+  assert.match(ledger, /INSUFFICIENT_BROTHER_BALANCE/);
+  assert.match(ledger, /INSUFFICIENT_TEACHER_BALANCE/);
 });
 
 
@@ -784,9 +784,10 @@ test("admin payment calendar supports multi-year navigation and teacher color fi
 test("admin payment history supports safe rollback with friendly errors", () => {
   const cabinet = read("public/cabinet.js");
   const server = read("server.js");
+  const ledger = read("lib/payment-ledger.js");
 
   assert.match(server, /app\.delete\("\/api\/admin\/payments\/allocations\/:id"/);
-  assert.match(server, /ALLOCATION_ALREADY_SPENT/);
+  assert.match(ledger, /ALLOCATION_ALREADY_SPENT/);
   assert.match(cabinet, /Перевод учителю удалён, сумма возвращена брату/);
   assert.match(cabinet, /Сначала отмените соответствующие занятия в календаре/);
   assert.match(cabinet, /Сначала удалите соответствующий перевод/);

@@ -17,12 +17,20 @@ const { createFollowState } = require("./lib/follow-state");
 const { createMemoryRateLimiter } = require("./lib/rate-limit");
 const { normalizeChatMessage, normalizeRtcSignal } = require("./lib/realtime-comms");
 const { parseSingleByteRange } = require("./lib/http-range");
+const { ensureAdminBootstrap } = require("./lib/admin-bootstrap");
+const { createPaymentLedger, LedgerError } = require("./lib/payment-ledger");
+const { createSocketEventRegistrar } = require("./lib/socket-events");
 const {
   normalizeUsername,
   hashPassword,
   verifyPassword,
   createSessionToken,
+  parseSessionToken,
+  sessionMatchesUser,
+  SESSION_COOKIE,
+  GUEST_COOKIE,
   createGuestToken,
+  parseGuestToken,
   REGISTRATION_COOKIE,
   createRegistrationToken,
   parseRegistrationToken,
@@ -107,6 +115,7 @@ let notebooks;
 let notebookAnnotations;
 let paymentAccounts;
 let paymentEntries;
+let paymentLedger;
 const teacherFollowByLesson = new Map();
 const teacherPageByLesson = new Map();
 const rtcCallsByLesson = new Map();
@@ -156,13 +165,93 @@ function rejectRateLimited(res, result) {
 }
 
 async function userFromCookieHeader(cookieHeader, preferredLessonId = null, { preferAccount = false } = {}) {
-  return resolveIdentityFromCookies({
+  const user = await resolveIdentityFromCookies({
     cookieHeader,
     preferredLessonId,
     preferAccount,
     secret: AUTH_SECRET,
     findActiveUserById: (id) => users.findOne({ _id: id, active: true }),
   });
+  if (user?.guest && await settings.findOne({ _id: `revokedGuest:${user._id}` })) return null;
+  return user;
+}
+
+async function refreshSocketAccess(socket) {
+  try {
+    const user = await userFromCookieHeader(socket.handshake.headers.cookie, socket.data.lessonId);
+    if (!user || user._id !== socket.data.user._id || user.role !== socket.data.user.role) {
+      socket.disconnect(true);
+      return false;
+    }
+    const lesson = await lessonForUser(user, socket.data.lessonId);
+    if (!lesson) {
+      socket.disconnect(true);
+      return false;
+    }
+    socket.data.user = user;
+    socket.data.lesson = lesson;
+    socket.data.accessCheckedAt = Date.now();
+    return socket.connected;
+  } catch (error) {
+    // A failed authorisation lookup must not leave a live room subscription.
+    console.error("Socket authorisation lookup failed", error.message);
+    socket.disconnect(true);
+    return false;
+  }
+}
+
+async function refreshSockets(predicate) {
+  await Promise.all([...io.sockets.sockets.values()].filter(predicate).map(refreshSocketAccess));
+}
+
+function trackSocketAccess(socket) {
+  const cookies = parseCookies(socket.handshake.headers.cookie);
+  const credential = socket.data.user.guest
+    ? parseGuestToken(cookies[GUEST_COOKIE], AUTH_SECRET)
+    : parseSessionToken(cookies[SESSION_COOKIE], AUTH_SECRET);
+  socket.data.credentialExpiresAt = Number(credential?.exp || 0) * 1000;
+  let expiryTimer;
+  let refreshTimer;
+  socket.on("disconnect", () => {
+    clearTimeout(expiryTimer);
+    clearInterval(refreshTimer);
+  });
+  function expire() {
+    const remaining = Number(credential?.exp || 0) * 1000 - Date.now();
+    if (remaining <= 0) return socket.disconnect(true);
+    expiryTimer = setTimeout(expire, Math.min(remaining, 2 ** 31 - 1));
+    expiryTimer.unref?.();
+  }
+  expire();
+  if (!socket.connected) return false;
+  // Covers revocations performed by another replica or the rotation CLI, even
+  // when this peer sends no events. Significant events also check immediately.
+  refreshTimer = setInterval(() => { void refreshSocketAccess(socket); }, 5000);
+  refreshTimer.unref?.();
+  socket.use(([event, payload, ...args], next) => {
+    const ack = typeof args.at(-1) === "function" ? args.at(-1) : null;
+    if ((payload !== undefined && (!payload || typeof payload !== "object" || Array.isArray(payload))) ||
+        args.length > 1 || args.some(arg => typeof arg !== "function")) {
+      ack?.({ ok: false, error: "INVALID_EVENT" });
+      return;
+    }
+    next();
+  });
+  return true;
+}
+
+function authorizeSocketEvent(socket, event) {
+  if (Date.now() >= socket.data.credentialExpiresAt) {
+    socket.disconnect(true);
+    return false;
+  }
+  // Previews and diagnostics carry no persisted changes. Reuse a check for at
+  // most one second so drawing does not queue a DB lookup for every pen sample.
+  // Chat, writes and call signalling always recheck; explicit local revocations
+  // and the credential-expiry timer disconnect recipients immediately.
+  if (["stroke:preview", "perf:ping", "perf:preview:seen", "rtc:debug"].includes(event) &&
+      Date.now() - Number(socket.data.accessCheckedAt || 0) < 1000) return socket.connected;
+  return refreshSocketAccess(socket);
 }
 
 async function attachUser(req, _res, next) {
@@ -218,6 +307,12 @@ function normalizeInviteToken(value) {
 function normalizePaymentAmount(value) {
   const amount = Number(value);
   return Number.isInteger(amount) && amount > 0 && amount <= 10_000_000 ? amount : null;
+}
+
+function paymentIdempotencyKey(req) {
+  const value = req.get("Idempotency-Key");
+  if (value === undefined) return undefined;
+  return typeof value === "string" && /^[a-zA-Z0-9_-]{8,128}$/.test(value) ? value : null;
 }
 
 function normalizePaymentSubject(value) {
@@ -756,20 +851,44 @@ app.post("/api/auth/login", async (req, res, next) => {
   }
 });
 
-app.post("/api/auth/logout", (req, res) => {
-  res.setHeader("Set-Cookie", [
-    clearSessionCookie({ secure: requestIsSecure(req) }),
-    clearGuestCookie({ secure: requestIsSecure(req) }),
-    clearRegistrationCookie({ secure: requestIsSecure(req) }),
-  ]);
-  res.setHeader("Cache-Control", "no-store");
-  res.json({ ok: true });
+app.post("/api/auth/logout", async (req, res, next) => {
+  try {
+    const cookies = parseCookies(req.headers.cookie);
+    const session = parseSessionToken(cookies[SESSION_COOKIE], AUTH_SECRET);
+    const guest = parseGuestToken(cookies[GUEST_COOKIE], AUTH_SECRET);
+    if (session) {
+      const user = await users.findOne({ _id: session.uid });
+      if (sessionMatchesUser(session, user)) {
+        const version = session.sv || 0;
+        await users.updateOne(
+          { _id: user._id, $or: [{ sessionVersion: version }, ...(version === 0 ? [{ sessionVersion: { $exists: false } }] : [])] },
+          { $inc: { sessionVersion: 1 }, $set: { updatedAt: new Date() } }
+        );
+      }
+    }
+    if (guest) {
+      await settings.updateOne(
+        { _id: `revokedGuest:guest:${guest.guestId}` },
+        { $set: { expiresAt: new Date(guest.exp * 1000) } },
+        { upsert: true }
+      );
+    }
+    await refreshSockets(socket => socket.data.user?._id === session?.uid || socket.data.user?._id === `guest:${guest?.guestId}`);
+    res.setHeader("Set-Cookie", [
+      clearSessionCookie({ secure: requestIsSecure(req) }),
+      clearGuestCookie({ secure: requestIsSecure(req) }),
+      clearRegistrationCookie({ secure: requestIsSecure(req) }),
+    ]);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ok: true });
+  } catch (error) { next(error); }
 });
 
 app.get("/api/auth/me", requireAuth, (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json({
     user: {
+      id: String(req.user._id),
       username: req.user.username,
       displayName: req.user.displayName,
       role: req.user.role,
@@ -903,6 +1022,7 @@ app.post("/api/teacher/lessons/:id/archive", requireApiRole("teacher"), async (r
     );
     teacherFollowByLesson.delete(id);
     teacherPageByLesson.delete(id);
+    await refreshSockets(socket => socket.data.lessonId === id);
     res.json({ ok: true, archivedAt: now });
   } catch (error) {
     next(error);
@@ -928,6 +1048,7 @@ app.delete("/api/teacher/lessons/:id", requireApiRole("teacher"), async (req, re
     ]);
     teacherFollowByLesson.delete(id);
     teacherPageByLesson.delete(id);
+    await refreshSockets(socket => socket.data.lessonId === id);
     res.json({ ok: true });
   } catch (error) {
     next(error);
@@ -1015,7 +1136,8 @@ app.delete("/api/materials/:id", requireApiRole("teacher"), async (req, res, nex
     const id = String(req.params.id || "");
     const material = await materials.findOne({ _id: id, ownerId: req.user._id });
     if (!material) return res.status(404).json({ error: "MATERIAL_NOT_FOUND" });
-    if (await lessons.findOne({ materialId: id, active: true })) {
+    if (await lessons.findOne({ materialId: id }) ||
+        await settings.findOne({ $or: [{ materialId: id }, { fileId: material.fileId }] })) {
       return res.status(409).json({ error: "MATERIAL_IN_USE" });
     }
     await materials.deleteOne({ _id: id, ownerId: req.user._id });
@@ -1290,6 +1412,7 @@ app.post("/api/connections/:id/archive", requireApiRole("admin"), async (req, re
       { _id: id },
       { $set: { active: false, status: "archived", archivedAt: now, updatedAt: now } }
     );
+    await refreshSockets(socket => socket.data.lessonId === id);
     res.json({ ok: true });
   } catch (error) {
     next(error);
@@ -1473,6 +1596,7 @@ app.get("/api/admin/payments/backup", requireApiRole("admin"), async (_req, res,
       entries: entries.map(e => ({
         id: e._id, type: e.type, accountId: e.accountId || null,
         date: e.date, amount: e.amount, note: e.note || "",
+        ...(e.idempotencyKey ? { idempotencyKey: e.idempotencyKey, createdBy: e.createdBy } : {}),
       })),
     });
   } catch (error) { next(error); }
@@ -1510,6 +1634,7 @@ app.post("/api/admin/payments/import", requireApiRole("admin"), async (req, res,
       return res.status(409).json({ error: "TEACHER_MAPPING_MISSING", missing: teacherIds.filter(id => !knownTeachers.some(t => t._id === id)) });
     const normalizedEntries = [];
     const lessonKeys = new Set();
+    const retryKeys = new Set();
     for (const e of data.entries) {
       if (!e || typeof e.id !== "string" || !/^payment_[a-zA-Z0-9-]+$/.test(e.id) ||
           ids.has(e.id) || !["deposit","allocation","lesson"].includes(e.type) ||
@@ -1518,6 +1643,15 @@ app.post("/api/admin/payments/import", requireApiRole("admin"), async (req, res,
           (e.type === "deposit" && e.accountId))
         return res.status(400).json({ error: "INVALID_ENTRY" });
       ids.add(e.id);
+      if (e.idempotencyKey !== undefined) {
+        if (typeof e.idempotencyKey !== "string" || !/^[a-zA-Z0-9_-]{8,128}$/.test(e.idempotencyKey) ||
+            typeof e.createdBy !== "string" || !e.createdBy || e.createdBy.length > 80) {
+          return res.status(400).json({ error: "INVALID_ENTRY" });
+        }
+        const retryKey = JSON.stringify([e.type, e.createdBy, e.idempotencyKey]);
+        if (retryKeys.has(retryKey)) return res.status(400).json({ error: "DUPLICATE_IDEMPOTENCY_KEY" });
+        retryKeys.add(retryKey);
+      }
       if (e.type === "lesson") {
         const key = e.accountId + ":" + e.date;
         if (lessonKeys.has(key)) return res.status(400).json({ error: "DUPLICATE_LESSON" });
@@ -1528,6 +1662,7 @@ app.post("/api/admin/payments/import", requireApiRole("admin"), async (req, res,
         date: e.date, amount: Number(e.amount),
         ...(e.type !== "lesson" ? { note: String(e.note || "").slice(0, 180) } : {}),
         createdAt: new Date(), createdBy: req.user._id,
+        ...(e.idempotencyKey ? { idempotencyKey: e.idempotencyKey, createdBy: e.createdBy } : {}),
       });
     }
     const total = type => normalizedEntries.filter(e => e.type === type).reduce((n,e) => n+e.amount,0);
@@ -1535,17 +1670,8 @@ app.post("/api/admin/payments/import", requireApiRole("admin"), async (req, res,
         normalizedAccounts.some(a => normalizedEntries.filter(e => e.accountId === a._id && e.type === "lesson")
           .reduce((n,e) => n+e.amount,0) > normalizedEntries.filter(e => e.accountId === a._id && e.type === "allocation").reduce((n,e) => n+e.amount,0)))
       return res.status(400).json({ error: "INCONSISTENT_BALANCES" });
-    // Fail closed if a concurrent import has begun.
-    if (await paymentAccounts.countDocuments({}) || await paymentEntries.countDocuments({}))
-      return res.status(409).json({ error: "TARGET_LEDGER_CHANGED" });
-    try {
-      if (normalizedAccounts.length) await paymentAccounts.insertMany(normalizedAccounts, { ordered: true });
-      if (normalizedEntries.length) await paymentEntries.insertMany(normalizedEntries, { ordered: true });
-    } catch (writeError) {
-      // No automated rollback: preserve partial writes for manual recovery.
-      return res.status(500).json({ error: "IMPORT_PARTIAL_FAILURE_REVIEW_REQUIRED" });
-    }
-    res.json({ imported: true, accounts: normalizedAccounts.length, entries: normalizedEntries.length });
+    const imported = await paymentLedger.importBackup({ accounts: normalizedAccounts, entries: normalizedEntries });
+    res.json(imported);
   } catch (error) { next(error); }
 });
 
@@ -1555,44 +1681,17 @@ app.post("/api/admin/payments/deposits", requireApiRole("admin"), async (req, re
     const date = normalizePaymentDate(req.body?.date);
     const note = String(req.body?.note || "").trim().slice(0, 180);
     if (!amount || !date) return res.status(400).json({ error: "INVALID_PAYMENT" });
-
-    const row = {
-      _id: `payment_${crypto.randomUUID()}`,
-      type: "deposit",
-      amount,
-      date,
-      note,
-      createdAt: new Date(),
-      createdBy: req.user._id,
-    };
-    await paymentEntries.insertOne(row);
+    const idempotencyKey = paymentIdempotencyKey(req);
+    if (idempotencyKey === null) return res.status(400).json({ error: "INVALID_IDEMPOTENCY_KEY" });
+    const row = await paymentLedger.addDeposit({ amount, date, note, createdBy: req.user._id, idempotencyKey });
     res.status(201).json({ payment: { id: row._id, amount, date, note } });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 });
 
 app.delete("/api/admin/payments/deposits/:id", requireApiRole("admin"), async (req, res, next) => {
   try {
-    const id = String(req.params.id || "").trim();
-    const deposit = await paymentEntries.findOne({ _id: id, type: "deposit" });
-    if (!deposit) return res.status(404).json({ error: "PAYMENT_NOT_FOUND" });
-
-    const aggregate = await paymentEntries.aggregate([
-      { $match: { type: { $in: ["deposit", "allocation"] } } },
-      { $group: { _id: "$type", amount: { $sum: "$amount" } } },
-    ]).toArray();
-    const byType = Object.fromEntries(aggregate.map((item) => [item._id, item.amount]));
-    const depositsAfterDelete = Number(byType.deposit || 0) - Number(deposit.amount || 0);
-    if (depositsAfterDelete < Number(byType.allocation || 0)) {
-      return res.status(409).json({ error: "DEPOSIT_ALREADY_ALLOCATED" });
-    }
-
-    await paymentEntries.deleteOne({ _id: id, type: "deposit" });
-    res.json({ ok: true });
-  } catch (error) {
-    next(error);
-  }
+    res.json(await paymentLedger.deleteDeposit(String(req.params.id || "").trim()));
+  } catch (error) { next(error); }
 });
 
 app.post("/api/admin/payments/accounts", requireApiRole("admin"), async (req, res, next) => {
@@ -1600,64 +1699,20 @@ app.post("/api/admin/payments/accounts", requireApiRole("admin"), async (req, re
     const teacherId = normalizeManagedUsername(req.body?.teacherId);
     const normalizedSubject = normalizePaymentSubject(req.body?.subject);
     const lessonPrice = normalizePaymentAmount(req.body?.lessonPrice);
-    if (!teacherId || !normalizedSubject || !lessonPrice) {
-      return res.status(400).json({ error: "INVALID_PAYMENT_ACCOUNT" });
-    }
-
-    const teacher = await users.findOne({ _id: teacherId, role: "teacher", active: true });
-    if (!teacher) return res.status(400).json({ error: "INVALID_TEACHER" });
-
-    const existing = await paymentAccounts.findOne({
-      teacherId,
-      subjectKey: normalizedSubject.subjectKey,
-      active: true,
-    });
-    if (existing) {
-      return res.status(409).json({
-        error: "PAYMENT_ACCOUNT_EXISTS",
-        accountId: existing._id,
-      });
-    }
-
-    const row = {
-      _id: `payacc_${crypto.randomUUID()}`,
-      teacherId,
-      subject: normalizedSubject.subject,
-      subjectKey: normalizedSubject.subjectKey,
-      lessonPrice,
-      active: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    await paymentAccounts.insertOne(row);
+    if (!teacherId || !normalizedSubject || !lessonPrice) return res.status(400).json({ error: "INVALID_PAYMENT_ACCOUNT" });
+    const row = await paymentLedger.addAccount({ teacherId, ...normalizedSubject, lessonPrice });
     res.status(201).json({ account: publicPaymentAccount(row) });
-  } catch (error) {
-    if (error?.code === 11000) {
-      return res.status(409).json({ error: "PAYMENT_ACCOUNT_EXISTS" });
-    }
-    next(error);
-  }
+  } catch (error) { next(error); }
 });
 
 app.patch("/api/admin/payments/accounts/:id", requireApiRole("admin"), async (req, res, next) => {
   try {
     const id = String(req.params.id || "").trim();
-    const current = await paymentAccounts.findOne({ _id: id });
-    if (!current) return res.status(404).json({ error: "PAYMENT_ACCOUNT_NOT_FOUND" });
-
-    const changes = { updatedAt: new Date() };
+    const changes = {};
     if (typeof req.body?.subject === "string") {
       const normalizedSubject = normalizePaymentSubject(req.body.subject);
       if (!normalizedSubject) return res.status(400).json({ error: "INVALID_SUBJECT" });
-      const duplicate = await paymentAccounts.findOne({
-        _id: { $ne: id },
-        teacherId: current.teacherId,
-        subjectKey: normalizedSubject.subjectKey,
-        active: true,
-      });
-      if (duplicate) return res.status(409).json({ error: "PAYMENT_ACCOUNT_EXISTS" });
-      changes.subject = normalizedSubject.subject;
-      changes.subjectKey = normalizedSubject.subjectKey;
+      Object.assign(changes, normalizedSubject);
     }
     if (req.body?.lessonPrice !== undefined) {
       const lessonPrice = normalizePaymentAmount(req.body.lessonPrice);
@@ -1665,43 +1720,15 @@ app.patch("/api/admin/payments/accounts/:id", requireApiRole("admin"), async (re
       changes.lessonPrice = lessonPrice;
     }
     if (typeof req.body?.active === "boolean") changes.active = req.body.active;
-
-    await paymentAccounts.updateOne({ _id: id }, { $set: changes });
-    const updated = await paymentAccounts.findOne({ _id: id });
+    const updated = await paymentLedger.updateAccount(id, changes);
     res.json({ account: publicPaymentAccount(updated) });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 });
-
 
 app.delete("/api/admin/payments/allocations/:id", requireApiRole("admin"), async (req, res, next) => {
   try {
-    const id = String(req.params.id || "").trim();
-    const transfer = await paymentEntries.findOne({ _id: id, type: "allocation" });
-    if (!transfer) return res.status(404).json({ error: "ALLOCATION_NOT_FOUND" });
-
-    const totals = await paymentEntries.aggregate([
-      { $match: { accountId: transfer.accountId, type: { $in: ["allocation", "lesson"] } } },
-      { $group: { _id: "$type", amount: { $sum: "$amount" } } },
-    ]).toArray();
-    const byType = Object.fromEntries(totals.map((item) => [item._id, item.amount]));
-    const allocatedAfterDelete = Number(byType.allocation || 0) - Number(transfer.amount || 0);
-    const spent = Number(byType.lesson || 0);
-
-    if (allocatedAfterDelete < spent) {
-      return res.status(409).json({
-        error: "ALLOCATION_ALREADY_SPENT",
-        spent,
-        allocatedAfterDelete,
-      });
-    }
-
-    await paymentEntries.deleteOne({ _id: id, type: "allocation" });
-    res.json({ ok: true });
-  } catch (error) {
-    next(error);
-  }
+    res.json(await paymentLedger.deleteAllocation(String(req.params.id || "").trim()));
+  } catch (error) { next(error); }
 });
 
 app.post("/api/admin/payments/allocations", requireApiRole("admin"), async (req, res, next) => {
@@ -1711,33 +1738,11 @@ app.post("/api/admin/payments/allocations", requireApiRole("admin"), async (req,
     const date = normalizePaymentDate(req.body?.date);
     const note = String(req.body?.note || "").trim().slice(0, 180);
     if (!accountId || !amount || !date) return res.status(400).json({ error: "INVALID_ALLOCATION" });
-
-    const account = await paymentAccounts.findOne({ _id: accountId, active: { $ne: false } });
-    if (!account) return res.status(404).json({ error: "PAYMENT_ACCOUNT_NOT_FOUND" });
-
-    const aggregate = await paymentEntries.aggregate([
-      { $match: { type: { $in: ["deposit", "allocation"] } } },
-      { $group: { _id: "$type", amount: { $sum: "$amount" } } },
-    ]).toArray();
-    const byType = Object.fromEntries(aggregate.map((item) => [item._id, item.amount]));
-    const available = Number(byType.deposit || 0) - Number(byType.allocation || 0);
-    if (amount > available) return res.status(409).json({ error: "INSUFFICIENT_BROTHER_BALANCE", available });
-
-    const row = {
-      _id: `payment_${crypto.randomUUID()}`,
-      type: "allocation",
-      accountId,
-      amount,
-      date,
-      note,
-      createdAt: new Date(),
-      createdBy: req.user._id,
-    };
-    await paymentEntries.insertOne(row);
+    const idempotencyKey = paymentIdempotencyKey(req);
+    if (idempotencyKey === null) return res.status(400).json({ error: "INVALID_IDEMPOTENCY_KEY" });
+    const row = await paymentLedger.addAllocation({ accountId, amount, date, note, createdBy: req.user._id, idempotencyKey });
     res.status(201).json({ allocation: { id: row._id, accountId, amount, date, note } });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 });
 
 app.post("/api/admin/payments/accounts/:id/lessons", requireApiRole("admin"), async (req, res, next) => {
@@ -1745,37 +1750,9 @@ app.post("/api/admin/payments/accounts/:id/lessons", requireApiRole("admin"), as
     const accountId = String(req.params.id || "").trim();
     const date = normalizePaymentDate(req.body?.date);
     if (!date) return res.status(400).json({ error: "INVALID_LESSON_DATE" });
-
-    const account = await paymentAccounts.findOne({ _id: accountId, active: { $ne: false } });
-    if (!account) return res.status(404).json({ error: "PAYMENT_ACCOUNT_NOT_FOUND" });
-    if (await paymentEntries.findOne({ type: "lesson", accountId, date })) {
-      return res.status(409).json({ error: "LESSON_ALREADY_MARKED" });
-    }
-
-    const totals = await paymentEntries.aggregate([
-      { $match: { accountId, type: { $in: ["allocation", "lesson"] } } },
-      { $group: { _id: "$type", amount: { $sum: "$amount" } } },
-    ]).toArray();
-    const byType = Object.fromEntries(totals.map((item) => [item._id, item.amount]));
-    const balance = Number(byType.allocation || 0) - Number(byType.lesson || 0);
-    if (account.lessonPrice > balance) {
-      return res.status(409).json({ error: "INSUFFICIENT_TEACHER_BALANCE", balance });
-    }
-
-    const row = {
-      _id: `payment_${crypto.randomUUID()}`,
-      type: "lesson",
-      accountId,
-      amount: account.lessonPrice,
-      date,
-      createdAt: new Date(),
-      createdBy: req.user._id,
-    };
-    await paymentEntries.insertOne(row);
+    const row = await paymentLedger.addLesson({ accountId, date, createdBy: req.user._id });
     res.status(201).json({ lesson: { id: row._id, accountId, date, amount: row.amount } });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 });
 
 app.delete("/api/admin/payments/accounts/:id/lessons/:date", requireApiRole("admin"), async (req, res, next) => {
@@ -1783,12 +1760,8 @@ app.delete("/api/admin/payments/accounts/:id/lessons/:date", requireApiRole("adm
     const accountId = String(req.params.id || "").trim();
     const date = normalizePaymentDate(req.params.date);
     if (!date) return res.status(400).json({ error: "INVALID_LESSON_DATE" });
-    const result = await paymentEntries.deleteOne({ type: "lesson", accountId, date });
-    if (!result.deletedCount) return res.status(404).json({ error: "LESSON_PAYMENT_NOT_FOUND" });
-    res.json({ ok: true });
-  } catch (error) {
-    next(error);
-  }
+    res.json(await paymentLedger.deleteLesson({ accountId, date }));
+  } catch (error) { next(error); }
 });
 
 app.get("/api/admin/users", requireApiRole("admin"), async (_req, res, next) => {
@@ -1874,10 +1847,15 @@ app.patch("/api/admin/users/:id", requireApiRole("admin"), async (req, res, next
     const id = normalizeManagedUsername(req.params.id);
     if (!id) return res.status(400).json({ error: "INVALID_USER" });
 
-    const current = await users.findOne({ _id: id, role: { $in: ["teacher", "student"] } });
+    const current = await users.findOne({ _id: id });
     if (!current) return res.status(404).json({ error: "USER_NOT_FOUND" });
 
+    if (current.role === "admin" && (req.user._id !== current._id ||
+        Object.keys(req.body || {}).some(key => key !== "password"))) {
+      return res.status(403).json({ error: "FORBIDDEN" });
+    }
     const changes = { updatedAt: new Date() };
+    const passwordChanges = {};
     if (typeof req.body?.displayName === "string") {
       const displayName = req.body.displayName.trim();
       if (!displayName) return res.status(400).json({ error: "INVALID_DISPLAY_NAME" });
@@ -1898,9 +1876,11 @@ app.patch("/api/admin/users/:id", requireApiRole("admin"), async (req, res, next
       const { salt, hash } = await hashPassword(req.body.password);
       changes.passwordSalt = salt;
       changes.passwordHash = hash;
+      passwordChanges.$inc = { sessionVersion: 1 };
     }
 
-    await users.updateOne({ _id: id }, { $set: changes });
+    await users.updateOne({ _id: id }, { $set: changes, ...passwordChanges });
+    await refreshSockets(socket => socket.data.user?._id === id);
     const updated = await users.findOne({ _id: id });
     res.json({ user: publicUser(updated) });
   } catch (error) {
@@ -1981,6 +1961,7 @@ app.patch("/api/admin/lessons/:id", requireApiRole("admin"), async (req, res, ne
     }
 
     await lessons.updateOne({ _id: id }, { $set: changes });
+    await refreshSockets(socket => socket.data.lessonId === id);
     const updated = await lessons.findOne({ _id: id });
     res.json({
       lesson: {
@@ -2035,12 +2016,13 @@ app.get("/api/math/adventure", requireApiRole("student"), async (req,res,next)=>
     if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
     const startLevel=await adventureAssessment(req.user._id);
     const row=await db.collection(collectionName("math_adventure_progress")).findOne({studentId:req.user._id});
-    res.json({progress:adventureProgress(row,startLevel),assessmentRequired:startLevel===null});
+    res.json({userId:String(req.user._id),progress:adventureProgress(row,startLevel),assessmentRequired:startLevel===null});
   }catch(error){next(error);}
 });
 app.post("/api/math/adventure", requireApiRole("student"), async (req,res,next)=>{
   try{
     if(req.user.role!=="student")return res.status(403).json({error:"FORBIDDEN"});
+    if(req.body?.userId!==String(req.user._id))return res.status(409).json({error:"ACCOUNT_MISMATCH"});
     const {level,correct,total}=req.body||{};
     if(!Number.isInteger(level)||level<0||level>=100||!Number.isInteger(correct)||!Number.isInteger(total)||total!==10||correct<0||correct>total)
       return res.status(400).json({error:"INVALID_ADVENTURE_RESULT"});
@@ -2056,7 +2038,7 @@ app.post("/api/math/adventure", requireApiRole("student"), async (req,res,next)=
     const stars=progress.stars+(newCompletion?Math.min(3,Math.floor(correct/2)-2):0);
     const nextUnlocked=passed?Math.max(progress.unlocked,Math.min(99,level+1)):progress.unlocked;
     await collection.updateOne({studentId:req.user._id},{$set:{unlocked:nextUnlocked,stars,completed:nextCompleted,updatedAt:new Date()}},{upsert:true});
-    res.json({progress:{unlocked:nextUnlocked,stars,completed:nextCompleted,startLevel},passed});
+    res.json({userId:String(req.user._id),progress:{unlocked:nextUnlocked,stars,completed:nextCompleted,startLevel},passed});
   }catch(error){next(error);}
 });
 app.get("/api/math/skill-map", requireApiRole("student"), async (req,res,next)=>{
@@ -2142,6 +2124,7 @@ app.get("/performance.html", requirePageAuth("admin"), (_req, res) =>
   res.sendFile(path.join(__dirname, "public", "performance.html"))
 );
 
+app.use("/vendor/pdfjs", express.static(path.join(__dirname, "node_modules", "pdfjs-dist")));
 app.use(express.static(path.join(__dirname, "public"), { index: false }));
 
 app.get("/", (req, res) => {
@@ -2299,7 +2282,7 @@ app.get("/api/document/file", requireApiRole("teacher", "student"), requireLesso
       "Content-Disposition",
       `${disposition}; filename*=UTF-8''${encodeURIComponent(current.name)}`
     );
-    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("ETag", etag);
     res.setHeader("Accept-Ranges", "bytes");
 
@@ -2902,6 +2885,12 @@ io.on("connection", (socket) => {
         : "student";
   const accountRole = socket.data.user.role;
   const role = accountRole === "admin" ? requestedRole : accountRole;
+  if (!trackSocketAccess(socket)) return;
+  const onEvent = createSocketEventRegistrar({
+    socket,
+    authorize: authorizeSocketEvent,
+    onError: (event, error) => console.error("Socket event failed", event, error.message),
+  });
   socket.data.role = role;
   socket.data.connectedAt = Date.now();
   const lessonId = socket.data.lessonId;
@@ -2923,7 +2912,7 @@ io.on("connection", (socket) => {
     });
   }
 
-  socket.on("rtc2:call", async ({ callId: rawCallId } = {}, ack) => {
+  onEvent("rtc2:call", async ({ callId: rawCallId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const callId = normalizeRtcCallId(rawCallId);
     const callerClientId = realtimeClientId(socket.handshake.auth?.clientId);
@@ -2969,7 +2958,7 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, recipients });
   });
 
-  socket.on("rtc2:accept", ({ callId: rawCallId, callerClientId } = {}, ack) => {
+  onEvent("rtc2:accept", ({ callId: rawCallId, callerClientId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const callId = normalizeRtcCallId(rawCallId);
     const calleeClientId = realtimeClientId(socket.handshake.auth?.clientId);
@@ -3005,7 +2994,7 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, callId, caller: rtc2Peer(callerSocket) });
   });
 
-  socket.on("rtc2:decline", ({ callId: rawCallId, callerClientId } = {}) => {
+  onEvent("rtc2:decline", ({ callId: rawCallId, callerClientId } = {}) => {
     const callId = normalizeRtcCallId(rawCallId);
     const session = rtc2SessionForLesson(lessonId);
     const normalizedCallerClientId = realtimeClientId(callerClientId);
@@ -3014,7 +3003,7 @@ io.on("connection", (socket) => {
     rtc2SocketForClient(lessonId, session.callerClientId)?.emit("rtc2:declined", { callId });
   });
 
-  socket.on("rtc2:cancel", ({ callId: rawCallId } = {}) => {
+  onEvent("rtc2:cancel", ({ callId: rawCallId } = {}) => {
     const callId = normalizeRtcCallId(rawCallId);
     const clientId = realtimeClientId(socket.handshake.auth?.clientId);
     const session = rtc2SessionForLesson(lessonId);
@@ -3025,7 +3014,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("rtc2:signal", (payload = {}, ack) => {
+  onEvent("rtc2:signal", (payload = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const clientId = realtimeClientId(socket.handshake.auth?.clientId);
     const targetClientId = realtimeClientId(payload.targetClientId);
@@ -3063,7 +3052,7 @@ io.on("connection", (socket) => {
     ack?.({ ok: true });
   });
 
-  socket.on("rtc2:resume", ({ callId: rawCallId } = {}, ack) => {
+  onEvent("rtc2:resume", ({ callId: rawCallId } = {}, ack) => {
     const callId = normalizeRtcCallId(rawCallId);
     const clientId = realtimeClientId(socket.handshake.auth?.clientId);
     const session = rtc2SessionForLesson(lessonId);
@@ -3099,7 +3088,7 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("rtc2:leave", ({ callId: rawCallId } = {}) => {
+  onEvent("rtc2:leave", ({ callId: rawCallId } = {}) => {
     const callId = normalizeRtcCallId(rawCallId);
     const clientId = realtimeClientId(socket.handshake.auth?.clientId);
     const session = rtc2SessionForLesson(lessonId);
@@ -3115,7 +3104,7 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("rtc:call", async ({ callId: rawCallId } = {}, ack) => {
+  onEvent("rtc:call", async ({ callId: rawCallId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const callId = normalizeRtcCallId(rawCallId);
     if (!callId) return ack?.({ ok: false, error: "INVALID_CALL_ID" });
@@ -3146,7 +3135,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("rtc:accept", ({ callerId, callId: rawCallId } = {}, ack) => {
+  onEvent("rtc:accept", ({ callerId, callId: rawCallId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const callId = normalizeRtcCallId(rawCallId);
     const call = activeRtcCall(lessonId);
@@ -3166,7 +3155,7 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, callId, caller: rtcPeer(call.caller) });
   });
 
-  socket.on("rtc:decline", ({ callerId, callId: rawCallId } = {}) => {
+  onEvent("rtc:decline", ({ callerId, callId: rawCallId } = {}) => {
     const callId = normalizeRtcCallId(rawCallId);
     const call = activeRtcCall(lessonId);
     if (!callId || !call || call.callerId !== callerId || call.callId !== callId) return;
@@ -3174,7 +3163,7 @@ io.on("connection", (socket) => {
     call.caller.emit("rtc:declined", { callId, by: rtcPeer(socket) });
   });
 
-  socket.on("rtc:cancel", ({ callId: rawCallId } = {}) => {
+  onEvent("rtc:cancel", ({ callId: rawCallId } = {}) => {
     const callId = normalizeRtcCallId(rawCallId);
     const call = activeRtcCall(lessonId);
     if (!callId || !call || call.callerId !== socket.id || call.callId !== callId) return;
@@ -3182,7 +3171,7 @@ io.on("connection", (socket) => {
     socket.to(room).emit("rtc:cancelled", { from: socket.id, callId });
   });
 
-  socket.on("rtc:ready", async ({ callId: rawCallId } = {}, ack) => {
+  onEvent("rtc:ready", async ({ callId: rawCallId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const callId = normalizeRtcCallId(rawCallId);
     if (!callId || callId !== socket.data.rtcCallId) {
@@ -3207,7 +3196,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("rtc:debug", (payload = {}) => {
+  onEvent("rtc:debug", (payload = {}) => {
     if (role === "observer") return;
     const event = String(payload.event || "").slice(0, 80);
     const diagnosticCallId = normalizeRtcCallId(payload.callId) || socket.data.rtcCallId || null;
@@ -3255,7 +3244,7 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("rtc:signal", (payload, ack) => {
+  onEvent("rtc:signal", (payload, ack) => {
     if (role === "observer" || socket.data.rtcReady !== true) {
       return ack?.({ ok: false, error: "READ_ONLY" });
     }
@@ -3310,7 +3299,7 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, rebound, targetId: target.id });
   });
 
-  socket.on("rtc:leave", ({ callId: rawCallId } = {}) => {
+  onEvent("rtc:leave", ({ callId: rawCallId } = {}) => {
     const callId = normalizeRtcCallId(rawCallId);
     if (!callId || callId !== socket.data.rtcCallId) return;
     const call = activeRtcCall(lessonId);
@@ -3321,7 +3310,7 @@ io.on("connection", (socket) => {
     socket.to(room).emit("rtc:ended", { from: socket.id, callId });
   });
 
-  socket.on("chat:history", async (_payload, ack) => {
+  onEvent("chat:history", async (_payload, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     try {
       const rows = await lessonMessages
@@ -3340,7 +3329,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat:send", async ({ text } = {}, ack) => {
+  onEvent("chat:send", async ({ text } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const normalizedText = normalizeChatMessage(text);
     if (!normalizedText) return ack?.({ ok: false, error: "INVALID_MESSAGE" });
@@ -3373,7 +3362,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat:edit", async ({ id, text } = {}, ack) => {
+  onEvent("chat:edit", async ({ id, text } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const messageId = String(id || "").trim();
     const normalizedText = normalizeChatMessage(text);
@@ -3401,7 +3390,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat:delete", async ({ id } = {}, ack) => {
+  onEvent("chat:delete", async ({ id } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const messageId = String(id || "").trim();
     if (!messageId) return ack?.({ ok: false, error: "INVALID_MESSAGE" });
@@ -3427,17 +3416,17 @@ io.on("connection", (socket) => {
     socket.emit("teacher:monitor:page", { page: teacherPageByLesson.get(lessonId) });
   }
 
-  socket.on("perf:ping", (_payload, ack) => {
+  onEvent("perf:ping", (_payload, ack) => {
     ack?.({ ok: true });
   });
 
-  socket.on("perf:preview:seen", ({ metricId, originId } = {}) => {
+  onEvent("perf:preview:seen", ({ metricId, originId } = {}) => {
     if (typeof metricId !== "string" || metricId.length > 100) return;
     if (typeof originId !== "string" || originId.length > 100) return;
     io.to(originId).emit("perf:preview:seen", { metricId });
   });
 
-  socket.on("teacher:follow:start", ({ page } = {}, ack) => {
+  onEvent("teacher:follow:start", ({ page } = {}, ack) => {
     if (role !== "teacher" || !controllerKey || !teacherFollow.start(page, controllerKey)) {
       return ack?.({ ok: false });
     }
@@ -3448,14 +3437,14 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, ...state });
   });
 
-  socket.on("teacher:monitor:page", ({ page } = {}) => {
+  onEvent("teacher:monitor:page", ({ page } = {}) => {
     const nextPage = Number(page);
     if (role !== "teacher" || !Number.isInteger(nextPage) || nextPage < 1) return;
     teacherPageByLesson.set(lessonId, nextPage);
     socket.to(room).emit("teacher:monitor:page", { page: nextPage });
   });
 
-  socket.on("teacher:page", ({ page } = {}) => {
+  onEvent("teacher:page", ({ page } = {}) => {
     if (role !== "teacher" || !controllerKey || !teacherFollow.move(page, controllerKey)) return;
     const currentPage = teacherFollow.snapshot().page;
     teacherPageByLesson.set(lessonId, currentPage);
@@ -3463,7 +3452,7 @@ io.on("connection", (socket) => {
     socket.to(room).emit("teacher:monitor:page", { page: currentPage });
   });
 
-  socket.on("teacher:follow:stop", (_payload, ack) => {
+  onEvent("teacher:follow:stop", (_payload, ack) => {
     if (role !== "teacher" || !controllerKey || !teacherFollow.stop(controllerKey)) {
       return ack?.({ ok: false, error: "FOLLOW_NOT_CONTROLLER" });
     }
@@ -3497,7 +3486,7 @@ io.on("connection", (socket) => {
     teacherFollow.disconnect(controllerKey);
   });
 
-  socket.on("stroke:preview", (stroke) => {
+  onEvent("stroke:preview", (stroke) => {
     if (role === "observer" || !isValidStroke(stroke)) return;
     socket.to(room).emit("stroke:preview", {
       ...stroke,
@@ -3506,7 +3495,7 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("stroke:commit", async (stroke, ack) => {
+  onEvent("stroke:commit", async (stroke, ack) => {
     try {
       if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
       if (!isValidStroke(stroke)) {
@@ -3553,7 +3542,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("text:commit", async (item, ack) => {
+  onEvent("text:commit", async (item, ack) => {
     try {
       if (role !== "teacher") return ack?.({ ok: false, error: "TEACHER_ONLY" });
       if (!isValidTextAnnotation(item)) {
@@ -3606,19 +3595,24 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("stroke:delete", async ({ id }) => {
-    if (role === "observer") return;
-    const row = await annotations.findOne({ $and: [{ _id: id }, annotationLessonFilter(lessonId)] });
-    if (!row) return;
-
+  onEvent("stroke:delete", async ({ id, documentId: requestedDocumentId } = {}, ack) => {
+    if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
+    if (typeof id !== "string" || !id || id.length > 200) return ack?.({ ok: false, error: "INVALID_ANNOTATION" });
+    const documentId = await currentDocumentIdForLesson(lessonId);
+    if (!documentId || (requestedDocumentId && requestedDocumentId !== documentId)) {
+      return ack?.({ ok: false, error: "DOCUMENT_MISMATCH" });
+    }
+    const query = { $and: [{ _id: id }, annotationLessonFilter(lessonId), annotationDocumentFilter(lessonId, documentId)] };
     // Teacher can correct either side. Student can only remove own strokes.
-    if (role !== "teacher" && row.role !== role) return;
-
-    await annotations.deleteOne({ _id: id });
+    if (role !== "teacher") query.$and.push({ role, userId: socket.data.user._id });
+    const row = await annotations.findOne(query);
+    if (!row) return ack?.({ ok: false, error: "ANNOTATION_FORBIDDEN" });
+    await annotations.deleteOne(query);
     io.to(room).emit("stroke:deleted", { id, page: row.page });
+    ack?.({ ok: true, id });
   });
 
-  socket.on("erase:path", async (erase) => {
+  onEvent("erase:path", async (erase) => {
     try {
       if (role === "observer" || !isValidErasePath(erase)) return;
 
@@ -3632,7 +3626,7 @@ io.on("connection", (socket) => {
           { page: erase.page },
         ],
       };
-      if (role !== "teacher") query.$and.push({ role });
+      if (role !== "teacher") query.$and.push({ role, userId: socket.data.user._id });
 
       const pageStrokes = await annotations.find(query).toArray();
       let changed = false;
@@ -3674,21 +3668,23 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("stroke:undo", async ({ page, documentId: requestedDocumentId }, ack) => {
+  onEvent("stroke:undo", async ({ page, documentId: requestedDocumentId }, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const documentId = await currentDocumentIdForLesson(lessonId);
     if (!documentId || requestedDocumentId !== documentId) {
       return ack?.({ ok: false, error: "DOCUMENT_MISMATCH" });
     }
 
+    const pageNumber = Number(page);
+    if (!Number.isInteger(pageNumber) || pageNumber < 1) return ack?.({ ok: false, error: "INVALID_PAGE" });
     const query = {
       $and: [
         annotationLessonFilter(lessonId),
         annotationDocumentFilter(lessonId, documentId),
-        { page: Number(page) },
+        { page: pageNumber },
       ],
     };
-    if (role !== "teacher") query.$and.push({ role });
+    if (role !== "teacher") query.$and.push({ role, userId: socket.data.user._id });
 
     const row = await annotations.find(query).sort({ createdAt: -1 }).limit(1).next();
     if (!row) return ack?.({ ok: false });
@@ -3700,6 +3696,7 @@ io.on("connection", (socket) => {
 });
 
 app.use((err, _req, res, _next) => {
+  if (err instanceof LedgerError) return res.status(err.status).json(err.body);
   console.error(err);
 
   if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
@@ -3730,6 +3727,15 @@ async function start() {
   notebookAnnotations = db.collection(collectionName("notebook_annotations"));
   paymentAccounts = db.collection(collectionName("payment_accounts"));
   paymentEntries = db.collection(collectionName("payment_entries"));
+  paymentLedger = createPaymentLedger({
+    client,
+    lockCollection: db.collection(collectionName("payment_locks")),
+    accounts: paymentAccounts,
+    entries: paymentEntries,
+    users,
+  });
+  await paymentLedger.initialize();
+  await settings.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
   if (DATA_NAMESPACE && await users.countDocuments({}) === 0) {
     const sourceUsers = await db.collection("users").find({}).toArray();
@@ -3831,57 +3837,13 @@ async function start() {
   );
   await paymentEntries.createIndex({ type: 1, date: -1 });
   await paymentEntries.createIndex({ accountId: 1, type: 1, date: -1 });
+  await paymentEntries.createIndex({ type: 1, createdBy: 1, idempotencyKey: 1 });
   await paymentEntries.createIndex({ accountId: 1, date: 1, type: 1 }, { unique: true, partialFilterExpression: { type: "lesson" } });
   await rtcDiagnostics.createIndex({ lessonId: 1, createdAt: -1 });
   await rtcDiagnostics.createIndex({ callId: 1, createdAt: 1 });
   await rtcDiagnostics.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-  async function ensureUser({ username, displayName, role, passwordSalt, passwordHash, lessonIds = [] }) {
-    const id = normalizeUsername(username);
-    const existing = await users.findOne({ _id: id });
-    if (existing) return;
-    await users.insertOne({
-      _id: id,
-      username: id,
-      displayName,
-      role,
-      active: true,
-      approvalStatus: "approved",
-      profileComplete: true,
-      lessonIds,
-      passwordSalt,
-      passwordHash,
-      schemaVersion: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-  }
-
-  // Bootstrap only creates missing accounts. Passwords themselves are never stored in source or MongoDB.
-  await ensureUser({
-    username: "admin",
-    displayName: "Admin",
-    role: "admin",
-    passwordSalt: "56b0ac2f387a5b8e573a5b2cda979970",
-    passwordHash: "0e1aa2aa06e8184dc7a68de87875959300aefe29192c617fe9dafe59dd1a7d6fb3c63488d9bf74e140de555aee9a278784d1dd6d463730d8a566c9d2585e3f4d",
-    lessonIds: ["default"],
-  });
-  await ensureUser({
-    username: "Darya",
-    displayName: "Darya",
-    role: "teacher",
-    passwordSalt: "ffa4b3ab71491f1fba47b0d28782f3fb",
-    passwordHash: "84f811e1f7a35bd5e16fc89e19ba196426674eaffac5af56f9ab4fc1319471b64bb0a7506b04f26549b8e6298859351b50af481c4f8b865173ab5963595a28ef",
-    lessonIds: ["default"],
-  });
-  await ensureUser({
-    username: "Alisa",
-    displayName: "Alisa",
-    role: "student",
-    passwordSalt: "d09d32e7435b043131fbd2f7a35192f6",
-    passwordHash: "cc54ef65f865777e1ec8198b1d4b6e705ec6f2a5e8bcd788e0833d46ac97660be75baa34d705f39bcf33c305984f17a1f7c3f7d331c521eb6b9c4193aa819559",
-    lessonIds: ["default"],
-  });
+  await ensureAdminBootstrap(users, process.env);
 
   // The old global "default" lesson predates teacher-owned sessions.
   // It is intentionally removed now that children join only by explicit session links.

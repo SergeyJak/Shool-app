@@ -2,7 +2,7 @@
   "name": "school-app",
   "version": "0.1.0",
   "private": true,
-  "description": "Realtime shared PDF annotation MVP for teacher and student",
+  "description": "Shared PDF lessons, realtime collaboration and student practice",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -16,19 +16,26 @@
     "test:student-interactions": "node scripts/student-game-interactions.mjs",
     "test:student-diagnostic": "node scripts/student-diagnostic-adaptive-e2e.mjs",
     "test:math-adventure": "node scripts/math-adventure-browser.mjs",
-    "test:math-hub": "node scripts/math-hub-browser.mjs"
+    "test:math-hub": "node scripts/math-hub-browser.mjs",
+    "test:integration": "node --test --test-concurrency=1 integration/*.integration.cjs",
+    "test:pdf": "node scripts/pdf-loading-browser.mjs",
+    "test:math-progress": "node scripts/math-progress-browser.mjs",
+    "admin:password": "node scripts/admin-password.cjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "mongodb": "^6.10.0",
-    "multer": "^1.4.5-lts.1",
+    "multer": "2.5.0",
+    "pdfjs-dist": "6.5.438",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "puppeteer-core": "^24.0.0"
+    "mongodb-memory-server": "10.4.3",
+    "puppeteer-core": "^24.0.0",
+    "socket.io-client": "4.8.3"
   }
 }

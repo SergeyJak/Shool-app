@@ -17,6 +17,19 @@ test("validates a normal stroke", () => {
   }), true);
 });
 
+test("annotation validators reject malformed JSON without throwing", () => {
+  const stroke = { id: "s1", page: 1, color: "#000", width: 2, points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] };
+  const erase = { page: 1, radius: 0.02, points: stroke.points };
+  for (const badPoint of [null, false, 1, "point", [], {}]) {
+    assert.equal(isValidStroke({ ...stroke, points: [badPoint, badPoint] }), false);
+    assert.equal(isValidErasePath({ ...erase, points: [badPoint, badPoint] }), false);
+  }
+  for (const invalid of [null, undefined, false, 0, "stroke", [], {}]) {
+    assert.equal(isValidStroke(invalid), false);
+    assert.equal(isValidErasePath(invalid), false);
+  }
+});
+
 test("rejects strokes outside normalized page coordinates", () => {
   assert.equal(isValidStroke({
     id: "bad",

@@ -1,3 +1,4 @@
+const submitPayment = PaymentRequests.createPaymentSubmitter(apiJson);
 const dialog = document.getElementById("helpDialog");
 const accountName = document.getElementById("accountName");
 const perfButton = document.getElementById("perfLogButton");
@@ -1429,12 +1430,9 @@ paymentDepositForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(paymentDepositForm);
   try {
-    await apiJson("/api/admin/payments/deposits", {
-      method: "POST",
-      body: JSON.stringify({
-        amount: Number(form.get("amount")),
-        date: form.get("date"),
-      }),
+    await submitPayment(paymentDepositForm, "/api/admin/payments/deposits", {
+      amount: Number(form.get("amount")),
+      date: form.get("date"),
     });
     paymentDepositForm.reset();
     paymentDepositDate.value = localIsoDate();
@@ -1472,14 +1470,11 @@ paymentAllocationForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = new FormData(paymentAllocationForm);
   try {
-    await apiJson("/api/admin/payments/allocations", {
-      method: "POST",
-      body: JSON.stringify({
-        accountId: form.get("accountId"),
-        amount: Number(form.get("amount")),
-        date: form.get("date"),
-        note: form.get("note"),
-      }),
+    await submitPayment(paymentAllocationForm, "/api/admin/payments/allocations", {
+      accountId: form.get("accountId"),
+      amount: Number(form.get("amount")),
+      date: form.get("date"),
+      note: form.get("note"),
     });
     paymentAllocationForm.reset();
     paymentAllocationDate.value = localIsoDate();

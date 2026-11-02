@@ -1,4 +1,4 @@
-const pdfjsLib = window.pdfjsLib;
+import { pdfjsLib, pdfDocumentOptions } from "./pdf-loader.mjs";
 import {
   clampPage,
   clampZoom,
@@ -10,9 +10,6 @@ import {
   buildPreviewChunk,
   mergePreviewStroke,
 } from "./realtime-preview.mjs";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
 const role = document.body.dataset.role;
 const isObserver = role === "observer";
@@ -1132,7 +1129,11 @@ async function loadDocument() {
     };
 
     try {
-      const loadingTask = attachPdfProgress(pdfjsLib.getDocument(pdfUrl));
+      const loadingTask = attachPdfProgress(pdfjsLib.getDocument({
+        ...pdfDocumentOptions,
+        url: pdfUrl,
+        isEvalSupported: false,
+      }));
       pdfDoc = await loadingTask.promise;
     } catch (directError) {
       console.warn("PDF.js URL loading failed; retrying as a full download:", directError);
@@ -1167,7 +1168,9 @@ async function loadDocument() {
 
       loadingText.textContent = "Открываем PDF…";
       const fallbackTask = pdfjsLib.getDocument({
+        ...pdfDocumentOptions,
         data: new Uint8Array(pdfBuffer),
+        isEvalSupported: false,
       });
       pdfDoc = await fallbackTask.promise;
     }
