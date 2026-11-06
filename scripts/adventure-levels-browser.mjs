@@ -279,6 +279,8 @@ try {
     await page.waitForFunction(()=>!document.querySelector('#result').classList.contains('hidden'));
     assert.equal(fixture.posts.length,before+1,`${current}: game saves only once after all five rounds`);
     assert.deepEqual(fixture.posts.at(-1),{userId:'continuation-student',level:level.level-1,correct:10,total:10});
+    // The POST response precedes the account recheck and UI acknowledgement.
+    await page.waitForFunction(()=>/сервер|сохран/i.test(document.querySelector('#resultText').textContent));
     assert.match(await page.$eval('#resultText',n=>n.textContent),/сервер|сохран/i);
     await page.$eval('#return',n=>n.click());
     if(level.level%10===0)console.log(`✓ real controls completed games 7–${level.level}`);
