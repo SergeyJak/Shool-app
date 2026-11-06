@@ -54,7 +54,7 @@
       };
       root.AdventureMechanics[task.mechanic](ctx);
       const tools = el('div', 'ag-tools');
-      const helper = el('img', 'ag-helper'); helper.src = '/assets/owl-mascot-pack/owl-teacher.png'; helper.alt = 'Совёнок-помощник';
+      const helper = el('img', 'ag-helper'); helper.src = '/assets/owl-mascot-pack/owl-teacher.png?v=20261106-cutout'; helper.alt = 'Совёнок-помощник';
       const hint = button('💡 Подсказка', () => say(hintText()), 'ag-hint'); hint.dataset.action = 'hint';
       const reset = button('↺ Начать заново', () => render(), 'ag-reset'); reset.dataset.action = 'reset';
       // Leaving is available even after solving; it never awards an unfinished game.

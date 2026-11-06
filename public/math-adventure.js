@@ -185,7 +185,7 @@ function renderApples(){
  area.append(existing,basket,receiver,orchard,counter,hint);update();
 }
 function celebrateLevel(){
- const panel=$("result");let stage=panel.querySelector(".level-celebration");if(!stage){stage=document.createElement("div");stage.className="level-celebration";stage.setAttribute("aria-hidden","true");const owl=document.createElement("img");owl.className="celebration-owl";owl.src="/assets/owl-mascot-pack/owl-celebrate.png";owl.alt="";stage.append(owl);for(let i=0;i<18;i++){const spark=document.createElement("span");spark.className="celebration-spark";spark.style.setProperty("--i",String(i));spark.style.setProperty("--angle",(i*137.5)+"deg");spark.style.setProperty("--distance",(70+i%4*18)+"px");spark.textContent=["✦","★","✳","✧"][i%4];stage.append(spark)}panel.insertBefore(stage,$("resultTitle"));}
+ const panel=$("result");let stage=panel.querySelector(".level-celebration");if(!stage){stage=document.createElement("div");stage.className="level-celebration";stage.setAttribute("aria-hidden","true");const owl=document.createElement("img");owl.className="celebration-owl";owl.src="/assets/owl-mascot-pack/owl-celebrate.png?v=20261106-cutout";owl.alt="";stage.append(owl);for(let i=0;i<18;i++){const spark=document.createElement("span");spark.className="celebration-spark";spark.style.setProperty("--i",String(i));spark.style.setProperty("--angle",(i*137.5)+"deg");spark.style.setProperty("--distance",(70+i%4*18)+"px");spark.textContent=["✦","★","✳","✧"][i%4];stage.append(spark)}panel.insertBefore(stage,$("resultTitle"));}
  stage.classList.remove("celebration-play");void stage.offsetWidth;stage.classList.add("celebration-play");
 }
 function finishApples(){
