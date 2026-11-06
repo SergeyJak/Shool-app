@@ -1,7 +1,7 @@
 "use strict";
 (()=>{
 const progressStorage=MathProgressStorage.create(()=>window.localStorage);
-const BUILD="20261106-adventure-100";
+const BUILD="20261106-map-platforms";
 const TOTAL_LEVELS=100;
 const themes=[{name:"Солнечная поляна",x:32,y:85,type:"numbers"},{name:"Мост примеров",x:54,y:77,type:"numbers"},{name:"Развилка задач",x:79,y:67,type:"word"},{name:"Тропа фигур",x:66,y:48,type:"geometry"},{name:"Дракон знаний",x:40,y:31,type:"boss"}];
 const levels=Array.from({length:TOTAL_LEVELS},(_,i)=>({...themes[i%5],name:themes[i%5].name+" · "+(i+1),index:i}));
@@ -13,6 +13,7 @@ levels[4].name="Дракон знаний";
 levels[5].name="Долина десятков";
 for(const game of AdventureLevels.all){levels[game.level-1].name=game.title;levels[game.level-1].icon=game.icon}
 const $=id=>document.getElementById(id);
+const alignMapCompanion=AdventureMapLayouts.observe($("mapStage"));
 let saved={unlocked:0,stars:0,completed:[]};
 let accountId=null,sessionVersion=0,focusVersion=0,confirmedProgress=null;
 let current=-1,correct=0,answered=false,assessed=false,startingLevel=1,chapter=0;
@@ -113,7 +114,27 @@ async function syncResult(level,score){
 }
 function show(id){for(const key of ["intro","game","result"])$(key).classList.toggle("hidden",key!==id);const playing=id!=="intro";$("world").classList.toggle("hidden",playing);$("chapterNav").classList.toggle("hidden",playing||!assessed);document.body.classList.toggle("adventure-playing",playing);document.body.classList.toggle("adventure-map-view",!playing&&assessed)}
 function setAssessment(level){assessed=true;document.body.classList.add("adventure-map-view");startingLevel=level;saved.unlocked=Math.max(saved.unlocked,level-1);chapter=0;$("chapterNav").classList.remove("hidden");$("diagnosticGate").classList.add("hidden");$("world").hidden=false;$("intro").classList.remove("hidden");$("adventureLevelHeading").textContent="Твой уровень: "+startingLevel+" из 100";map()}
-function map(){document.querySelectorAll(".node").forEach(n=>n.remove());const first=chapter*5;const artMaps=["file_0000000010088210bec1a86f70df189a.png","file_00000000117481f5b5e54d54b4daae0d.png","file_00000000592c81f48e55b8f80b387ab1.png","file_000000005a4081f4996c671f624baa64.png","file_000000006c288210890a5e6d9e788e9a.png","file_000000007b44821190697693273e7cc1.png","file_00000000895082119a61be10647d0eff.png","file_000000009dc481f5834b2be2ad8f595e.png","file_00000000ad1481f4b2f9e8ed135f6643.png","file_00000000ae2c81f583d012e3b451a436.png","file_00000000d33881f49f0ab5df09bd7005.png","file_00000000eac081f496d850cf23680574.png"];$("world").style.backgroundImage=`url("/assets/student-worlds/${artMaps[chapter%artMaps.length]}")`;$("chapterTitle").textContent=`Глава ${chapter+1} из 20`;$("chapterPrev").disabled=chapter===0;$("chapterNext").disabled=chapter>=Math.floor(saved.unlocked/5);levels.slice(first,first+5).forEach((level,j)=>{const i=first+j;const btn=document.createElement("button");btn.className="node checkpoint-slot-"+j;btn.style.left=themes[j].x+"%";btn.style.top=themes[j].y+"%";btn.disabled=i>saved.unlocked;btn.setAttribute("aria-label",level.name+(btn.disabled?", закрыт":""));const img=document.createElement("img");img.alt="";img.className="map-marker-art";img.src="/assets/math-adventure/map/"+(j===4?"node-boss.svg":i>saved.unlocked?"node-branch.svg":saved.completed.includes(i)?"node-complete.svg":"node-current.svg");const label=document.createElement("span");label.className="checkpoint-label";const glyph=document.createElement("span");glyph.className="checkpoint-glyph";glyph.setAttribute("aria-hidden","true");glyph.textContent=level.icon||["🍎","🪵","🔢","🪧","🐉"][j];const caption=document.createElement("span");caption.className="checkpoint-caption";caption.textContent=level.name;label.append(glyph,caption);const number=document.createElement("b");number.className="node-number";number.textContent=String(i+1);const state=document.createElement("span");state.className="map-marker-state";state.textContent=saved.completed.includes(i)?"✓":i>saved.unlocked?"🔒":"★";btn.classList.add(saved.completed.includes(i)?"map-node-done":i>saved.unlocked?"map-node-locked":"map-node-active");btn.append(img,number,state,label);btn.addEventListener("click",()=>start(i));$("world").append(btn)});const oldOwl=$("world").querySelector(".owl");if(oldOwl)oldOwl.style.display="none";
+function map(){
+ document.querySelectorAll(".node").forEach(node=>node.remove());
+ const first=chapter*5,layout=AdventureMapLayouts.forChapter(chapter),stage=$("mapStage");
+ stage.style.backgroundImage=`url("/assets/student-worlds/${layout.art}")`;
+ $("world").setAttribute("aria-label",`Карта главы ${chapter+1}`);
+ $("chapterTitle").textContent=`Глава ${chapter+1} из 20`;
+ $("chapterPrev").disabled=chapter===0;$("chapterNext").disabled=chapter>=Math.floor(saved.unlocked/5);
+ levels.slice(first,first+5).forEach((level,j)=>{
+  const i=first+j,point=layout.checkpoints[j],btn=document.createElement("button");
+  btn.type="button";btn.className="node checkpoint-slot-"+j;
+  btn.style.left=point.x+"%";btn.style.top=point.y+"%";btn.dataset.labelSide=point.labelSide;
+  btn.style.setProperty("--map-label-room",(point.labelSide==="left"?point.x:100-point.x)+"cqw");
+  btn.disabled=i>saved.unlocked;btn.setAttribute("aria-label",`Уровень ${i+1}. ${level.name}`+(btn.disabled?", закрыт":""));
+  const label=document.createElement("span");label.className="checkpoint-label";
+  const glyph=document.createElement("span");glyph.className="checkpoint-glyph";glyph.setAttribute("aria-hidden","true");glyph.textContent=level.icon||["🍎","🪵","🔢","🪧","🐉"][j];
+  const caption=document.createElement("span");caption.className="checkpoint-caption";caption.textContent=level.name;label.append(glyph,caption);
+  const number=document.createElement("b");number.className="node-number";number.textContent=String(i+1);
+  const state=document.createElement("span");state.className="map-marker-state";state.setAttribute("aria-hidden","true");state.textContent=saved.completed.includes(i)?"✓":i>saved.unlocked?"🔒":"★";
+  btn.classList.add(saved.completed.includes(i)?"map-node-done":i>saved.unlocked?"map-node-locked":"map-node-active");
+  btn.append(number,state,label);btn.addEventListener("click",()=>start(i));stage.append(btn);
+ });
 $("world").querySelectorAll(".map-owl-companion").forEach(o=>o.remove());
 const firstIncomplete=Array.from({length:saved.unlocked+1},(_,i)=>i).find(i=>!saved.completed.includes(i));
 const owlLevel=firstIncomplete===undefined?saved.unlocked:firstIncomplete;
@@ -132,6 +153,7 @@ if(currentInChapter>=0&&currentInChapter<5){
   marker.append(companion);
  }
 }
+alignMapCompanion();
 $("summary").textContent=`Твой стартовый уровень: ${startingLevel} из 100. Открыт этап ${saved.unlocked+1} из ${levels.length}. Звёзд: ${saved.stars}. Первая остановка — обучающая игра без штрафов.`}
 function start(i){if(!accountId||!assessed||i>saved.unlocked)return;stopAdventure();current=i;correct=0;$("choices").className="choices";$("levelName").textContent=levels[i].name;show("game");if(i===0){appleStep=0;appleHints=0;renderApples()}else if(i===1){bridgeStep=0;renderBridge()}else if(i===2){neighborStep=0;renderNeighbors()}else if(i===3){pathStep=0;renderNumberPath()}else if(i===4){dragonStep=0;renderDragon()}else if(i===5){tensStep=0;renderTensValley()}else startAdventure(i);$("game").scrollIntoView({block:"start",behavior:"instant"})}
 function renderApples(){
