@@ -3,17 +3,21 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import puppeteer from 'puppeteer-core';
 import { adventureFixture } from './support/adventure-fixture.mjs';
+import { assertAdventureFits } from './support/adventure-layout.mjs';
 
 // Browser plugin not available. The repository's installed Puppeteer/Chromium
 // workflow drives the production page and real DOM controls, without runner hooks.
 const require = createRequire(import.meta.url);
 const levels = require('../public/adventure/catalog.js').all;
 assert.equal(levels.length, 94, 'the real-control suite must cover every new game');
+const forcedViewport=process.env.ADVENTURE_VIEWPORT?.match(/^(\d+)x(\d+)$/)?.slice(1).map(Number);
+assert.ok(!process.env.ADVENTURE_VIEWPORT || forcedViewport?.every(value=>value>0),'ADVENTURE_VIEWPORT must be WIDTHxHEIGHT');
 const chrome = [process.env.CHROME_BIN, '/usr/bin/chromium', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable'].filter(Boolean).find(fs.existsSync);
 assert.ok(chrome, 'Chrome/Chromium required');
 const fixture = await adventureFixture();
 const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox', '--disable-gpu'] });
 const errors = [], warnings = [], screenshots = [], mechanics = new Set(), retried = new Set();
+const layoutFailures = [], layoutPictures = new Set();
 let current = 'initial load', completedRounds = 0;
 
 function pathTo(start, target, steps, maxPresses) {
@@ -100,10 +104,13 @@ function solution(task) {
 }
 function mistake(task) {
   if(task.mechanic==='rectangle'&&task.visual==='treasures'){
-    // The first rectangle objective asks for one row; the whole-picture total
-    // is a meaningful wrong answer, checked before this mechanic is retried.
-    assert.equal(task.lesson,'row-count');
-    return [{selector:'.ag-number-answer',value:task.targetArea},click('.ag-check')];
+    if(task.lesson==='row-count'||task.lesson==='total')return [{selector:'.ag-number-answer',value:task.lesson==='row-count'?task.targetArea:task.cols},click('.ag-check')];
+    if(task.lesson==='addition')return [click('.ag-check')];
+    if(task.lesson==='transfer')return [{selector:'.ag-factor-first',value:1},{selector:'.ag-factor-second',value:1},{selector:'.ag-product-answer',value:1},click('.ag-check')];
+    // The building objective has no wrong submission: completion stays gated
+    // until enough rows exist. Its incomplete state is checked separately.
+    if(task.lesson==='build-groups')return [];
+    throw new Error('Unknown treasure objective '+task.lesson);
   }
   switch(task.mechanic){
     case 'match':return [click('.ag-match-card[data-side="left"][data-card-index="0"]'),click('.ag-match-card[data-side="right"][data-card-index="0"]')];
@@ -164,9 +171,15 @@ try {
     assert.equal(await page.$eval('#choices',n=>n.dataset.round),'1');
   }
   async function overflow(label) {
-    const details=await page.evaluate(()=>({width:innerWidth,document:document.documentElement.scrollWidth,
-      nodes:[...document.querySelectorAll('#game button,#game input,#choices>div')].filter(n=>n.getClientRects().length).map(n=>({class:n.className,left:n.getBoundingClientRect().left,right:n.getBoundingClientRect().right})).filter(n=>n.left< -1||n.right>innerWidth+1)}));
-    assert.ok(details.document<=details.width+1 && !details.nodes.length, `${label}: horizontal overflow ${JSON.stringify(details)}`);
+    try { await assertAdventureFits(page,label); }
+    catch (error) {
+      layoutFailures.push({label,message:error.message});
+      const mechanic=await page.$eval('#choices',node=>node.dataset.mechanic || 'unknown');
+      if(!layoutPictures.has(mechanic)){
+        layoutPictures.add(mechanic);
+        await picture(`layout-failure-${mechanic}`);
+      }
+    }
   }
   async function picture(label) {
     const file=`/tmp/adventure-${label}.png`;await page.screenshot({path:file,fullPage:true});screenshots.push(file);
@@ -176,9 +189,35 @@ try {
     assert.equal(await page.$eval('#choices',n=>n.dataset.round),String(index+1),`${level.level}: round advances once`);
     assert.equal(await page.$eval('#choices',n=>n.dataset.mechanic),task.mechanic);
     assert.equal(await page.$eval('#next',n=>n.classList.contains('hidden')),true,'continue is hidden until real completion');
-    await act(solution(task));
+    if(task.mechanic==='compose'){
+      const maximum=task.maxPieces || 25;
+      await act(Array.from({length:maximum},()=>click('.ag-piece[data-piece="0"]')));
+      const maximumValue=await page.$eval('.ag-scene',node=>node.dataset.value);
+      const tokenText=await page.$eval('.ag-token',node=>node.textContent);
+      assert.ok(tokenText.includes(task.pieces[0].label),'the collection keeps its denomination visible');
+      if(maximum>1)assert.ok(tokenText.includes(`${maximum} шт.`),'the repeated-piece quantity stays visible after compaction');
+      await overflow(`${current} maximum pieces`);
+      await act([click('.ag-piece[data-piece="0"]')]);
+      assert.equal(await page.$eval('.ag-scene',node=>node.dataset.value),maximumValue,'the token limit cannot silently add more pieces');
+      assert.equal(await page.$eval('#feedback',node=>node.dataset.kind),'error','the token limit gives a recoverable explanation');
+      await overflow(`${current} maximum pieces error`);
+      await act([click('.ag-token')]);
+      assert.equal(Number(await page.$eval('.ag-scene',node=>node.dataset.value)),Number(maximumValue)-task.pieces[0].value,'removing a repeated denomination removes exactly one piece');
+      await act([click('.ag-piece[data-piece="0"]')]);
+      assert.equal(await page.$eval('.ag-scene',node=>node.dataset.value),maximumValue,'one replacement restores the full collection');
+      await act([click('.ag-reset')]);
+      assert.equal(await page.$eval('.ag-scene',node=>node.dataset.value),'0','maximum-piece exploration remains resettable');
+      assert.equal(fixture.posts.length,expectedPosts,'maximum-piece exploration cannot save');
+    }
+    const actions=solution(task), submission=actions.at(-1);
+    if(submission?.selector==='.ag-check'||submission?.selector==='.ag-finish-groups'){
+      await act(actions.slice(0,-1));
+      await overflow(`${current} filled`);
+      await act([submission]);
+    }else await act(actions);
     assert.equal(await page.$eval('#next',n=>n.classList.contains('hidden')),false,`L${level.level} R${index+1} ${task.mechanic}: solving controls must reveal Continue`);
     assert.equal(await page.$eval('#feedback',n=>n.dataset.kind),'success');
+    await overflow(`${current} solved`);
     assert.equal(fixture.posts.length,expectedPosts,'solving a round must not save the full game');
     // A second event on a solved scene cannot award or advance anything.
     await page.$eval('#choices',root=>{root.querySelector('button')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));});
@@ -276,26 +315,33 @@ try {
 
   for(const level of levels){
     current=`level ${level.level}: ${level.title}`;
-    // Rotate viewport coverage through every chapter, keeping most rounds mobile.
-    const width=level.level%3===0?1280:level.level%3===1?360:412;
-    await page.setViewport({width,height:width===1280?900:915});
+    // Rotate small portrait and desktop coverage through every chapter.
+    const [width,height]=forcedViewport || [[320,640],[360,640],[412,740],[1280,800]][(level.level-7)%4];
+    await page.setViewport({width,height,hasTouch:width<600,isMobile:width<600});
     await open(level);
     const before=fixture.posts.length;
     for(let index=0;index<level.rounds.length;index++){
       const task=level.rounds[index];current=`L${level.level} R${index+1} ${task.mechanic}`;
       mechanics.add(task.mechanic);
-      await overflow(current);
-      if(!retried.has(task.mechanic)){
-        await act(mistake(task));
-        assert.equal(await page.$eval('#feedback',n=>n.dataset.kind),'error',`${current}: incorrect attempt should teach`);
+      await overflow(`${current} initial`);
+      {
+        const wrong=mistake(task);
+        if(wrong.length){
+          await act(wrong);
+          assert.equal(await page.$eval('#feedback',n=>n.dataset.kind),'error',`${current}: incorrect attempt should teach`);
+          await overflow(`${current} error`);
+        }else{
+          assert.equal(await page.$eval('.ag-finish-groups',n=>n.disabled),true,'unfinished grouping cannot submit');
+        }
         assert.equal(await page.$eval('#next',n=>n.classList.contains('hidden')),true,`${current}: wrong attempt cannot advance`);
         assert.ok(await page.$eval('#choices',n=>[...n.querySelectorAll('button,input')].some(n=>!n.disabled)),'wrong attempts retain controls');
         await act([click('.ag-hint')]);
         assert.notEqual(await page.$eval('#feedback',n=>n.dataset.kind),'error','hint responds after wrong answer');
+        await overflow(`${current} hint`);
         assert.equal(fixture.posts.length,before,'mistakes and hints cannot save');
         await act([click('.ag-reset')]);
         assert.equal(await page.$eval('#choices',n=>n.dataset.round),String(index+1),'reset preserves teaching round');
-        if(['clock','calendar','coordinate','bars','fraction','compose'].includes(task.mechanic))await picture(`${task.mechanic}-${width}`);
+        if(!retried.has(task.mechanic)&&['clock','calendar','coordinate','bars','fraction','compose'].includes(task.mechanic))await picture(`${task.mechanic}-${width}`);
         retried.add(task.mechanic);
       }
       await solveRound(task,level,index);
@@ -333,8 +379,8 @@ try {
     clipped:[...document.querySelectorAll('.checkpoint-label')].map(n=>({text:n.textContent,left:n.getBoundingClientRect().left,right:n.getBoundingClientRect().right})).filter(n=>n.left< -1||n.right>innerWidth+1)}));
   assert.ok(mapOverflow.document<=mapOverflow.width+1&&!mapOverflow.clipped.length,'long final-chapter titles fit the mobile map: '+JSON.stringify(mapOverflow));
   await picture('map-chapter20-360');
-  for(const width of [360,412,1280]){
-    await page.setViewport({width,height:900});
+  for(const [width,height] of [[320,640],[360,640],[412,740],[1280,800]]){
+    await page.setViewport({width,height});
     await open(levels.find(level=>level.rounds.some(task=>task.mechanic==='calendar')));
     await overflow(`final responsive game at ${width}`);
     await picture(`responsive-${width}`);
@@ -342,7 +388,12 @@ try {
   }
   assert.deepEqual(errors,[],'no browser errors or failed assets');
   assert.deepEqual(warnings,[],'no browser warnings');
-  console.log(`PASS all 94 games × 5 rounds, all 14 mechanics, retries/hints/reset/back, cleanup, save/replay/reload, 360/412/1280px. Screenshots: ${screenshots.join(', ')}`);
+  fs.writeFileSync('/tmp/adventure-layout-failures.json',JSON.stringify(layoutFailures,null,2));
+  if(layoutFailures.length){
+    current='aggregated layout validation';
+    assert.fail(`${layoutFailures.length} layout regressions; full metrics /tmp/adventure-layout-failures.json; first: ${layoutFailures[0].message}`);
+  }
+  console.log(`PASS all 94 games × 5 rounds; initial/filled/error/hint/solved and maximum-piece layouts; all 14 mechanics, retries/hints/reset/back, cleanup, save/replay/reload; ${forcedViewport?.join('×') || '320×640/360×640/412×740/1280×800'}. Screenshots: ${screenshots.join(', ')}`);
 } catch(error) {
   const page=(await browser.pages()).at(-1);
   if(page)await page.screenshot({path:'/tmp/adventure-levels-failure.png',fullPage:true}).catch(()=>{});

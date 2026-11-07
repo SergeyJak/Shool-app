@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import puppeteer from 'puppeteer-core';
 import { adventureFixture } from './support/adventure-fixture.mjs';
+import { assertAdventureFits } from './support/adventure-layout.mjs';
 
 // Exercise the production page through the existing local HTTP/Chromium fixture.
 const chrome=[process.env.CHROME_BIN,'/usr/bin/chromium','/usr/bin/google-chrome'].filter(Boolean).find(fs.existsSync);
@@ -9,6 +10,7 @@ assert.ok(chrome,'Chrome/Chromium required');
 const fixture=await adventureFixture({unlocked:99,completed:Array.from({length:15},(_,i)=>i),stars:45,startLevel:1});
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-gpu']});
 const errors=[];
+const warnings=[];
 const lessons=['row-count','build-groups','total','addition','transfer'];
 const click=(page,selector)=>page.$eval(selector,node=>{if(node.disabled)throw new Error('Disabled control: '+node.className);node.click();});
 const input=(page,selector,value)=>page.$eval(selector,(node,value)=>{node.value=String(value);node.dispatchEvent(new Event('input',{bubbles:true}));},value);
@@ -18,9 +20,7 @@ async function expectLesson(page,lesson,solved=false){
   if(!solved)await noContinue(page);
 }
 async function assertFits(page,label){
-  const overflow=await page.evaluate(()=>({width:innerWidth,document:document.documentElement.scrollWidth,
-    controls:[...document.querySelectorAll('#game button,#game input')].filter(node=>node.getClientRects().length).map(node=>({class:node.className,left:node.getBoundingClientRect().left,right:node.getBoundingClientRect().right})).filter(node=>node.left< -1||node.right>innerWidth+1)}));
-  assert.ok(overflow.document<=overflow.width+1&&!overflow.controls.length,`${label}: ${JSON.stringify(overflow)}`);
+  await assertAdventureFits(page,label);
 }
 async function assertContinueClear(page,label){
   const overlap=await page.evaluate(()=>{
@@ -64,6 +64,8 @@ async function solve(page,lesson,reverse=false){
 }
 async function open(width=360,height=800){
   const page=await browser.newPage();page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{if(message.type()==='error')errors.push(message.text());if(message.type()==='warn')warnings.push(message.text());});
+  page.on('response',response=>{if(response.status()>=400)errors.push(`HTTP${response.status()} ${response.url()}`);});
   await page.setViewport({width,height,hasTouch:width<600,isMobile:width<600});
   await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);await page.goto(fixture.url);
   await page.waitForFunction(()=>document.querySelectorAll('.node').length===5&&!document.querySelector('#world').hidden);
@@ -89,6 +91,7 @@ async function wrongCheck(page,lesson){
 try{
   const page=await open();
   await expectLesson(page,'row-count'); // RED against the former repeated full-chain activity.
+  await assertFits(page,'row-count initial 360x800');
   await checkPicture(page,3,2);
   assert.equal(await page.$$eval('.ag-row-highlight',nodes=>nodes.length),1,'only the row being counted is highlighted');
   assert.equal(await page.$eval('.ag-row-highlight',node=>node.closest('.ag-equal-row')===document.querySelector('.ag-equal-row')),true,'the upper row is highlighted');
@@ -151,10 +154,18 @@ try{
   await rounds.waitForFunction(()=>document.querySelector('#resultText').textContent.includes('сервере'));
   assert.deepEqual(fixture.posts,[{userId:'continuation-student',level:15,correct:10,total:10}]);assert.equal(fixture.progress().stars,48);await rounds.close();
 
-  for(const [width,height] of [[320,568],[412,915],[1280,900]]){
+  for(const [width,height] of [[320,640],[360,640],[412,740],[1280,800]]){
     const responsive=await open(width,height);
     for(const [index,lesson] of lessons.entries()){
       await expectLesson(responsive,lesson);await assertFits(responsive,`${lesson} fits ${width}px`);
+      await methodHint(responsive);await assertFits(responsive,`${lesson} hint fits ${width}x${height}`);
+      if(lesson==='build-groups'){
+        assert.equal(await responsive.$eval('.ag-finish-groups',node=>node.disabled),true,'incomplete grouping has no erroneous submission');
+        await click(responsive,'.ag-add-row');await assertFits(responsive,`${lesson} partial fits ${width}x${height}`);
+        await click(responsive,'.ag-remove-row');
+      }else{
+        await wrongCheck(responsive,lesson);await assertFits(responsive,`${lesson} error fits ${width}x${height}`);
+      }
       assert.equal(await responsive.$$eval('.ag-group-guide',nodes=>nodes.length),index<2?1:0,'only the first two objectives have persistent guidance');
       await responsive.screenshot({path:`/tmp/scaffold-${lesson}-${width}.png`,fullPage:true});
       await solve(responsive,lesson);await assertFits(responsive,`${lesson} solved fits ${width}px`);await assertContinueClear(responsive,`${lesson} at ${width}px`);
@@ -163,13 +174,14 @@ try{
     }
     await responsive.waitForFunction(()=>document.querySelector('#resultText').textContent.includes('сервере'));await responsive.close();
   }
-  assert.equal(fixture.posts.length,4,'each full replay saves once');assert.equal(fixture.progress().stars,48,'replay awards no duplicate stars');
+  assert.equal(fixture.posts.length,5,'each full replay saves once');assert.equal(fixture.progress().stars,48,'replay awards no duplicate stars');
   const geometry=await open(412,915);await click(geometry,'.ag-back');
   await geometry.evaluate(()=>{for(let i=0;i<7;i++)document.querySelector('#chapterNext').click();[...document.querySelectorAll('.node')].find(node=>node.querySelector('.node-number').textContent==='53').click();});
   assert.match(await geometry.$eval('.ag-build-status',node=>node.textContent),/Площадь: 0 кл.*Периметр: 0 сторон/);await click(geometry,'.ag-cell');
   assert.match(await geometry.$eval('.ag-build-status',node=>node.textContent),/Площадь: 1 кл.*Периметр: 4 сторон/);await geometry.close();
   assert.deepEqual(errors,[],'no browser errors');
-  console.log('PASS five distinct fading-support objectives; row/total confusion, grouping undo, equal-term addition, new-picture transfer in both factor orders, retry/hints/keyboard/reset/back/stale controls/save/replay; 320/412/1280px; geometry intact');
+  assert.deepEqual(warnings,[],'no browser warnings');
+  console.log('PASS five distinct fading-support objectives; row/total confusion, grouping undo, equal-term addition, new-picture transfer in both factor orders, retry/hints/keyboard/reset/back/stale controls/save/replay; initial/hint/error/solved layouts at320×640/360×640/412×740/1280×800; geometry intact');
 }catch(error){
   const page=(await browser.pages()).at(-1);if(page)await page.screenshot({path:'/tmp/scaffold-failure.png',fullPage:true}).catch(()=>{});throw error;
 }finally{await browser.close();await fixture.close();}
