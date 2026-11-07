@@ -1,0 +1,27 @@
+/* Answer status uses words and symbols as well as color. */
+body.adventure-playing #game[data-answer-state=success] { border-color:#62a63a!important }
+body.adventure-playing #game[data-answer-state=error] { border-color:#d95450!important }
+body.adventure-playing #feedback:is([data-kind=success],[data-kind=error]) { box-shadow:inset 0 0 0 2px var(--answer-accent); padding:6px 8px }
+body.adventure-playing #feedback[data-kind=success] { --answer-accent:#34851e; background:#e1f5d3; color:#285b18 }
+body.adventure-playing #feedback[data-kind=error] { --answer-accent:#d13b35; background:#ffe7e5; color:#8f2521 }
+body.adventure-playing #feedback .ag-feedback-icon { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; margin-right:6px; border-radius:50%; background:var(--answer-accent); color:#fff; font:900 18px/1 system-ui,sans-serif; vertical-align:-3px }
+body.adventure-playing #feedback .ag-feedback-title { font-size:16px; font-weight:900; line-height:1.3; margin-right:3px }
+body.adventure-playing #game[data-answer-state=success] #next { background:#2f841c linear-gradient(#34851e,#287918)!important; box-shadow:0 3px 0 #19560d!important }
+body.adventure-playing #game[data-answer-state=error] .ag-root .ag-check,
+body.adventure-playing #game[data-answer-state=error] .dragon-check { background:#c33731 linear-gradient(#c8403b,#b72b28)!important; color:white!important; border-color:#ac2924!important; box-shadow:0 3px 0 #8e211d!important }
+body.adventure-playing #game .ag-root input[aria-invalid=true] { border:3px solid #d13b35; background:#fff0ee; color:#a4211e; -webkit-text-fill-color:#a4211e }
+body.adventure-playing #game[data-answer-state=success] .ag-root input:not([type=range]) { border-color:#4a962e; background:#f0fae9; color:#285b18; -webkit-text-fill-color:#285b18; opacity:1 }
+
+/* Leave room for the explicit result heading on short screens. */
+body.adventure-playing #game .ag-share-group { padding:3px; gap:2px }
+body.adventure-playing #game .ag-share-count { font-size:19px; line-height:1 }
+body.adventure-playing #game .ag-calendar-board { padding:5px }
+body.adventure-playing #game .ag-calendar-title { margin-bottom:3px }
+body.adventure-playing #game .ag-calendar-weekday { padding:1px 0 }
+body.adventure-playing #game .ag-root .ag-calendar-day { min-height:30px!important }
+body.adventure-playing #game .ag-clock-dial { width:min(22dvh,175px) }
+body.adventure-playing #game .ag-clock-value { margin:3px }
+@media(max-height:700px) {
+  body.adventure-playing #game .ag-paint-grid { width:min(100%,calc(var(--ag-cols) * 36px + 12px)) }
+  body.adventure-playing #game .ag-bar-track { height:clamp(70px,12.5dvh,140px) }
+}
