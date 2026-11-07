@@ -102,8 +102,8 @@
     const status = c.el('output', 'ag-build-status'); status.setAttribute('aria-live', 'polite');
     if (treasures) {
       board.classList.add('ag-treasure-board');grid.classList.add('ag-treasure-grid');
-      grid.setAttribute('aria-label', `Ряды сокровищ: ${t.rows}, мест в каждом ряду: ${t.cols}`);
-      board.append(c.el('p', 'ag-grid-instruction', 'Нажимай на пустые клетки, чтобы положить сокровища. Чтобы убрать сокровище, нажми на него ещё раз.'));
+      grid.setAttribute('aria-label', `Поле с алмазами. Рядов: ${t.rows}. Клеток в каждом ряду: ${t.cols}.`);
+      board.append(c.el('p', 'ag-grid-instruction', 'Нажми на каждую пустую клетку — в ней появится алмаз. Чтобы убрать алмаз, нажми на него ещё раз.'));
     }
     board.append(grid, status); c.root.append(board);
     const cells = [];
@@ -123,14 +123,14 @@
         const picked = selected.has(i);b.classList.toggle('ag-painted', picked);b.setAttribute('aria-pressed', String(picked));
         if (treasures) {
           b.textContent = picked ? '💎' : '';
-          b.setAttribute('aria-label', `${picked ? 'Убрать' : 'Положить'} сокровище: ряд ${Math.floor(i / t.cols) + 1}, место ${i % t.cols + 1}`);
+          b.setAttribute('aria-label', `${picked ? 'Убрать' : 'Положить'} алмаз: ряд ${Math.floor(i / t.cols) + 1}, место ${i % t.cols + 1}`);
         }
       });
       const p = perimeter();
       if (treasures) {
         let fullRows = 0;
         for (let y = 0; y < t.rows; y++) if (Array.from({length:t.cols}, (_,x)=>y*t.cols+x).every(id=>selected.has(id))) fullRows++;
-        status.replaceChildren(c.el('span', 'ag-treasure-count', `Собрано сокровищ: ${selected.size} из ${t.targetArea}`),c.el('span', 'ag-treasure-rows', `Готово рядов: ${fullRows} из ${t.rows}`));
+        status.replaceChildren(c.el('span', 'ag-treasure-count', `Собрано алмазов: ${selected.size} из ${t.targetArea}`),c.el('span', 'ag-treasure-rows', `Готово рядов: ${fullRows} из ${t.rows}`));
       } else status.textContent = `Площадь: ${selected.size} кл. · Периметр: ${p} сторон`;
       board.dataset.area = String(selected.size); board.dataset.perimeter = String(p);
     }
@@ -156,7 +156,7 @@
         isRectangle = (Math.max(...xs) - Math.min(...xs) + 1) * (Math.max(...ys) - Math.min(...ys) + 1) === selected.size;
       }
       if (isRectangle && (t.targetArea === undefined || selected.size === t.targetArea) && (t.targetPerimeter === undefined || perimeter() === t.targetPerimeter)) c.solve(t.explanation);
-      else c.feedback(treasures ? 'Заполни все ряды: положи по одному сокровищу в каждую пустую клетку. Затем нажми «Проверить».' : t.requireRectangle ? 'Проверь: фигура должна быть цельным прямоугольником нужного размера. Пробелы можно закрасить, лишнее — убрать.' : 'Посчитай закрашенные клетки. Нажми на лишнюю клетку, чтобы стереть её.', 'error');
+      else c.feedback(treasures ? 'На поле ещё есть пустые клетки. Нажми на каждую из них, затем нажми «Проверить».' : t.requireRectangle ? 'Проверь: фигура должна быть цельным прямоугольником нужного размера. Пробелы можно закрасить, лишнее — убрать.' : 'Посчитай закрашенные клетки. Нажми на лишнюю клетку, чтобы стереть её.', 'error');
     });
     paint();
   }

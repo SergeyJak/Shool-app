@@ -2,7 +2,7 @@
 
 The user could not understand level16's instruction to assemble a rectangle from treasure rows. The screenshot showed empty cells, a sticky purple hover despite a zero count, and geometry terminology in an introductory multiplication game.
 
-Rewrite all five rounds in direct, grammatical Russian: fill a specified number of rows with a specified number of treasures in each. Explain tapping empty cells and tapping again to remove a treasure. Show actual treasure icons, total collected and completed-row counts; reserve area/perimeter for the geometry games. Keep progression, required answers and the shared grid mechanics intact. Distinguish empty/selected states even under touch hover.
+Use a direct action and a concrete object in all five rounds: «Заполни поле алмазами». Explain that tapping each empty cell places a diamond. Introduce the row counts and multiplication after the learner fills the board, without «по N сокровища» in the instruction. Explain tapping empty cells and tapping again to remove a treasure. Show actual treasure icons, total collected and completed-row counts; reserve area/perimeter for the geometry games. Keep progression, required answers and the shared grid mechanics intact. Distinguish empty/selected states even under touch hover.
 
 Validate the reported second round, all five rounds, touch/keyboard undo, retry/hint/reset, server save, mobile/desktop layout, and a geometry round retaining area/perimeter. No new image assets or dependencies.
 

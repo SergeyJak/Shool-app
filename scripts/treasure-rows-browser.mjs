@@ -26,7 +26,8 @@ try {
   const click=(page,selector)=>page.$eval(selector,node=>node.click());
   const fill=page=>page.$$eval('.ag-cell',cells=>cells.forEach(cell=>{if(cell.getAttribute('aria-pressed')!=='true')cell.click();}));
   const page=await open(360,800);
-  assert.match(await page.$eval('.ag-grid-instruction',node=>node.textContent),/Нажимай на.*клетки/,'the game explicitly tells the learner how to place treasures');
+  assert.match(await page.$eval('.ag-grid-instruction',node=>node.textContent),/Нажми на каждую пустую клетку/,'the game explicitly tells the learner how to place treasures');
+  assert.doesNotMatch(await page.$eval('#question',node=>node.textContent),/сокровищ|по \d/,'the task uses a concrete object and direct action');
   assert.doesNotMatch(await page.$eval('.ag-build-status',node=>node.textContent),/Площадь|Периметр/,'multiplication uses object counts, not untaught geometry');
   const cell=await page.$('.ag-cell');const emptyColor=await cell.evaluate(node=>getComputedStyle(node).backgroundColor);
   await cell.tap();assert.match(await cell.evaluate(node=>node.textContent),/💎/);
@@ -39,7 +40,7 @@ try {
   await page.$$eval('.ag-cell[data-y="0"]',cells=>cells.forEach(cell=>cell.click()));
   assert.match(await page.$eval('.ag-build-status',node=>node.textContent),/Готово рядов: 1 из 2/);
   await click(page,'.ag-check');assert.equal(await page.$eval('#next',node=>node.classList.contains('hidden')),true);
-  assert.match(await page.$eval('#feedback',node=>node.textContent),/Заполни все ряды/);
+  assert.match(await page.$eval('#feedback',node=>node.textContent),/пустые клетки/);
   await click(page,'.ag-hint');assert.equal(fixture.posts.length,0);
   await click(page,'.ag-reset');assert.equal(await page.$$eval('.ag-cell[aria-pressed="true"]',nodes=>nodes.length),0);
   for(let i=0;i<5;i++){
@@ -59,7 +60,7 @@ try {
   await page.close();
   for(const [width,height] of [[320,568],[412,915],[1280,900]]){
     const page=await open(width,height);await fill(page);await click(page,'.ag-check');await click(page,'#next');
-    assert.match(await page.$eval('#question',node=>node.textContent),/3 ряда.*по 4 сокровища в каждом/);
+    assert.match(await page.$eval('#question',node=>node.textContent),/Заполни поле алмазами/);
     await click(page,'.ag-cell');
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1);
     assert.equal(overflow,false,'the explanation and treasures fit '+width+'px');
