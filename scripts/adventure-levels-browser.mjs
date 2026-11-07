@@ -39,6 +39,18 @@ function solution(task) {
     case 'order': for (const id of task.solution) push(`.ag-order-item[data-item="${id}"]`); break;
     case 'share': for (let group=0;group<task.groups;group++) for(let n=0;n<task.each;n++) push(`.ag-give[data-group="${group}"]`); break;
     case 'rectangle': {
+      if(task.visual==='treasures'){
+        for(let x=0;x<task.cols;x++)push(`.ag-group-cell[data-x="${x}"][data-y="0"]`);
+        push('.ag-confirm-row');
+        for(let row=1;row<task.rows;row++)push('.ag-add-row');
+        push('.ag-finish-groups');
+        actions.push({selector:'.ag-total-answer',value:task.targetArea});push('.ag-check');
+        for(let index=0;index<task.rows;index++){
+          push(`.ag-addend-slot[data-index="${index}"]`);push(`.ag-addend-choice[data-value="${task.cols}"]`);
+        }
+        push('.ag-check');push(`.ag-multiply-choice[data-expression="${task.rows}x${task.cols}"]`);
+        return actions;
+      }
       let dimensions;
       for (let w=1;w<=task.cols && !dimensions;w++) for(let h=1;h<=task.rows;h++) {
         if ((task.targetArea===undefined || w*h===task.targetArea) && (task.targetPerimeter===undefined || 2*(w+h)===task.targetPerimeter)) { dimensions=[w,h];break; }
@@ -81,6 +93,14 @@ function solution(task) {
   return actions;
 }
 function mistake(task) {
+  if(task.mechanic==='rectangle'&&task.visual==='treasures'){
+    const actions=[];
+    for(let x=0;x<task.cols;x++)actions.push(click(`.ag-group-cell[data-x="${x}"][data-y="0"]`));
+    actions.push(click('.ag-confirm-row'));
+    for(let row=1;row<task.rows;row++)actions.push(click('.ag-add-row'));
+    actions.push(click('.ag-finish-groups'),{selector:'.ag-total-answer',value:task.rows},click('.ag-check'));
+    return actions;
+  }
   switch(task.mechanic){
     case 'match':return [click('.ag-match-card[data-side="left"][data-card-index="0"]'),click('.ag-match-card[data-side="right"][data-card-index="0"]')];
     case 'sort':return [click(`.ag-sort-item[data-item="${task.items[0].id}"]`),click(`.ag-sort-bin-button[data-bin="${task.bins.find(b=>b.id!==task.items[0].bin).id}"]`)];
