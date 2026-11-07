@@ -39,6 +39,24 @@ function solution(task) {
     case 'order': for (const id of task.solution) push(`.ag-order-item[data-item="${id}"]`); break;
     case 'share': for (let group=0;group<task.groups;group++) for(let n=0;n<task.each;n++) push(`.ag-give[data-group="${group}"]`); break;
     case 'rectangle': {
+      if(task.visual==='treasures'){
+        if(task.lesson==='row-count'||task.lesson==='total'){
+          actions.push({selector:'.ag-number-answer',value:task.lesson==='row-count'?task.cols:task.targetArea});push('.ag-check');
+        }else if(task.lesson==='build-groups'){
+          for(let row=1;row<task.rows;row++)push('.ag-add-row');
+          push('.ag-finish-groups');
+        }else if(task.lesson==='addition'){
+          for(let index=0;index<task.rows;index++){
+            push(`.ag-addend-slot[data-index="${index}"]`);push(`.ag-addend-choice[data-value="${task.cols}"]`);
+          }
+          push('.ag-check');
+        }else if(task.lesson==='transfer'){
+          actions.push({selector:'.ag-factor-first',value:task.rows},{selector:'.ag-factor-second',value:task.cols},{selector:'.ag-product-answer',value:task.targetArea});push('.ag-check');
+        }else{
+          throw new Error('Unknown equal-groups objective '+task.lesson);
+        }
+        return actions;
+      }
       let dimensions;
       for (let w=1;w<=task.cols && !dimensions;w++) for(let h=1;h<=task.rows;h++) {
         if ((task.targetArea===undefined || w*h===task.targetArea) && (task.targetPerimeter===undefined || 2*(w+h)===task.targetPerimeter)) { dimensions=[w,h];break; }
@@ -81,6 +99,12 @@ function solution(task) {
   return actions;
 }
 function mistake(task) {
+  if(task.mechanic==='rectangle'&&task.visual==='treasures'){
+    // The first rectangle objective asks for one row; the whole-picture total
+    // is a meaningful wrong answer, checked before this mechanic is retried.
+    assert.equal(task.lesson,'row-count');
+    return [{selector:'.ag-number-answer',value:task.targetArea},click('.ag-check')];
+  }
   switch(task.mechanic){
     case 'match':return [click('.ag-match-card[data-side="left"][data-card-index="0"]'),click('.ag-match-card[data-side="right"][data-card-index="0"]')];
     case 'sort':return [click(`.ag-sort-item[data-item="${task.items[0].id}"]`),click(`.ag-sort-bin-button[data-bin="${task.bins.find(b=>b.id!==task.items[0].bin).id}"]`)];

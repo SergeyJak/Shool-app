@@ -103,7 +103,8 @@ test('representative stories teach the stated arithmetic and inverse operations'
   assert.equal(at(10, 5)?.target, 49); // Descend from 100 by 51.
   assert.equal(at(11, 3)?.target, 305); // Three hundreds, no tens, five units.
   assert.equal(at(14, 4)?.target, 647); // 810 - 100 - 60 - 3.
-  assert.equal(at(16, 5)?.targetArea, 6 * 6);
+  assert.equal(at(16, 5)?.lesson, 'transfer');
+  assert.equal(at(16, 5)?.targetArea, 2 * 5); // Two baskets, five apples in each.
   assert.equal(at(18, 5)?.target, 7 * 7);
   assert.equal(at(21, 5)?.each, 36 / 6);
   assert.equal(at(22, 3)?.target, 24 / 4); // Build one animal's portion, not the whole meal.
@@ -112,6 +113,20 @@ test('representative stories teach the stated arithmetic and inverse operations'
   assert.equal(at(26, 5)?.target, 2 * 240 + 3 * 35);
   assert.equal(at(27, 5)?.target, 1478 + 365);
   assert.equal(at(30, 5)?.target, 135 * 4 + 260);
+});
+
+test('multiplication support fades across five different objectives and transfers to new groups', () => {
+  const rounds = levels.find(level => level.level === 16)?.rounds;
+  assert.ok(rounds, 'the multiplication lesson exists');
+  assert.deepEqual(rounds.map(round => round.lesson), ['row-count', 'build-groups', 'total', 'addition', 'transfer']);
+  assert.deepEqual(rounds.map(round => [round.cols, round.rows, round.targetArea]), [[3, 2, 6], [4, 3, 12], [5, 4, 20], [4, 3, 12], [5, 2, 10]]);
+  for (const round of rounds) {
+    assert.equal(round.mechanic, 'rectangle');
+    assert.equal(round.visual, 'treasures');
+    assert.equal(round.cols * round.rows, round.targetArea, `${round.lesson}: pictured groups agree with the product`);
+  }
+  assert.equal(rounds[3].rows * rounds[3].cols, 4 + 4 + 4, 'addition uses one equal term per pictured row');
+  assert.notEqual(rounds[4].cols, rounds[3].cols, 'transfer requires reading a new group size');
 });
 
 // A small independent arithmetic reader checks task data rather than source

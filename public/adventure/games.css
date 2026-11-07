@@ -39,10 +39,50 @@ body.ag-playing #counter{margin:8px 0;color:#6e6584;font-weight:700;font-size:14
 #game .ag-root .ag-cell.ag-painted{background:#9473da!important;border-color:#6c49ae!important}
 #game .ag-root .ag-cell:hover:not(:disabled){background:#fff7df!important}
 #game .ag-root .ag-cell.ag-painted:hover:not(:disabled){background:#9473da!important}
-#game .ag-grid-instruction{margin:0 0 16px;font-size:16px;line-height:1.5;color:#5b467b;text-align:left}
 #game .ag-treasure-grid .ag-cell{font-size:clamp(22px,6vw,36px)!important}
 #game .ag-root .ag-treasure-grid .ag-cell.ag-painted,#game .ag-root .ag-treasure-grid .ag-cell.ag-painted:hover:not(:disabled){background:#ffe1a3!important;border-color:#d3ac61!important}
-#game .ag-treasure-board .ag-build-status span{display:block}
+#game .ag-equal-groups{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%;padding:18px 14px;background:linear-gradient(145deg,#fffdf4,#f2f6e9);border:3px solid white;border-radius:24px;box-shadow:0 4px 14px #556e3c19;text-align:center}
+#game .ag-group-step{margin:0;color:#827097;font-size:13px;font-weight:800}
+#game .ag-group-instruction{margin:0;font-size:clamp(20px,4vw,25px);line-height:1.3;color:#59417d}
+#game .ag-equal-rows{display:flex;flex-direction:column;gap:9px;width:100%;max-width:440px;margin:8px auto}
+#game .ag-equal-row{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;gap:7px}
+#game .ag-row-label{font-size:14px;font-weight:800;color:#9b8260}
+#game .ag-highlight-rows{gap:18px;padding:6px}
+#game .ag-row-highlight{outline:3px solid #9163c7;outline-offset:4px;border-radius:9px;background:#ece4f940}
+#game .ag-row-muted{opacity:.45}
+#game .ag-equal-cells{display:grid;grid-template-columns:repeat(var(--ag-cols),minmax(0,1fr));gap:4px}
+#game .ag-group-diamond{display:grid;place-items:center;aspect-ratio:1;padding:2px;border:2px solid #e8c984;border-radius:8px;background:#ffe1a3;font-size:clamp(18px,5vw,30px)}
+#game .ag-equal-groups .ag-cell:hover:not(:disabled),#game .ag-equal-groups .ag-cell:active:not(:disabled){transform:none!important;box-shadow:none!important}
+#game .ag-group-status{margin:0;font-size:16px;font-weight:800;color:#6b4c88}
+#game .ag-group-controls{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;width:100%}
+#game .ag-equal-groups .ag-primary{background:linear-gradient(#a56aff,#713be0)!important;color:white!important;border-color:#7b45cd!important;box-shadow:0 4px 0 #4f289b!important}
+#game .ag-answer-label{font-size:17px;font-weight:800;color:#59417d}
+#game .ag-answer-field{display:flex;flex-direction:column;align-items:center;gap:7px;max-width:100%}
+#game .ag-total-answer{width:160px;max-width:100%;padding:12px;border:2px solid #af98d4;border-radius:14px;background:white;color:#4f337d;font:800 28px/1.2 system-ui,sans-serif;text-align:center}
+#game .ag-total-answer[aria-invalid=true]{border-color:#c5944f;background:#fff8e9}
+#game .ag-group-guide{margin:0;font-size:16px;line-height:1.5;color:#6b577f}
+#game .ag-addend-expression{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;width:100%}
+#game .ag-root .ag-addend-slot{flex:none;width:34px;min-width:34px!important;min-height:42px!important;padding:5px 3px!important;font-size:18px!important;border-radius:9px!important}
+#game .ag-expression-sign{font-size:20px;color:#70578a}
+#game .ag-addend-term{display:flex;flex-direction:column;align-items:center;gap:4px}
+#game .ag-addend-label{font-size:11px;color:#877095;font-weight:700}
+#game .ag-addend-expression .ag-expression-sign{align-self:flex-end;margin-bottom:10px}
+#game .ag-expression-result{font-size:22px;font-weight:800;color:#70578a;padding:0 4px}
+#game .ag-group-equation{font-size:clamp(18px,4vw,24px);font-weight:800;line-height:1.5;color:#5d4382;overflow-wrap:anywhere;margin:0}
+#game .ag-transfer-baskets{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;width:100%}
+#game .ag-transfer-basket{flex:1 1 100px;max-width:180px;padding:12px 8px 8px;border:3px solid #dfc08a;border-radius:18px 18px 30px 30px;background:linear-gradient(#fff6e5,#f1dcad);box-shadow:0 4px 0 #cfb27c}
+#game .ag-basket-label{display:block;font-size:12px;font-weight:800;color:#926a3d;margin-bottom:10px}
+#game .ag-basket-items{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;justify-items:center}
+#game .ag-basket-item{font-size:clamp(22px,5vw,32px);line-height:1.35}
+#game .ag-basket-icon{display:block;font-size:42px;line-height:1.15;margin-top:6px}
+#game .ag-transfer-equation{display:flex;align-items:flex-end;justify-content:center;gap:6px;max-width:100%;margin-top:12px}
+#game .ag-equation-field{width:56px;flex:0 1 56px}
+#game .ag-equation-field .ag-answer-label{display:block;font-size:12px;line-height:1.2;min-height:30px}
+#game .ag-equation-input{width:56px;max-width:100%;padding:10px 3px;border:2px solid #af98d4;border-radius:12px;background:white;color:#4f337d;font:800 22px/1.2 system-ui,sans-serif;text-align:center}
+#game .ag-equation-input[aria-invalid=true]{border-color:#c5944f;background:#fff8e9}
+#game .ag-equation-sign{font-size:22px;font-weight:800;color:#70578a;margin-bottom:11px}
+#game .ag-treasure-lesson ~ #next{position:static!important;bottom:auto!important;z-index:auto!important;margin-top:12px!important}
+@media(max-width:450px){#game .ag-equal-groups{padding:16px 10px}#game .ag-equal-row{grid-template-columns:18px minmax(0,1fr);gap:5px}#game .ag-equal-groups .ag-group-cell{font-size:clamp(18px,6vw,28px)!important}#game .ag-expression-result{flex-basis:100%;margin-top:6px}}
 #game .ag-build-status,#game .ag-fraction-count{font-weight:800;line-height:1.6;color:#5b467b;margin:12px 0}
 #game .ag-fill-row{margin-top:12px}
 #game .ag-pizza{display:block;max-width:250px;width:80%;height:auto;margin:12px auto;filter:drop-shadow(0 6px 0 #c0a55a)}
