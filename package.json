@@ -18,6 +18,7 @@
     "test:adventure-map": "node scripts/adventure-map-browser.mjs",
     "test:owl-assets": "node scripts/owl-assets-browser.mjs",
     "test:adventure-levels": "node scripts/adventure-levels-browser.mjs",
+    "test:treasure-rows": "node scripts/treasure-rows-browser.mjs",
     "test:math-adventure": "node scripts/math-adventure-browser.mjs",
     "test:math-hub": "node scripts/math-hub-browser.mjs",
     "test:integration": "node --test --test-concurrency=1 integration/*.integration.cjs",
