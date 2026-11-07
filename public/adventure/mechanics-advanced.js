@@ -216,6 +216,7 @@
     const guide = ctx.el('p', 'ag-coordinate-guide', 'x → вправо, y ↑ вверх. Сначала x, затем y.');
     const grid = ctx.el('div', 'ag-coordinate-grid');
     grid.style.gridTemplateColumns = 'repeat(' + (task.xMax - task.xMin + 1) + ', minmax(0, 1fr))';
+    grid.style.setProperty('--ag-grid-ratio', Math.min(1, (task.xMax - task.xMin + 1) / (task.yMax - task.yMin + 1)));
     grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', 'Координатная плоскость');
     function accept(x, y) {
       const target = task.targets[next];

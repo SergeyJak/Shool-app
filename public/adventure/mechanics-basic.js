@@ -24,10 +24,15 @@
     function paint() {
       const value = sum(); badge.textContent = c.format(value, t.displayScale) + (t.unit ? ' ' + t.unit : '');
       tokens.replaceChildren();
-      picked.forEach((index, position) => {
+      const counts = new Map();
+      picked.forEach(index => counts.set(index, (counts.get(index) || 0) + 1));
+      counts.forEach((count, index) => {
         const piece = t.pieces[index];
-        const token = c.button((piece.icon || '🪙') + ' ' + piece.label, () => { picked.splice(position, 1); paint(); }, 'ag-token');
-        token.setAttribute('aria-label', 'Убрать ' + piece.label); tokens.append(token);
+        const token = c.button((piece.icon || '🪙') + ' ' + piece.label + (count > 1 ? ' · ' + count + ' шт.' : ''), () => {
+          const position = picked.indexOf(index);
+          if (position !== -1) { picked.splice(position, 1); paint(); }
+        }, 'ag-token');
+        token.setAttribute('aria-label', 'Убрать один предмет: ' + piece.label + '. В наборе: ' + count + '.'); tokens.append(token);
       });
       scene.dataset.value = String(value);
       if (c.level.scene === 'balloon') prop.style.transform = `translateY(${-Math.min(80, value / Math.max(1, t.target) * 80)}px)`;
@@ -186,7 +191,8 @@
       const value = history.at(-1); badge.textContent = c.format(value) + (t.unit ? ' ' + t.unit : '');
       scene.dataset.value = String(value); path.replaceChildren();
       history.slice(-10).forEach(n => path.append(c.el('span', 'ag-path-stone', c.format(n))));
-      prop.style.left = Math.max(5, Math.min(80, 5 + (value - t.start) / (t.target - t.start || 1) * 75)) + '%';
+      // Keep the character inside its flex slot at every route position.
+      prop.style.transform = `translateX(${Math.max(0, Math.min(1, (value - t.start) / (t.target - t.start || 1))) * 20}px)`;
     }
     for (const step of t.steps) {
       const b = c.button((step > 0 ? '+' : '−') + Math.abs(step), () => {

@@ -1,0 +1,186 @@
+/* Size the play area from the available height as well as its width.
+   Content stays in normal flow: no clipping, page scaling or nested scrolling. */
+body.adventure-playing {
+  --ag-picture: clamp(160px, 30dvh, 260px);
+  --ag-scene: clamp(64px, 13dvh, 120px);
+}
+body.adventure-playing header { padding:5px 10px!important; gap:8px; flex-wrap:nowrap; border-bottom-width:2px }
+body.adventure-playing header a { font-size:13px }
+body.adventure-playing header strong { font-size:12px; line-height:1.2 }
+body.adventure-playing main { padding:4px 8px calc(6px + env(safe-area-inset-bottom))!important; max-width:760px!important }
+body.adventure-playing #game, body.adventure-playing #game:has(.dragon-game) {
+  display:grid!important; grid-template-columns:minmax(0,1fr) auto;
+  align-content:start; gap:4px 8px; min-height:0!important;
+  padding:8px!important; margin:0!important; border-width:2px!important; border-radius:20px!important;
+}
+body.adventure-playing #levelName { font-size:17px!important; line-height:1.2; margin:0!important }
+body.adventure-playing #counter { font-size:11px!important; line-height:1.3; margin:2px 0 0!important; white-space:nowrap; text-align:right }
+body.adventure-playing #game > :is(.meter,#question,#choices,#feedback,#next) { grid-column:1/-1; min-width:0 }
+body.adventure-playing .meter { height:5px }
+body.adventure-playing #game #question, body.adventure-playing #game:has(.dragon-game) #question { font-size:18px!important; line-height:1.2!important; margin:3px 0!important }
+body.adventure-playing #question:focus { outline:none }
+body.adventure-playing #feedback { font-size:13px!important; line-height:1.3!important; min-height:0!important; padding:7px 9px; margin:0!important; border-radius:12px }
+body.adventure-playing #feedback:empty { display:none }
+body.adventure-playing #game #next { position:static!important; min-height:44px!important; margin:0!important; padding:8px!important; font-size:16px; box-shadow:0 3px 0 #4421a6!important }
+body.adventure-playing #choices { gap:6px!important }
+body.adventure-playing #game .ag-root button { min-height:44px!important; padding:6px 8px!important; font-size:14px!important; border-radius:11px!important; box-shadow:0 2px 0 #d7c9e9!important }
+body.adventure-playing #game .ag-root button:not(.ag-cell,.ag-coordinate-cell,.ag-calendar-day) { min-width:32px }
+body.adventure-playing #game .ag-check { margin:2px auto!important; min-width:140px }
+body.adventure-playing #game .ag-tools { gap:5px; padding-top:6px; border-top-width:1px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) }
+body.adventure-playing #game .ag-tools .ag-helper { display:none }
+body.adventure-playing #game .ag-tools button { font-size:12px!important; padding:5px 3px!important }
+body.adventure-playing #game .ag-solved { outline:none }
+body.adventure-playing #game .ag-solved :is(.ag-check,.ag-finish-groups) { display:none }
+body.adventure-playing #game .ag-solved .ag-order-tray { display:none }
+body.adventure-playing #game .ag-solved > .ag-piece-tray { display:none }
+body.adventure-playing #game .ag-solved > .ag-fill-row,
+body.adventure-playing #game .ag-solved .ag-coordinate-board .ag-controls { display:none }
+body.adventure-playing #game .ag-solved[data-mechanic=order] > .ag-scene { grid-column:1/-1 }
+body.adventure-playing #game .ag-solved .ag-order-track { grid-template-columns:repeat(auto-fit,minmax(60px,1fr)) }
+
+/* Shared game boards and interactive controls. */
+body.adventure-playing #game :is(.ag-board,.ag-equal-groups) { padding:8px; border-width:1px; border-radius:14px; box-shadow:none }
+body.adventure-playing #game :is(.ag-controls,.ag-piece-tray,.ag-order-tray,.ag-route-controls,.ag-sequence-choices,.ag-group-controls) { gap:6px }
+body.adventure-playing #game .ag-scene { min-height:var(--ag-scene); padding:8px; gap:6px; border-width:2px; border-radius:15px }
+body.adventure-playing #game .ag-scene:before { font-size:32px }
+body.adventure-playing #game .ag-scene-prop { font-size:40px }
+body.adventure-playing #game .ag-scene-value { font-size:22px; padding:5px 10px; border-width:2px; border-radius:12px }
+body.adventure-playing #game .ag-collected { gap:4px }
+body.adventure-playing #game .ag-root .ag-token { min-height:32px!important; font-size:11px!important; padding:3px 5px!important }
+body.adventure-playing #game .ag-root[data-mechanic=compose] .ag-scene-prop { display:none }
+body.adventure-playing #game .ag-piece-tray .ag-piece { min-width:44px; min-height:44px!important; font-size:17px!important }
+body.adventure-playing #game .ag-order-track { padding:6px; gap:4px; min-height:48px; border-bottom-width:3px; flex-basis:100% }
+body.adventure-playing #game .ag-order-slot { min-width:36px }
+body.adventure-playing #game .ag-root[data-mechanic=order] { display:grid; grid-template-columns:1fr 1fr; align-items:start }
+body.adventure-playing #game .ag-root[data-mechanic=order] > :is(.ag-check,.ag-tools) { grid-column:1/-1 }
+body.adventure-playing #game .ag-root[data-mechanic=order] .ag-scene { min-height:0; padding:5px; background:#e1efd3 }
+body.adventure-playing #game .ag-root[data-mechanic=order] :is(.ag-scene-prop,.ag-scene-value,.ag-scene:before) { display:none }
+body.adventure-playing #game :is(.ag-order-track,.ag-order-tray) { display:grid; grid-template-columns:1fr 1fr; align-content:start; width:100% }
+body.adventure-playing #game .ag-order-track { padding:0; border-bottom:0 }
+body.adventure-playing #game :is(.ag-order-track,.ag-order-tray) button { width:100%; min-width:0; font-size:13px!important; padding:5px 3px!important }
+body.adventure-playing #game .ag-share-groups { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px }
+body.adventure-playing #game .ag-share-group { display:grid; grid-template-columns:1fr 1fr; align-content:start; gap:3px; padding:5px; border-width:2px; border-radius:12px }
+body.adventure-playing #game .ag-share-group strong { grid-column:1/-1; font-size:12px; line-height:1.2 }
+body.adventure-playing #game .ag-share-count { grid-column:1/-1; font-size:21px; line-height:1.1 }
+body.adventure-playing #game .ag-share-items { display:none }
+body.adventure-playing #game .ag-share-group button { padding:4px 1px!important }
+body.adventure-playing #game .ag-root[data-mechanic=share] .ag-scene { min-height:44px; padding:3px }
+body.adventure-playing #game .ag-root[data-mechanic=share] .ag-scene-prop { display:none }
+body.adventure-playing #game .ag-root[data-mechanic=rectangle]:not(.ag-treasure-lesson) { display:grid; grid-template-columns:1fr 1fr; align-items:start }
+body.adventure-playing #game .ag-root[data-mechanic=rectangle] > :is(.ag-paint-board,.ag-tools) { grid-column:1/-1 }
+body.adventure-playing #game .ag-root[data-mechanic=rectangle] > :is(.ag-fill-row,.ag-check) { min-width:0; width:100%; height:100%; margin:0!important }
+body.adventure-playing #game .ag-root[data-mechanic=rectangle]:not(:has(.ag-fill-row)) > .ag-check { grid-column:1/-1; width:auto }
+body.adventure-playing #game .ag-paint-board { max-width:270px }
+body.adventure-playing #game .ag-coordinate-grid { width:calc(var(--ag-picture) * var(--ag-grid-ratio)); max-width:100% }
+body.adventure-playing #game .ag-paint-grid { width:min(100%,calc(var(--ag-cols) * 40px + 12px)); margin:auto; padding:4px; gap:2px; border-width:2px }
+body.adventure-playing #game .ag-root .ag-cell { min-height:0!important; padding:0!important }
+body.adventure-playing #game :is(.ag-build-status,.ag-fraction-count) { display:block; margin:5px 0 0; font-size:13px; line-height:1.25 }
+body.adventure-playing #game .ag-fraction-board { display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:6px }
+body.adventure-playing #game .ag-pizza { grid-row:1/3; width:100%; max-width:160px; margin:0 auto }
+body.adventure-playing #game .ag-fraction-pieces { gap:4px; margin-top:5px }
+body.adventure-playing #game .ag-root .ag-fraction-piece { min-width:36px; padding:4px!important }
+body.adventure-playing #game .ag-number-path { min-height:30px; gap:4px }
+body.adventure-playing #game .ag-path-stone { padding:4px 6px; font-size:12px; border-width:1px }
+body.adventure-playing #game .ag-clock-dial { width:min(24dvh,175px); margin:0 auto 5px; border-width:6px }
+body.adventure-playing #game .ag-clock-number { font-size:14px }
+body.adventure-playing #game :is(.ag-clock-value,.ag-measure-value) { font-size:23px; line-height:1.2; margin:5px }
+body.adventure-playing #game .ag-clock-board .ag-controls { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)) }
+body.adventure-playing #game .ag-clock-board .ag-controls button { font-size:12px!important; padding:4px 2px!important }
+body.adventure-playing #game .ag-calendar-title { margin:0 0 5px; font-size:16px }
+body.adventure-playing #game .ag-calendar-grid { gap:3px }
+body.adventure-playing #game .ag-calendar-weekday { font-size:11px; padding:2px 0 }
+body.adventure-playing #game .ag-root .ag-calendar-day { min-height:32px!important; padding:2px!important; font-size:14px!important; border-radius:8px!important }
+body.adventure-playing #game .ag-match-columns { gap:8px }
+body.adventure-playing #game .ag-match-column { gap:6px }
+body.adventure-playing #game .ag-match-column button { min-height:44px!important }
+body.adventure-playing #game :is(.ag-sort-tray,.ag-sort-bins) { gap:6px }
+body.adventure-playing #game .ag-sort-tray { margin-bottom:8px }
+body.adventure-playing #game .ag-sort-bin { flex-basis:80px; gap:4px; padding:6px 4px; min-height:65px; border-width:2px }
+body.adventure-playing #game .ag-sort-bin button { font-size:12px!important; padding:4px 2px!important }
+body.adventure-playing #game .ag-sort-bin .ag-sort-item[data-placed=true] { min-height:28px!important; padding:3px 2px!important; font-size:12px!important; line-height:1.2!important }
+body.adventure-playing #game .ag-sequence-train { margin:0 0 10px; padding:6px 0 10px; gap:4px }
+body.adventure-playing #game :is(.ag-sequence-fixed,.ag-sequence-slot) { min-width:32px; min-height:40px; font-size:16px; padding:4px }
+body.adventure-playing #game .ag-coordinate-grid { margin:6px auto; gap:2px; padding:3px }
+body.adventure-playing #game .ag-root .ag-coordinate-cell { min-height:0!important; padding:0!important; font-size:11px!important }
+body.adventure-playing #game :is(.ag-coordinate-target,.ag-coordinate-guide,.ag-bar-scale) { margin:3px 0; line-height:1.25; font-size:13px }
+body.adventure-playing #game .ag-coordinate-board .ag-controls { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)) }
+body.adventure-playing #game .ag-coordinate-board .ag-controls button { font-size:12px!important; padding:4px 2px!important }
+body.adventure-playing #game .ag-bars-board { padding:4px }
+body.adventure-playing #game .ag-bar-chart { gap:3px }
+body.adventure-playing #game .ag-bar-column { gap:5px }
+body.adventure-playing #game .ag-bar-track { height:clamp(70px,15dvh,140px); margin:0 4px }
+body.adventure-playing #game .ag-bar-column .ag-controls { display:grid; grid-template-columns:1fr 1fr; gap:2px }
+body.adventure-playing #game :is(.ag-bar-plus,.ag-bar-minus) { min-width:30px }
+body.adventure-playing #game .ag-bar-label { font-size:12px }
+body.adventure-playing #game .ag-ruler { margin:8px 10px 0; height:26px }
+body.adventure-playing #game .ag-ruler-ticks { height:32px }
+
+/* Treasure rows: the picture needs to be countable, not full-width tiles. */
+body.adventure-playing #game .ag-equal-groups { gap:6px }
+body.adventure-playing #game .ag-group-step { display:none }
+body.adventure-playing #game .ag-group-guide { font-size:13px; line-height:1.3 }
+body.adventure-playing #game .ag-equal-rows { width:max-content; max-width:100%; margin:4px auto; gap:6px }
+body.adventure-playing #game .ag-equal-row { grid-template-columns:16px minmax(0,1fr); gap:4px }
+body.adventure-playing #game .ag-highlight-rows { padding:4px; gap:12px }
+body.adventure-playing #game .ag-equal-cells { grid-template-columns:repeat(var(--ag-cols),minmax(0,40px)); gap:3px }
+body.adventure-playing #game .ag-group-diamond { width:clamp(24px,6dvh,40px); font-size:22px; padding:1px; border-width:1px }
+body.adventure-playing #game .ag-group-status { font-size:13px; line-height:1.2 }
+body.adventure-playing #game .ag-answer-label { font-size:13px; line-height:1.2 }
+body.adventure-playing #game .ag-answer-field { gap:4px }
+body.adventure-playing #game .ag-total-answer { width:90px; height:44px; padding:5px; font-size:22px }
+body.adventure-playing #game .ag-group-controls { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)) }
+body.adventure-playing #game .ag-equal-groups[data-lesson=addition] .ag-group-controls { display:flex }
+body.adventure-playing #game .ag-addend-choice { min-width:44px }
+body.adventure-playing #game .ag-addend-expression { gap:4px }
+body.adventure-playing #game .ag-expression-result { flex-basis:auto; margin:0; font-size:19px }
+body.adventure-playing #game .ag-root .ag-addend-slot { width:40px; min-height:44px!important }
+body.adventure-playing #game .ag-transfer-baskets { gap:8px }
+body.adventure-playing #game .ag-transfer-basket { max-width:135px; padding:6px; border-width:2px; border-radius:14px }
+body.adventure-playing #game .ag-basket-label { font-size:11px; margin-bottom:5px }
+body.adventure-playing #game .ag-basket-items { gap:2px }
+body.adventure-playing #game .ag-basket-item { font-size:23px; line-height:1.2 }
+body.adventure-playing #game .ag-basket-icon { font-size:26px; margin-top:2px }
+body.adventure-playing #game .ag-transfer-equation { margin-top:2px }
+body.adventure-playing #game .ag-equation-field .ag-answer-label { font-size:11px; min-height:26px }
+body.adventure-playing #game .ag-equation-input { height:44px; padding:5px 3px; font-size:21px }
+
+/* The six original games use the same compact shell. */
+body.adventure-playing #game :is(.apple-training,.neighbor-training,.number-path-game,.dragon-game,.tens-residents-game) { gap:7px!important }
+body.adventure-playing #game :is(.apple-existing,.apple-basket,.apple-orchard) { padding:6px!important; border-radius:13px!important }
+body.adventure-playing #game .apple-existing { font-size:16px!important; line-height:1.3!important }
+body.adventure-playing #game .apple-basket { min-height:44px!important; font-size:23px!important }
+body.adventure-playing #game .apple-orchard { min-height:48px!important; gap:5px!important }
+body.adventure-playing #game .apple-orchard .apple-pick { width:44px!important; min-height:44px!important; font-size:25px!important }
+body.adventure-playing #game :is(.apple-hint,.path-hint,.dragon-hint,.tens-hint) { min-height:44px!important; padding:5px!important; font-size:14px!important }
+body.adventure-playing #game .apple-counter { font-size:14px!important }
+body.adventure-playing #game .apple-delivering > .apple-hint { display:none }
+body.adventure-playing #game .dragon-game:has(.dragon-success) .dragon-actions { display:none }
+body.adventure-playing #game .truck-cab { font-size:40px; line-height:1.5 }
+body.adventure-playing #game .truck-scene { min-height:80px!important; padding:28px 5px 6px!important }
+body.adventure-playing #game .neighbor-street { padding:8px 5px 20px; gap:6px }
+body.adventure-playing #game .neighbor-house { min-height:70px!important; padding:3px!important }
+body.adventure-playing #game .neighbor-roof { font-size:22px }
+body.adventure-playing #game .neighbor-number { font-size:24px }
+body.adventure-playing #game .neighbor-numbers { gap:6px }
+body.adventure-playing #game .neighbor-tile { width:44px; height:44px; min-height:44px; padding:0; font-size:22px }
+body.adventure-playing #game .number-path-scene { min-height:130px; padding:36px 8px 18px }
+body.adventure-playing #game .path-choice { width:48px; height:48px; min-height:44px; font-size:22px }
+body.adventure-playing #game .path-tiles { gap:6px; padding-bottom:4px }
+body.adventure-playing #game .dragon-scene { height:clamp(105px,19dvh,155px) }
+body.adventure-playing #game .dragon-character { font-size:45px }
+body.adventure-playing #game .dragon-instruction { font-size:14px; margin:3px 0 }
+body.adventure-playing #game .dragon-activity { font-size:18px }
+body.adventure-playing #game .dragon-controls { gap:6px; padding-bottom:4px }
+body.adventure-playing #game .dragon-key { width:44px; height:44px; font-size:23px!important }
+body.adventure-playing #game .tens-residents-game .resident-scene { height:clamp(170px,28dvh,210px); padding:8px 8px 10px!important }
+body.adventure-playing #game .resident-count { top:6px; font-size:26px; padding:2px 14px; border-width:2px }
+body.adventure-playing #game .resident-house { transform:scale(.78); transform-origin:center bottom; margin-top:-30px }
+body.adventure-playing #game .resident-prompt { font-size:16px }
+body.adventure-playing #game .resident-button { min-height:48px!important; font-size:23px!important }
+
+@media(min-width:600px) {
+  body.adventure-playing { --ag-picture:clamp(180px,32dvh,280px) }
+  body.adventure-playing #game { padding:14px!important }
+  body.adventure-playing #game #question { font-size:20px!important }
+  body.adventure-playing #game .ag-share-groups { grid-template-columns:repeat(6,minmax(0,1fr)) }
+}
