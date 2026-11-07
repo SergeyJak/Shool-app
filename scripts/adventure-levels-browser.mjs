@@ -40,15 +40,21 @@ function solution(task) {
     case 'share': for (let group=0;group<task.groups;group++) for(let n=0;n<task.each;n++) push(`.ag-give[data-group="${group}"]`); break;
     case 'rectangle': {
       if(task.visual==='treasures'){
-        for(let x=0;x<task.cols;x++)push(`.ag-group-cell[data-x="${x}"][data-y="0"]`);
-        push('.ag-confirm-row');
-        for(let row=1;row<task.rows;row++)push('.ag-add-row');
-        push('.ag-finish-groups');
-        actions.push({selector:'.ag-total-answer',value:task.targetArea});push('.ag-check');
-        for(let index=0;index<task.rows;index++){
-          push(`.ag-addend-slot[data-index="${index}"]`);push(`.ag-addend-choice[data-value="${task.cols}"]`);
+        if(task.lesson==='row-count'||task.lesson==='total'){
+          actions.push({selector:'.ag-number-answer',value:task.lesson==='row-count'?task.cols:task.targetArea});push('.ag-check');
+        }else if(task.lesson==='build-groups'){
+          for(let row=1;row<task.rows;row++)push('.ag-add-row');
+          push('.ag-finish-groups');
+        }else if(task.lesson==='addition'){
+          for(let index=0;index<task.rows;index++){
+            push(`.ag-addend-slot[data-index="${index}"]`);push(`.ag-addend-choice[data-value="${task.cols}"]`);
+          }
+          push('.ag-check');
+        }else if(task.lesson==='transfer'){
+          actions.push({selector:'.ag-factor-first',value:task.rows},{selector:'.ag-factor-second',value:task.cols},{selector:'.ag-product-answer',value:task.targetArea});push('.ag-check');
+        }else{
+          throw new Error('Unknown equal-groups objective '+task.lesson);
         }
-        push('.ag-check');push(`.ag-multiply-choice[data-expression="${task.rows}x${task.cols}"]`);
         return actions;
       }
       let dimensions;
@@ -94,12 +100,10 @@ function solution(task) {
 }
 function mistake(task) {
   if(task.mechanic==='rectangle'&&task.visual==='treasures'){
-    const actions=[];
-    for(let x=0;x<task.cols;x++)actions.push(click(`.ag-group-cell[data-x="${x}"][data-y="0"]`));
-    actions.push(click('.ag-confirm-row'));
-    for(let row=1;row<task.rows;row++)actions.push(click('.ag-add-row'));
-    actions.push(click('.ag-finish-groups'),{selector:'.ag-total-answer',value:task.rows},click('.ag-check'));
-    return actions;
+    // The first rectangle objective asks for one row; the whole-picture total
+    // is a meaningful wrong answer, checked before this mechanic is retried.
+    assert.equal(task.lesson,'row-count');
+    return [{selector:'.ag-number-answer',value:task.targetArea},click('.ag-check')];
   }
   switch(task.mechanic){
     case 'match':return [click('.ag-match-card[data-side="left"][data-card-index="0"]'),click('.ag-match-card[data-side="right"][data-card-index="0"]')];
