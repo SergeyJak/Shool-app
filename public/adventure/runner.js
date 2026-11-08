@@ -12,7 +12,7 @@
       if (text !== undefined) node.textContent = String(text);
       return node;
     };
-    function say(text, kind = 'info') { feedback.textContent = text; feedback.dataset.kind = kind; }
+    function say(text, kind = 'info') { root.AdventureFeedback.set(feedback, text, kind); }
     function destroy() {
       active = false; roundEvents?.abort(); session.abort();
       document.body.classList.remove('ag-playing');
@@ -47,7 +47,7 @@
           solved = true; area.classList.add('ag-solved');
           area.querySelectorAll('button:not(.ag-back),input').forEach(control => { control.disabled = true; });
           area.querySelectorAll('[role=button]').forEach(control => { control.setAttribute('aria-disabled', 'true'); control.tabIndex = -1; });
-          say('⭐ ' + (explanation || task.explanation), 'success');
+          say(explanation || task.explanation, 'success');
           meter.style.width = ((round + 1) / level.rounds.length * 100) + '%';
           next.classList.remove('hidden'); next.focus({ preventScroll: true });
         }

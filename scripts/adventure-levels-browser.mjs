@@ -18,6 +18,7 @@ const fixture = await adventureFixture();
 const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox', '--disable-gpu'] });
 const errors = [], warnings = [], screenshots = [], mechanics = new Set(), retried = new Set();
 const layoutFailures = [], layoutPictures = new Set();
+const layoutReport=`/tmp/feedback-all94-${forcedViewport?.join('x') || 'rotated'}-layout-failures.json`;
 let current = 'initial load', completedRounds = 0;
 
 function pathTo(start, target, steps, maxPresses) {
@@ -170,10 +171,15 @@ try {
     await page.waitForFunction(number=>document.querySelector('#choices.ag-root')?.dataset.level===String(number),{},level.level);
     assert.equal(await page.$eval('#choices',n=>n.dataset.round),'1');
   }
+  async function answerFeedback(kind) {
+    const actual=await page.evaluate(()=>({kind:document.querySelector('#feedback').dataset.kind,title:document.querySelector('#feedback .ag-feedback-title')?.textContent??null,icon:document.querySelector('#feedback .ag-feedback-icon')?.textContent??null,state:document.querySelector('#game').dataset.answerState}));
+    assert.deepEqual(actual,kind==='info'?{kind,title:null,icon:null,state:'neutral'}:{kind,title:kind==='success'?'Верно!':'Попробуй ещё раз',icon:kind==='success'?'✓':'×',state:kind},`${current}: clear result or neutral instructions`);
+  }
   async function overflow(label) {
     try { await assertAdventureFits(page,label); }
     catch (error) {
       layoutFailures.push({label,message:error.message});
+      fs.writeFileSync(layoutReport,JSON.stringify(layoutFailures,null,2));
       const mechanic=await page.$eval('#choices',node=>node.dataset.mechanic || 'unknown');
       if(!layoutPictures.has(mechanic)){
         layoutPictures.add(mechanic);
@@ -217,6 +223,7 @@ try {
     }else await act(actions);
     assert.equal(await page.$eval('#next',n=>n.classList.contains('hidden')),false,`L${level.level} R${index+1} ${task.mechanic}: solving controls must reveal Continue`);
     assert.equal(await page.$eval('#feedback',n=>n.dataset.kind),'success');
+    await answerFeedback('success');
     await overflow(`${current} solved`);
     assert.equal(fixture.posts.length,expectedPosts,'solving a round must not save the full game');
     // A second event on a solved scene cannot award or advance anything.
@@ -323,12 +330,14 @@ try {
     for(let index=0;index<level.rounds.length;index++){
       const task=level.rounds[index];current=`L${level.level} R${index+1} ${task.mechanic}`;
       mechanics.add(task.mechanic);
+      await answerFeedback('info');
       await overflow(`${current} initial`);
       {
         const wrong=mistake(task);
         if(wrong.length){
           await act(wrong);
           assert.equal(await page.$eval('#feedback',n=>n.dataset.kind),'error',`${current}: incorrect attempt should teach`);
+          await answerFeedback('error');
           await overflow(`${current} error`);
         }else{
           assert.equal(await page.$eval('.ag-finish-groups',n=>n.disabled),true,'unfinished grouping cannot submit');
@@ -337,6 +346,7 @@ try {
         assert.ok(await page.$eval('#choices',n=>[...n.querySelectorAll('button,input')].some(n=>!n.disabled)),'wrong attempts retain controls');
         await act([click('.ag-hint')]);
         assert.notEqual(await page.$eval('#feedback',n=>n.dataset.kind),'error','hint responds after wrong answer');
+        await answerFeedback('info');
         await overflow(`${current} hint`);
         assert.equal(fixture.posts.length,before,'mistakes and hints cannot save');
         await act([click('.ag-reset')]);
@@ -388,10 +398,11 @@ try {
   }
   assert.deepEqual(errors,[],'no browser errors or failed assets');
   assert.deepEqual(warnings,[],'no browser warnings');
+  fs.writeFileSync(layoutReport,JSON.stringify(layoutFailures,null,2));
   fs.writeFileSync('/tmp/adventure-layout-failures.json',JSON.stringify(layoutFailures,null,2));
   if(layoutFailures.length){
     current='aggregated layout validation';
-    assert.fail(`${layoutFailures.length} layout regressions; full metrics /tmp/adventure-layout-failures.json; first: ${layoutFailures[0].message}`);
+    assert.fail(`${layoutFailures.length} layout regressions; full metrics ${layoutReport}; first: ${layoutFailures[0].message}`);
   }
   console.log(`PASS all 94 games × 5 rounds; initial/filled/error/hint/solved and maximum-piece layouts; all 14 mechanics, retries/hints/reset/back, cleanup, save/replay/reload; ${forcedViewport?.join('×') || '320×640/360×640/412×740/1280×800'}. Screenshots: ${screenshots.join(', ')}`);
 } catch(error) {

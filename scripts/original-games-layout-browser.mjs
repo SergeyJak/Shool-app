@@ -14,6 +14,10 @@ async function choose(page,selector,text) {
     if(!node)throw new Error('Missing answer '+text);node.click();
   },text);
 }
+async function answerFeedback(page,kind) {
+  const actual=await page.evaluate(()=>({kind:document.querySelector('#feedback').dataset.kind,title:document.querySelector('#feedback .ag-feedback-title')?.textContent??null,icon:document.querySelector('#feedback .ag-feedback-icon')?.textContent??null,state:document.querySelector('#game').dataset.answerState}));
+  assert.deepEqual(actual,kind==='info'?{kind,title:null,icon:null,state:'neutral'}:{kind,title:kind==='success'?'Верно!':'Попробуй ещё раз',icon:kind==='success'?'✓':'×',state:kind},'original games share clear results and neutral instructions');
+}
 async function fit(page,label) {
   try { await assertAdventureFits(page,label); }
   catch(error) { failures.push(error.message);if(!failures.slice(0,-1).some(item=>item.split(':')[0]===label.split(':')[0]))await page.screenshot({path:`/tmp/original-layout-${label.split(':')[0]}.png`,fullPage:true}); }
@@ -36,8 +40,17 @@ try {
       assert.equal(await page.$eval('#game',node=>node.classList.contains('hidden')),false);
       for(let round=0;round<(level===5?4:5);round++) {
         const label=`L${level}-${viewport.width}:round${round+1}`;
-        await fit(page,label+' initial');
-        await tap(page,'.apple-hint,.path-hint,.dragon-hint,.tens-hint');await fit(page,label+' hint');
+        await answerFeedback(page,'info');await fit(page,label+' initial');
+        await tap(page,'.apple-hint,.path-hint,.dragon-hint,.tens-hint');await answerFeedback(page,'info');await fit(page,label+' hint');
+        if(level===3){await choose(page,'.neighbor-tile',[4,7,12,19,28][round]+2);await answerFeedback(page,'error');await fit(page,label+' error');}
+        if(level===4){await page.$$eval('.path-choice',(nodes,answer)=>nodes.find(node=>node.textContent.trim()!==String(answer)).click(),[3,8,10,30,12][round]);await answerFeedback(page,'error');await fit(page,label+' error');}
+        if(level===5){
+          if(round<2)await tap(page,'.dragon-key');
+          else if(round===2){await choose(page,'.dragon-key',7);await choose(page,'.dragon-key',11);}
+          else await choose(page,'.dragon-key',5);
+          await tap(page,'.dragon-check');await answerFeedback(page,'error');await fit(page,label+' error');
+          await tap(page,'.dragon-hint');await answerFeedback(page,'info');
+        }
         if(level===1)for(let i=0;i<round+1;i++)await tap(page,'.apple-pick:not(:disabled)');
         if(level===2)for(let i=0;i<[2,3,4,5,7][round];i++)await tap(page,'.bridge-plank:not(.removed)');
         if(level===3){const center=[4,7,12,19,28][round];await choose(page,'.neighbor-tile',center-1);await choose(page,'.neighbor-tile',center+1);}
@@ -51,12 +64,14 @@ try {
         if(level===6){
           const total=[23,34,46,57,68][round];
           for(let i=0;i<Math.floor(total/10);i++)await tap(page,'.resident-button[aria-label="Заселить десять жителей"]');
+          await tap(page,'.resident-button[aria-label="Заселить десять жителей"]');await answerFeedback(page,'error');await fit(page,label+' error');
+          await tap(page,'.tens-hint');await answerFeedback(page,'info');
           for(let i=0;i<total%10;i++)await tap(page,'.resident-button[aria-label="Заселить одного жителя"]');
         }
         await page.waitForFunction(()=>!document.querySelector('#next').classList.contains('hidden'));
         // Let reduced-motion completion styles settle, including basket delivery.
         await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-        await fit(page,label+' solved');
+        await answerFeedback(page,'success');await fit(page,label+' solved');
         if(round===0&&viewport.width===360)await page.screenshot({path:`/tmp/original-compact-${level}-360.png`});
         await tap(page,'#next');
       }
@@ -66,5 +81,5 @@ try {
   assert.deepEqual(errors,[],'no page or console errors');
   if(failures.length)console.error(failures.join('\n'));
   assert.equal(failures.length,0,'all six original games fit the viewport');
-  console.log('PASS six original games, all 29 rounds × four viewports, initial/hint/solved states, real answers and Continue, no scrolling/clipping/overlap');
+  console.log('PASS six original games, all 29 rounds × four viewports, initial/hint/error/solved states (errors where submission is possible), real answers and Continue, no scrolling/clipping/overlap');
 } finally { await browser.close();await fixture.close(); }
