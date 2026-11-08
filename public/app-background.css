@@ -1,20 +1,36 @@
-/* One page canvas for every app screen. Keep fonts, layout, cards, PDF pages
-   and illustrations inside the games under their own component styles. */
+/* One illustrated world behind every app screen. Component surfaces and the
+   actual chapter maps keep their own styles. */
 html:root {
-  background-color: #f6f5ef !important;
-  background-image:
-    radial-gradient(ellipse 680px 430px at 0 0, #e5eee7 0, transparent 75%),
-    radial-gradient(ellipse 680px 500px at 100% 100%, #ece8f2 0, transparent 75%),
-    linear-gradient(#839b8c0a 1px, transparent 1px),
-    linear-gradient(90deg, #839b8c0a 1px, transparent 1px) !important;
-  background-size: auto, auto, 28px 28px, 28px 28px !important;
-  background-position: 0 0 !important;
-  background-repeat: no-repeat, no-repeat, repeat, repeat !important;
-  background-attachment: scroll !important;
+  background: #9aaa8f !important;
 }
 
-/* Paint the document once, so short pages and long pages have no joins.
-   This also takes precedence over the older role-specific page backgrounds. */
+/* A viewport layer avoids tiling on long pages and stretching the scene to
+   document height. Large viewport units keep Android toolbar motion from
+   repeatedly resizing the artwork. It cannot intercept taps or cover content. */
+html:root::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  z-index: -1;
+  pointer-events: none;
+  background: #9aaa8f url('/assets/backgrounds/academy-forest-wide.webp') center / cover no-repeat;
+}
+
+@media (orientation: portrait) {
+  html:root::before {
+    background-image: url('/assets/backgrounds/academy-forest-portrait.webp');
+  }
+}
+
 html:root body {
   background: transparent !important;
+}
+
+@media print {
+  html:root { background: white !important }
+  html:root::before { display: none }
 }

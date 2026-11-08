@@ -71,7 +71,9 @@ main { padding: 12px; }
   margin: 80px auto;
   text-align: center;
   padding: 30px;
-  opacity: .68;
+  background: #fffdf5f5;
+  border-radius: 20px;
+  opacity: 1;
 }
 .loading-state {
   display: grid;
