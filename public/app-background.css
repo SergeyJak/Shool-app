@@ -1,0 +1,20 @@
+/* One page canvas for every app screen. Keep fonts, layout, cards, PDF pages
+   and illustrations inside the games under their own component styles. */
+html:root {
+  background-color: #f6f5ef !important;
+  background-image:
+    radial-gradient(ellipse 680px 430px at 0 0, #e5eee7 0, transparent 75%),
+    radial-gradient(ellipse 680px 500px at 100% 100%, #ece8f2 0, transparent 75%),
+    linear-gradient(#839b8c0a 1px, transparent 1px),
+    linear-gradient(90deg, #839b8c0a 1px, transparent 1px) !important;
+  background-size: auto, auto, 28px 28px, 28px 28px !important;
+  background-position: 0 0 !important;
+  background-repeat: no-repeat, no-repeat, repeat, repeat !important;
+  background-attachment: scroll !important;
+}
+
+/* Paint the document once, so short pages and long pages have no joins.
+   This also takes precedence over the older role-specific page backgrounds. */
+html:root body {
+  background: transparent !important;
+}
