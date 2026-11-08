@@ -40,7 +40,7 @@
         const b = el('button', className, text); b.type = 'button'; b.setAttribute('aria-label', text);
         listen(b, 'click', onClick); return b;
       };
-      const ctx = { root: area, task, level, el, listen, button, feedback: say,
+      const ctx = { root: area, task, level, el, listen, button, feedback: say, signal:roundEvents.signal,
         format: (value, scale = 1) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value / scale),
         setHint: fn => { hintText = fn; },
         solve: explanation => {

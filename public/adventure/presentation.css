@@ -6,10 +6,10 @@ body.adventure-playing #game .ag-mass-scene .ag-scene-value { max-width:100%; fo
 body.adventure-playing #game .ag-mass-scene .ag-collected { gap:4px }
 body.adventure-playing #game .ag-token .ag-weight-icon { width:16px; height:16px; margin-right:3px }
 body.adventure-playing #game .ag-balance-board { position:relative; width:100%; max-width:300px; height:116px; flex:none; border-radius:12px; background:linear-gradient(#f8fcff,#dfefec) }
-body.adventure-playing #game .ag-balance-beam { position:absolute; top:28px; left:32px; right:32px; height:5px; border-radius:4px; background:#657d94; transform:rotate(var(--balance-tilt)); transition:transform .25s ease-out }
+body.adventure-playing #game .ag-balance-beam { position:absolute; top:28px; left:32px; right:32px; height:5px; border-radius:4px; background:#657d94; transform:rotate(var(--balance-tilt)); transition:transform .45s cubic-bezier(.2,.8,.3,1) }
 body.adventure-playing #game .ag-balance-stand { position:absolute; top:29px; bottom:9px; left:calc(50% - 4px); width:8px; border-radius:5px; background:#8aa0b1 }
 body.adventure-playing #game .ag-balance-stand:after { content:''; position:absolute; left:-20px; right:-20px; bottom:0; height:8px; border-radius:6px; background:#657d94 }
-body.adventure-playing #game .ag-balance-pan { position:absolute; top:43px; width:42%; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 2px; border-bottom:4px solid #b7945f; border-radius:0 0 24px 24px; background:#f5e7c8; transition:transform .25s ease-out }
+body.adventure-playing #game .ag-balance-pan { position:absolute; top:43px; width:42%; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 2px; border-bottom:4px solid #b7945f; border-radius:0 0 24px 24px; background:#f5e7c8; transition:transform .45s cubic-bezier(.2,.8,.3,1) }
 body.adventure-playing #game .ag-balance-pan[data-side=left] { left:0 }
 body.adventure-playing #game .ag-balance-pan[data-side=right] { right:0 }
 body.adventure-playing #game .ag-balance-weights { display:flex; align-items:center; justify-content:center; gap:2px; height:31px; font-weight:900 }
@@ -28,6 +28,17 @@ body.adventure-playing #game .ag-mass-group .ag-weight-icon { width:42px; height
 body.adventure-playing #game .ag-mass-group strong { flex-basis:100%; text-align:center; font-size:15px }
 body.adventure-playing #game .ag-share-items .ag-weight-icon { width:18px; height:18px; padding-top:4px; margin:0; font-size:8px }
 body.adventure-playing #game .ag-share-count { white-space:nowrap }
+body.adventure-playing #game .ag-weight-flights { position:absolute; inset:0; overflow:clip; border-radius:inherit; z-index:7; pointer-events:none }
+body.adventure-playing #game .ag-weight-flight { position:absolute; top:0; left:0; width:44px; height:36px; margin:0; padding-top:7px; font-size:11px; pointer-events:none }
+body.adventure-playing #game .ag-balance-board[data-balanced=true] .ag-balance-beam { animation:ag-balance-settle .65s ease-out }
+body.adventure-playing #game .ag-balance-board[data-balanced=true] .ag-balance-pan[data-side=left] { animation:ag-pan-settle .65s ease-out }
+body.adventure-playing #game .ag-balance-board[data-balanced=true] .ag-balance-pan[data-side=right] { animation:ag-pan-settle-right .65s ease-out }
+body.adventure-playing #game[data-answer-state=success] .ag-balance-board { animation:ag-balance-glow .8s ease-out }
+@keyframes ag-balance-settle { 0% { transform:var(--balance-start-beam) } 30% { transform:rotate(-2deg) } 60% { transform:rotate(1deg) } 85% { transform:rotate(-.4deg) } 100% { transform:rotate(0) } }
+@keyframes ag-pan-settle { 0% { transform:var(--balance-start-left) } 30% { transform:translateY(2px) } 60% { transform:translateY(-1px) } 85% { transform:translateY(.4px) } 100% { transform:translateY(0) } }
+@keyframes ag-pan-settle-right { 0% { transform:var(--balance-start-right) } 30% { transform:translateY(-2px) } 60% { transform:translateY(1px) } 85% { transform:translateY(-.4px) } 100% { transform:translateY(0) } }
+@keyframes ag-balance-glow { 0%,100% { box-shadow:inset 0 0 0 1px #7eaf5a } 40% { box-shadow:inset 0 0 0 4px #8dcc56; background:#e5f8ce } }
 @media(prefers-reduced-motion:reduce) {
-  body.adventure-playing #game :is(.ag-balance-beam,.ag-balance-pan) { transition:none }
+  body.adventure-playing #game :is(.ag-balance-board,.ag-balance-beam,.ag-balance-pan) { transition:none; animation:none }
+  body.adventure-playing #game .ag-weight-flights { display:none }
 }

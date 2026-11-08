@@ -48,13 +48,19 @@
       left.append(leftWeights, leftTotal);right.append(rightWeights, rightTotal);board.append(left, right);scene.prepend(board);scene.classList.add('ag-mass-scene');
       return (value, picked) => {
         const total = t.balance.known + value, tilt = Math.max(-6, Math.min(6, (t.balance.total - total) / 2));
+        if (total === t.balance.total && board.dataset.balanced !== 'true') {
+          const view = scene.ownerDocument.defaultView;
+          board.style.setProperty('--balance-start-beam', view.getComputedStyle(beam).transform);
+          board.style.setProperty('--balance-start-left', view.getComputedStyle(left).transform);
+          board.style.setProperty('--balance-start-right', view.getComputedStyle(right).transform);
+        }
         board.dataset.left = String(total);board.dataset.right = String(t.balance.total);board.dataset.balanced = String(total === t.balance.total);
         board.style.setProperty('--balance-tilt', tilt + 'deg');
         left.style.transform = `translateY(${-tilt * 1.5}px)`;right.style.transform = `translateY(${tilt * 1.5}px)`;
         added.replaceChildren();
         const counts = new Map();picked.forEach(index => counts.set(index, (counts.get(index) || 0) + 1));
         counts.forEach((count, index) => {
-          const group = c.el('span', 'ag-balance-piece');group.append(weightIcon(c, c.format(t.pieces[index].value) + ' г'));
+          const group = c.el('span', 'ag-balance-piece');group.dataset.piece = String(index);group.append(weightIcon(c, c.format(t.pieces[index].value) + ' г'));
           if (count > 1) group.append(c.el('small', 'ag-balance-piece-count', '×' + count));
           added.append(group);
         });
@@ -74,6 +80,7 @@
     const t = c.task, picked = [];
     const { scene, prop, badge } = scenery(c);
     const updateContext = massContext(c, scene);
+    const motion = massUnit(t) ? globalThis.AdventureWeightMotion?.create(c) : null;
     const tokens = c.el('div', 'ag-collected'); scene.append(tokens);
     const controls = c.el('div', 'ag-piece-tray');
     const sum = () => picked.reduce((n, i) => n + t.pieces[i].value, 0);
@@ -87,19 +94,30 @@
       picked.forEach(index => counts.set(index, (counts.get(index) || 0) + 1));
       counts.forEach((count, index) => {
         const piece = t.pieces[index];
-        const token = pieceButton(c, piece, () => {
+        const token = pieceButton(c, piece, event => {
+          const source = motion ? c.root.querySelector(`.ag-balance-piece[data-piece="${index}"]`) || event.currentTarget : null;
+          const from = source?.getBoundingClientRect();
           const position = picked.indexOf(index);
-          if (position !== -1) { picked.splice(position, 1); paint(); }
+          if (position !== -1) {
+            picked.splice(position, 1); paint();
+            motion?.fly(from, controls.querySelector(`[data-piece="${index}"]`), c.format(piece.value, t.displayScale) + ' ' + t.unit);
+          }
         }, 'ag-token', count, true);
+        token.dataset.piece = String(index);
         token.setAttribute('aria-label', (massUnit(t) ? 'Убрать гирьку: ' + c.format(piece.value, t.displayScale) + ' ' + t.unit : 'Убрать один предмет: ' + piece.label) + '. В наборе: ' + count + '.'); tokens.append(token);
       });
       scene.dataset.value = String(value);
       if (c.level.scene === 'balloon') prop.style.transform = `translateY(${-Math.min(80, value / Math.max(1, t.target) * 80)}px)`;
     }
     t.pieces.forEach((piece, index) => {
-      const b = pieceButton(c, piece, () => {
+      const b = pieceButton(c, piece, event => {
         if (picked.length >= (t.maxPieces || 25)) { c.feedback('Больше добавлять нельзя. Убери лишнее или начни заново.', 'error'); return; }
+        const from = motion ? (event.currentTarget.querySelector('.ag-weight-icon') || event.currentTarget).getBoundingClientRect() : null;
         picked.push(index); paint(); c.feedback(massUnit(t) ? 'Гирька добавлена. Нажми на добавленную гирьку, чтобы убрать её.' : 'Добавлено. Нажми на выбранный элемент, чтобы убрать его.');
+        if (motion) {
+          const target = c.root.querySelector(`.ag-balance-piece[data-piece="${index}"] .ag-weight-icon`) || tokens.querySelector(`[data-piece="${index}"] .ag-weight-icon`);
+          motion.fly(from, target, c.format(piece.value, t.displayScale) + ' ' + t.unit);
+        }
       }, 'ag-piece ag-control');
       b.dataset.value = String(piece.value); b.dataset.piece = String(index); controls.append(b);
     });
