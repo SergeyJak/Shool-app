@@ -200,7 +200,8 @@ try {
       await act(Array.from({length:maximum},()=>click('.ag-piece[data-piece="0"]')));
       const maximumValue=await page.$eval('.ag-scene',node=>node.dataset.value);
       const tokenText=await page.$eval('.ag-token',node=>node.textContent);
-      assert.ok(tokenText.includes(task.pieces[0].label),'the collection keeps its denomination visible');
+      if (['г','кг'].includes(task.unit)) assert.ok(tokenText.replace(/\s/g,'').includes(String(task.pieces[0].value)+task.unit),'the collection keeps its mass denomination and unit visible');
+      else assert.ok(tokenText.includes(task.pieces[0].label),'the collection keeps its denomination visible');
       if(maximum>1)assert.ok(tokenText.includes(`${maximum} шт.`),'the repeated-piece quantity stays visible after compaction');
       await overflow(`${current} maximum pieces`);
       await act([click('.ag-piece[data-piece="0"]')]);

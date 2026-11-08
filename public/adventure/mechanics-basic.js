@@ -15,32 +15,91 @@
   function check(c, action) {
     const b = c.button('Проверить', action, 'ag-check ag-primary'); c.root.append(b); return b;
   }
+  const massUnit = t => t.unit === 'г' || t.unit === 'кг';
+  function weightIcon(c, text = '') {
+    const icon = c.el('span', 'ag-weight-icon', text);icon.setAttribute('aria-hidden', 'true');return icon;
+  }
+  function quantityUnit(unit, value) {
+    const forms = { 'монет':['монета','монеты','монет'], 'камней':['камень','камня','камней'], 'клеток':['клетка','клетки','клеток'], 'ягод':['ягода','ягоды','ягод'], 'досок':['доска','доски','досок'] }[unit];
+    if (!forms) return unit || '';
+    const n = Math.abs(value) % 100, last = n % 10;
+    return forms[n >= 11 && n <= 14 ? 2 : last === 1 ? 0 : last >= 2 && last <= 4 ? 1 : 2];
+  }
+  function pieceButton(c, piece, action, className, count = 1, collected = false) {
+    const t = c.task, mass = massUnit(t);
+    const label = mass ? (collected ? '' : '+') + c.format(piece.value, t.displayScale) + ' ' + t.unit : piece.label;
+    const quantity = collected && count > 1 ? ' · ' + count + ' шт.' : '';
+    const icon = mass ? null : piece.icon || (['₽','руб.','руб','монет'].includes(t.unit) ? '🪙' : ['см','м','км'].includes(t.unit) ? '📏' : '🔢');
+    const button = c.button((icon ? icon + ' ' : '') + label + quantity, action, className);
+    if (mass) button.prepend(weightIcon(c));
+    return button;
+  }
+  function massContext(c, scene) {
+    const t = c.task;
+    if (t.visual === 'balance') {
+      const board = c.el('div', 'ag-balance-board');board.setAttribute('role', 'group');board.setAttribute('aria-label', 'Весы');
+      const beam = c.el('div', 'ag-balance-beam'), stand = c.el('div', 'ag-balance-stand');
+      beam.setAttribute('aria-hidden', 'true');stand.setAttribute('aria-hidden', 'true');board.append(beam, stand);
+      const left = c.el('div', 'ag-balance-pan'), right = c.el('div', 'ag-balance-pan');left.dataset.side = 'left';right.dataset.side = 'right';
+      const known = weightIcon(c, t.balance.known + ' г'), added = c.el('span', 'ag-balance-added'), goal = weightIcon(c, t.balance.total + ' г'), plus = c.el('span', '', '+');added.setAttribute('aria-hidden', 'true');
+      const leftTotal = c.el('output', 'ag-balance-total'), rightTotal = c.el('output', 'ag-balance-total', t.balance.total + ' г');
+      const leftWeights = c.el('div', 'ag-balance-weights'), rightWeights = c.el('div', 'ag-balance-weights');
+      leftWeights.append(known, plus, added);rightWeights.append(goal);
+      left.append(leftWeights, leftTotal);right.append(rightWeights, rightTotal);board.append(left, right);scene.prepend(board);scene.classList.add('ag-mass-scene');
+      return (value, picked) => {
+        const total = t.balance.known + value, tilt = Math.max(-6, Math.min(6, (t.balance.total - total) / 2));
+        board.dataset.left = String(total);board.dataset.right = String(t.balance.total);board.dataset.balanced = String(total === t.balance.total);
+        board.style.setProperty('--balance-tilt', tilt + 'deg');
+        left.style.transform = `translateY(${-tilt * 1.5}px)`;right.style.transform = `translateY(${tilt * 1.5}px)`;
+        added.replaceChildren();
+        const counts = new Map();picked.forEach(index => counts.set(index, (counts.get(index) || 0) + 1));
+        counts.forEach((count, index) => {
+          const group = c.el('span', 'ag-balance-piece');group.append(weightIcon(c, c.format(t.pieces[index].value) + ' г'));
+          if (count > 1) group.append(c.el('small', 'ag-balance-piece-count', '×' + count));
+          added.append(group);
+        });
+        added.hidden = value === 0;plus.hidden = value === 0;leftTotal.textContent = total + ' г';
+        left.setAttribute('aria-label', `На левой чаше ${t.balance.known} г и добавленные ${value} г. Всего ${total} г.`);
+        right.setAttribute('aria-label', `На правой чаше ${t.balance.total} г.`);
+      };
+    }
+    if (t.visual === 'mass-group') {
+      const group = c.el('div', 'ag-mass-group');group.setAttribute('aria-label', `${t.massGroup.count} одинаковые гирьки. Вместе ${t.massGroup.total} г.`);
+      for (let i = 0; i < t.massGroup.count; i++) group.append(weightIcon(c, '?'));
+      group.append(c.el('strong', '', `Вместе ${t.massGroup.total} г`));scene.prepend(group);scene.classList.add('ag-mass-scene');
+    }
+    return () => {};
+  }
   function compose(c) {
     const t = c.task, picked = [];
     const { scene, prop, badge } = scenery(c);
+    const updateContext = massContext(c, scene);
     const tokens = c.el('div', 'ag-collected'); scene.append(tokens);
     const controls = c.el('div', 'ag-piece-tray');
     const sum = () => picked.reduce((n, i) => n + t.pieces[i].value, 0);
     function paint() {
-      const value = sum(); badge.textContent = c.format(value, t.displayScale) + (t.unit ? ' ' + t.unit : '');
+      const value = sum();
+      const amount = t.unit === 'восьмых целого' ? value + '/8 целого' : c.format(value, t.displayScale) + (t.unit ? ' ' + quantityUnit(t.unit, value) : '');
+      badge.textContent = (t.answerLabel ? t.answerLabel + ': ' : '') + amount;
+      updateContext(value, picked);
       tokens.replaceChildren();
       const counts = new Map();
       picked.forEach(index => counts.set(index, (counts.get(index) || 0) + 1));
       counts.forEach((count, index) => {
         const piece = t.pieces[index];
-        const token = c.button((piece.icon || '🪙') + ' ' + piece.label + (count > 1 ? ' · ' + count + ' шт.' : ''), () => {
+        const token = pieceButton(c, piece, () => {
           const position = picked.indexOf(index);
           if (position !== -1) { picked.splice(position, 1); paint(); }
-        }, 'ag-token');
-        token.setAttribute('aria-label', 'Убрать один предмет: ' + piece.label + '. В наборе: ' + count + '.'); tokens.append(token);
+        }, 'ag-token', count, true);
+        token.setAttribute('aria-label', (massUnit(t) ? 'Убрать гирьку: ' + c.format(piece.value, t.displayScale) + ' ' + t.unit : 'Убрать один предмет: ' + piece.label) + '. В наборе: ' + count + '.'); tokens.append(token);
       });
       scene.dataset.value = String(value);
       if (c.level.scene === 'balloon') prop.style.transform = `translateY(${-Math.min(80, value / Math.max(1, t.target) * 80)}px)`;
     }
     t.pieces.forEach((piece, index) => {
-      const b = c.button((piece.icon || '🪙') + ' ' + piece.label, () => {
-        if (picked.length >= (t.maxPieces || 25)) { c.feedback('В корзине уже много предметов. Убери лишние или начни раунд заново.', 'error'); return; }
-        picked.push(index); paint(); c.feedback('Предмет добавлен. Ненужный можно нажать, чтобы убрать.');
+      const b = pieceButton(c, piece, () => {
+        if (picked.length >= (t.maxPieces || 25)) { c.feedback('Больше добавлять нельзя. Убери лишнее или начни заново.', 'error'); return; }
+        picked.push(index); paint(); c.feedback(massUnit(t) ? 'Гирька добавлена. Нажми на добавленную гирьку, чтобы убрать её.' : 'Добавлено. Нажми на выбранный элемент, чтобы убрать его.');
       }, 'ag-piece ag-control');
       b.dataset.value = String(piece.value); b.dataset.piece = String(index); controls.append(b);
     });
@@ -80,14 +139,15 @@
     const bins = [];
     function paint() {
       const left = t.total - counts.reduce((a, b) => a + b, 0);
-      badge.textContent = 'Осталось: ' + left;
+      badge.textContent = 'Осталось: ' + left + (massUnit(t) ? ' ' + t.unit : '');
       bins.forEach((b, i) => {
-        b.count.textContent = String(counts[i]);
-        b.count.setAttribute('aria-label', (t.groupLabels?.[i] || 'Корзина ' + (i + 1)) + ': ' + counts[i]);
+        b.count.textContent = String(counts[i]) + (massUnit(t) ? ' ' + t.unit : '');
+        b.count.setAttribute('aria-label', (t.groupLabels?.[i] || 'Корзина ' + (i + 1)) + ': ' + counts[i] + (massUnit(t) ? ' ' + t.unit : ''));
         const visible = Math.min(visibleLimit, counts[i]);
         while (b.pieces.length > visible) b.pieces.pop().remove();
         while (b.pieces.length < visible) {
-          const piece = c.el('span', 'ag-share-item', itemIcon);
+          const piece = itemIcon === 'weight' ? weightIcon(c, '1 г') : c.el('span', '', itemIcon);
+          piece.classList.add('ag-share-item');
           b.items.append(piece); b.pieces.push(piece);
         }
         const overflow = counts[i] - visible;
@@ -112,7 +172,7 @@
       const add = c.button('+1', () => { if (counts.reduce((a, b) => a + b, 0) < t.total) { counts[i]++; paint(); } }, 'ag-give ag-control');
       const remove = c.button('−1', () => { if (counts[i] > 0) { counts[i]--; paint(); } }, 'ag-take ag-control');
       add.dataset.group = remove.dataset.group = String(i);
-      add.setAttribute('aria-label', 'Положить один: ' + label.textContent); remove.setAttribute('aria-label', 'Забрать один: ' + label.textContent);
+      add.setAttribute('aria-label', (massUnit(t) ? 'Добавить гирьку 1 ' + t.unit + ': ' : 'Положить один: ') + label.textContent); remove.setAttribute('aria-label', (massUnit(t) ? 'Убрать гирьку 1 ' + t.unit + ': ' : 'Забрать один: ') + label.textContent);
       box.append(title, items, overflow, count, add, remove); groups.append(box); bins.push({ box, count, items, overflow, pieces: [], add, remove });
     }
     check(c, () => counts.every(n => n === t.each) && counts.reduce((a, b) => a + b, 0) === t.total
@@ -146,7 +206,7 @@
         const picked = selected.has(i);b.classList.toggle('ag-painted', picked);b.setAttribute('aria-pressed', String(picked));
       });
       const p = perimeter();
-      status.textContent = `Площадь: ${selected.size} кл. · Периметр: ${p} сторон`;
+      status.textContent = t.cols === 10 && t.rows === 10 && !t.requireRectangle ? `Закрашено: ${selected.size} из 100 (${selected.size}%)` : `Площадь: ${selected.size} кл. · Периметр: ${p} сторон`;
       board.dataset.area = String(selected.size); board.dataset.perimeter = String(p);
     }
     for (let y = 0; y < t.rows; y++) for (let x = 0; x < t.cols; x++) {
@@ -180,7 +240,7 @@
     const board = c.el('div', 'ag-fraction-board'), counter = c.el('output', 'ag-fraction-count');
     counter.setAttribute('aria-live', 'polite');
     const svg = doc.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 200 200'); svg.classList.add('ag-pizza'); svg.setAttribute('aria-label', 'Пирог из ' + t.parts + ' равных долей');
+    svg.setAttribute('viewBox', '0 0 200 200'); svg.classList.add('ag-pizza'); svg.setAttribute('aria-label', 'Круг из ' + t.parts + ' равных частей');
     const wedges = [], controls = c.el('div', 'ag-fraction-pieces'), buttons = [];
     function paint() {
       counter.textContent = `Закрашено: ${chosen.size}/${t.parts}`;
