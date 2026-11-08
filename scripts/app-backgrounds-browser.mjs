@@ -6,7 +6,7 @@ import { appBackgroundFixture } from './support/app-background-fixture.mjs';
 
 // Browser plugin not available. Use the repository's installed Puppeteer and
 // Chromium workflow. Flow: each public page + each dashboard role -> render the
-// real HTML/CSS without product JS -> one consistent paper canvas at all sizes.
+// real HTML/CSS without product JS -> the same responsive illustrated backdrop.
 const chrome = [process.env.CHROME_BIN, '/usr/bin/chromium', '/usr/bin/google-chrome', '/usr/bin/chromium-browser'].filter(Boolean).find(fs.existsSync);
 assert.ok(chrome, 'Chrome/Chromium is required');
 const baselinePath = process.env.APP_BACKGROUND_BASELINE || '/tmp/app-background-baseline.json';
@@ -58,7 +58,7 @@ async function open(entry, width) {
     })));
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   }, entry.role);
-  return page.evaluate(() => {
+  return page.evaluate(async () => {
     const pick = node => {
       const css = getComputedStyle(node);
       return { color: css.backgroundColor, image: css.backgroundImage, attachment: css.backgroundAttachment,
@@ -66,9 +66,19 @@ async function open(entry, width) {
     };
     const pseudo = (node, selector) => {
       const css = getComputedStyle(node, selector);
-      return { content: css.content, display: css.display, image: css.backgroundImage, position: css.position };
+      return { content: css.content, display: css.display, image: css.backgroundImage, position: css.position,
+        pointerEvents: css.pointerEvents, size: css.backgroundSize, repeat: css.backgroundRepeat, height: css.height, zIndex: css.zIndex };
     };
+    const artworkUrl = getComputedStyle(document.documentElement, '::before').backgroundImage.match(/url\(["']?([^"')]+)["']?\)/)?.[1];
+    let artworkSize = null;
+    if (artworkUrl) {
+      const artwork = new Image();
+      artwork.src = artworkUrl;
+      await artwork.decode();
+      artworkSize = { width: artwork.naturalWidth, height: artwork.naturalHeight };
+    }
     return {
+      viewportHeight: innerHeight, artworkSize,
       title: document.title, pathname: location.pathname, role: document.body.dataset.role || null,
       root: pick(document.documentElement), body: pick(document.body),
       before: pseudo(document.body, '::before'), after: pseudo(document.body, '::after'),
@@ -97,11 +107,18 @@ try {
       check(!record.frameworkOverlay, `${record.key}: framework overlay`);
       check(record.scripts === 0, `${record.key}: CSS fixture unexpectedly includes product scripts`);
       check(record.brokenImages.length === 0, `${record.key}: broken images ${record.brokenImages.join(', ')}`);
-      check(record.root.image !== 'none' && !record.root.image.includes('url('), `${record.key}: root must paint non-image paper decoration`);
-      check(record.root.color !== 'rgba(0, 0, 0, 0)', `${record.key}: root canvas must have an opaque paper fallback`);
-      check(JSON.stringify(record.root) === JSON.stringify(expectedRoot), `${record.key}: root paper differs from ${cases[0].file}`);
+      check(record.root.image === 'none', `${record.key}: root must not tile or stretch art across document height`);
+      check(record.root.color !== 'rgba(0, 0, 0, 0)', `${record.key}: root canvas must have an opaque fallback`);
+      check(JSON.stringify(record.root) === JSON.stringify(expectedRoot), `${record.key}: root canvas differs from ${cases[0].file}`);
+      const artwork = record.rootBefore;
+      const variant = width <= 640 ? 'academy-forest-portrait.webp' : 'academy-forest-wide.webp';
+      check(artwork.image.includes(variant), `${record.key}: missing generated ${variant}`);
+      check(artwork.position === 'fixed' && artwork.pointerEvents === 'none' && Number(artwork.zIndex) < 0, `${record.key}: artwork must stay behind interactive content`);
+      check(artwork.size === 'cover', `${record.key}: scenery must fill the viewport without repeating`);
+      check(artwork.repeat === 'no-repeat' && parseFloat(artwork.height) >= record.viewportHeight, `${record.key}: illustrated layer leaves a viewport gap or tiles`);
+      check(record.artworkSize && (width <= 640 ? record.artworkSize.height > record.artworkSize.width : record.artworkSize.width > record.artworkSize.height), `${record.key}: artwork must decode and match the viewport orientation`);
       check(record.body.image === 'none' && record.body.color === 'rgba(0, 0, 0, 0)', `${record.key}: body must reveal shared root canvas (found ${record.body.color}, ${record.body.image})`);
-      for (const name of ['before', 'after', 'rootBefore', 'rootAfter']) {
+      for (const name of ['before', 'after', 'rootAfter']) {
         const pseudo = record[name];
         const generated = !['none', 'normal'].includes(pseudo.content) && pseudo.display !== 'none';
         check(!(generated && pseudo.image.includes('url(')), `${record.key}: ${name} still paints a page-level image`);
