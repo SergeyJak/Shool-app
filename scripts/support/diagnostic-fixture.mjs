@@ -33,6 +33,14 @@ export async function diagnosticFixture(initialSession = diagnostic.createSessio
     res.json({ ok: true });
   });
   app.get('/api/math/progress', (_req, res) => res.json({ attempts: [] }));
+  app.get('/api/auth/me', (_req, res) => res.json({ user: { id: 'diagnostic-student', role: 'student' } }));
+  app.get('/api/math/adventure', (_req, res) => {
+    const result = session.finished ? diagnostic.result(session) : null;
+    const startLevel = result?.startingLevel ?? result?.level;
+    res.json({ userId: 'diagnostic-student', assessmentRequired: !result,
+      progress: result ? { startLevel, unlocked: startLevel - 1, stars: 0, completed: [] } : null });
+  });
+  app.get('/math-adventure', (_req, res) => res.sendFile(path.resolve(import.meta.dirname, '../../public/math-adventure.html')));
   app.get('/api/math/skill-map', (_req, res) => res.json({ skills: {}, reviewOrigins: [] }));
   app.get('/api/math/adaptive', (_req, res) => res.json({ skill: 'Числа', level: 1, questions: [] }));
   app.get('/favicon.ico', (_req, res) => res.sendStatus(204));
