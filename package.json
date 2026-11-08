@@ -22,6 +22,8 @@
     "test:original-games-layout": "node scripts/original-games-layout-browser.mjs",
     "test:adventure-feedback": "node scripts/adventure-feedback-browser.mjs",
     "test:adventure-motion": "node scripts/adventure-motion-browser.mjs",
+    "test:adventure-clarity": "node scripts/adventure-clarity-browser.mjs",
+    "test:adventure-weight-motion": "node scripts/adventure-weight-motion-browser.mjs",
     "test:math-adventure": "node scripts/math-adventure-browser.mjs",
     "test:math-hub": "node scripts/math-hub-browser.mjs",
     "test:integration": "node --test --test-concurrency=1 integration/*.integration.cjs",

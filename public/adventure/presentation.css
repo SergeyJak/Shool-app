@@ -1,0 +1,44 @@
+/* Concrete units and diagrams accompany the mathematical action. */
+body.adventure-playing #game .ag-weight-icon { display:inline-flex; flex:none; align-items:center; justify-content:center; vertical-align:middle; width:22px; height:21px; margin-right:4px; padding-top:4px; color:white; font:900 9px/1 system-ui,sans-serif; background:linear-gradient(#8a9aa8,#536575); clip-path:polygon(34% 0,66% 0,72% 22%,87% 22%,100% 100%,0 100%,13% 22%,28% 22%) }
+body.adventure-playing #game .ag-mass-scene { display:flex; flex-direction:column; min-height:0; gap:4px; padding:6px; flex-wrap:nowrap }
+body.adventure-playing #game .ag-mass-scene:before,body.adventure-playing #game .ag-mass-scene .ag-scene-prop { display:none }
+body.adventure-playing #game .ag-mass-scene .ag-scene-value { max-width:100%; font-size:16px; line-height:1.25; padding:4px 8px; border-width:1px }
+body.adventure-playing #game .ag-mass-scene .ag-collected { gap:4px }
+body.adventure-playing #game .ag-token .ag-weight-icon { width:16px; height:16px; margin-right:3px }
+body.adventure-playing #game .ag-balance-board { position:relative; width:100%; max-width:300px; height:116px; flex:none; border-radius:12px; background:linear-gradient(#f8fcff,#dfefec) }
+body.adventure-playing #game .ag-balance-beam { position:absolute; top:28px; left:32px; right:32px; height:5px; border-radius:4px; background:#657d94; transform:rotate(var(--balance-tilt)); transition:transform .45s cubic-bezier(.2,.8,.3,1) }
+body.adventure-playing #game .ag-balance-stand { position:absolute; top:29px; bottom:9px; left:calc(50% - 4px); width:8px; border-radius:5px; background:#8aa0b1 }
+body.adventure-playing #game .ag-balance-stand:after { content:''; position:absolute; left:-20px; right:-20px; bottom:0; height:8px; border-radius:6px; background:#657d94 }
+body.adventure-playing #game .ag-balance-pan { position:absolute; top:43px; width:42%; display:flex; flex-direction:column; align-items:center; gap:3px; padding:3px 2px; border-bottom:4px solid #b7945f; border-radius:0 0 24px 24px; background:#f5e7c8; transition:transform .45s cubic-bezier(.2,.8,.3,1) }
+body.adventure-playing #game .ag-balance-pan[data-side=left] { left:0 }
+body.adventure-playing #game .ag-balance-pan[data-side=right] { right:0 }
+body.adventure-playing #game .ag-balance-weights { display:flex; align-items:center; justify-content:center; gap:2px; height:31px; font-weight:900 }
+body.adventure-playing #game .ag-balance-weights .ag-weight-icon { width:32px; height:30px; font-size:11px; padding-top:7px; margin:0 }
+body.adventure-playing #game .ag-balance-weights > .ag-weight-icon { width:26px; font-size:10px }
+body.adventure-playing #game .ag-balance-added { display:flex; gap:2px; align-items:center }
+body.adventure-playing #game .ag-balance-piece { position:relative; display:inline-flex; align-items:center; height:30px }
+body.adventure-playing #game .ag-balance-piece .ag-weight-icon { width:22px; height:26px; font-size:9px; padding-top:6px }
+body.adventure-playing #game .ag-balance-piece-count { position:absolute; bottom:-1px; right:-1px; padding:0 1px; border-radius:3px; background:#fff; color:#344e62; font-size:8px; line-height:1.1 }
+body.adventure-playing #game .ag-balance-weights [hidden] { display:none!important }
+body.adventure-playing #game .ag-balance-total { padding:1px 6px; border-radius:8px; background:#fffdf5; color:#465b70; font-size:14px; font-weight:900; line-height:1.2 }
+body.adventure-playing #game .ag-balance-board[data-balanced=true] .ag-balance-beam { background:#438b28 }
+body.adventure-playing #game .ag-balance-board[data-balanced=true] .ag-balance-total { background:#e3f5d3; color:#2d671d }
+body.adventure-playing #game .ag-mass-group { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; width:100%; padding:5px }
+body.adventure-playing #game .ag-mass-group .ag-weight-icon { width:42px; height:38px; font-size:18px; padding-top:7px }
+body.adventure-playing #game .ag-mass-group strong { flex-basis:100%; text-align:center; font-size:15px }
+body.adventure-playing #game .ag-share-items .ag-weight-icon { width:18px; height:18px; padding-top:4px; margin:0; font-size:8px }
+body.adventure-playing #game .ag-share-count { white-space:nowrap }
+body.adventure-playing #game .ag-weight-flights { position:absolute; inset:0; overflow:clip; border-radius:inherit; z-index:7; pointer-events:none }
+body.adventure-playing #game .ag-weight-flight { position:absolute; top:0; left:0; width:44px; height:36px; margin:0; padding-top:7px; font-size:11px; pointer-events:none }
+body.adventure-playing #game .ag-balance-board[data-balanced=true] .ag-balance-beam { animation:ag-balance-settle .65s ease-out }
+body.adventure-playing #game .ag-balance-board[data-balanced=true] .ag-balance-pan[data-side=left] { animation:ag-pan-settle .65s ease-out }
+body.adventure-playing #game .ag-balance-board[data-balanced=true] .ag-balance-pan[data-side=right] { animation:ag-pan-settle-right .65s ease-out }
+body.adventure-playing #game[data-answer-state=success] .ag-balance-board { animation:ag-balance-glow .8s ease-out }
+@keyframes ag-balance-settle { 0% { transform:var(--balance-start-beam) } 30% { transform:rotate(-2deg) } 60% { transform:rotate(1deg) } 85% { transform:rotate(-.4deg) } 100% { transform:rotate(0) } }
+@keyframes ag-pan-settle { 0% { transform:var(--balance-start-left) } 30% { transform:translateY(2px) } 60% { transform:translateY(-1px) } 85% { transform:translateY(.4px) } 100% { transform:translateY(0) } }
+@keyframes ag-pan-settle-right { 0% { transform:var(--balance-start-right) } 30% { transform:translateY(-2px) } 60% { transform:translateY(1px) } 85% { transform:translateY(-.4px) } 100% { transform:translateY(0) } }
+@keyframes ag-balance-glow { 0%,100% { box-shadow:inset 0 0 0 1px #7eaf5a } 40% { box-shadow:inset 0 0 0 4px #8dcc56; background:#e5f8ce } }
+@media(prefers-reduced-motion:reduce) {
+  body.adventure-playing #game :is(.ag-balance-board,.ag-balance-beam,.ag-balance-pan) { transition:none; animation:none }
+  body.adventure-playing #game .ag-weight-flights { display:none }
+}

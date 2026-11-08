@@ -186,8 +186,9 @@ async function checkShare(page, task, label) {
   assert.equal((await visible(page, '.ag-share-recipient')).length, task.groups, label + ': visible recipient count');
   const items = await visible(page, '.ag-share-item');
   assert.equal(items.length, task.total, label + ': every correctly placed item is visible');
-  assert.ok(items.every(text => text.includes(task.itemIcon || task.unit)), label + ': items match the teaching story');
-  assert.deepEqual(await page.$$eval('.ag-share-count', nodes => nodes.map(node => Number(node.textContent))), Array(task.groups).fill(task.each), label + ': exact counts');
+  if (task.itemIcon === 'weight') assert.equal(await page.$$('.ag-share-item.ag-weight-icon').then(nodes => nodes.length), task.total, label + ': every gram depicts a weight');
+  else assert.ok(items.every(text => text.includes(task.itemIcon || task.unit)), label + ': items match the teaching story');
+  assert.deepEqual(await page.$$eval('.ag-share-group', nodes => nodes.map(node => Number(node.dataset.count))), Array(task.groups).fill(task.each), label + ': exact counts');
 }
 async function focusedMotion(viewport) {
   const page = await newPage(viewport), label = `${viewport.width}x${viewport.height}`;
@@ -274,7 +275,7 @@ async function allShares(viewport) {
         // when every item goes to one actor. Numeric count stays exact.
         await act(page, Array.from({ length: task.total }, () => ({ selector: '.ag-give[data-group="0"]' })));
         await finish(page);
-        assert.equal(await page.$eval('.ag-share-count', node => Number(node.textContent)), task.total);
+        assert.equal(await page.$eval('.ag-share-group', node => Number(node.dataset.count)), task.total);
         assert.ok((await visible(page, '.ag-share-item')).length <= Math.max(8, task.each), 'imbalanced board bounds individual tokens');
         if (task.total > Math.max(8, task.each)) assert.match(await page.$eval('.ag-share-group', node => node.textContent), new RegExp('\\+' + (task.total - Math.max(8, task.each))), 'overflow explicitly counts every hidden item');
         await tap(page, '.ag-check'); await noCelebration(page);
