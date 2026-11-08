@@ -1,7 +1,16 @@
-:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#28364a;background:#dcefd9;font-synthesis:none}
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#28364a;background:#f6f5ef;font-synthesis:none}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;min-height:100dvh;background:linear-gradient(#d9f2e6dd,#dcefd9aa),url('/assets/math-adventure/backgrounds/forest.svg') center top/100% auto repeat-y}
-header{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:900px;margin:auto;padding:12px 18px;font-size:14px;background:#fff9e9ed}
+body{
+ margin:0;min-height:100vh;min-height:100dvh;background-color:#f6f5ef;
+ background-image:
+  radial-gradient(ellipse 680px 430px at 0 0,#e5eee7 0,transparent 75%),
+  radial-gradient(ellipse 680px 500px at 100% 100%,#ece8f2 0,transparent 75%),
+  linear-gradient(#839b8c0a 1px,transparent 1px),
+  linear-gradient(90deg,#839b8c0a 1px,transparent 1px);
+ background-size:auto,auto,28px 28px,28px 28px;
+ background-repeat:no-repeat,no-repeat,repeat,repeat;
+}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:900px;margin:auto;padding:12px 18px;font-size:14px;background:#fffdf8eb}
 header strong{text-align:right;font-size:13px}
 a{color:#6544a1;font-weight:750;text-decoration:none}
 main{max-width:900px;margin:12px auto;padding:0 12px 28px}
