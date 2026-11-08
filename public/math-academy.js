@@ -1,46 +1,12 @@
 "use strict";
 (() => {
-const QUESTIONS=[
-{skill:"Счёт",q:"Сколько будет 48 + 27?",a:75,options:[65,75,85,74],why:"48 + 20 = 68, ещё 7 = 75."},
-{skill:"Счёт",q:"Сколько будет 90 − 36?",a:54,options:[64,54,46,56],why:"90 − 30 = 60, затем − 6 = 54."},
-{skill:"Счёт",q:"Сколько будет 7 × 8?",a:56,options:[48,54,56,64],why:"7 × 8 = 56."},
-{skill:"Задачи",q:"У Алисы 24 наклейки. Она подарила 9. Сколько осталось?",a:15,options:[13,15,16,33],why:"24 − 9 = 15 наклеек."},
-{skill:"Задачи",q:"3 коробки по 6 карандашей. Сколько всего карандашей?",a:18,options:[9,12,18,24],why:"3 × 6 = 18."},
-{skill:"Задачи",q:"Билет стоит 4 €. Сколько стоят 5 билетов?",a:20,options:[9,16,20,25],why:"5 × 4 = 20 €."},
-{skill:"Дроби",q:"Половина от 18 — это…",a:9,options:[6,8,9,12],why:"18 ÷ 2 = 9."},
-{skill:"Дроби",q:"Какая дробь равна половине?",a:"2/4",options:["1/3","2/4","3/4","1/4"],why:"2 из 4 равных частей — это половина."},
-{skill:"Дроби",q:"Что больше: 1/2 или 1/4?",a:"1/2",options:["1/4","1/2","Равны","Не сравнить"],why:"Если делим целое на 2 части, каждая больше четвертинки."},
-{skill:"Геометрия",q:"Сколько углов у прямоугольника?",a:4,options:[3,4,5,6],why:"У прямоугольника 4 прямых угла."},
-{skill:"Геометрия",q:"Периметр квадрата со стороной 5 см?",a:20,options:[10,15,20,25],why:"5 + 5 + 5 + 5 = 20 см."},
-{skill:"Геометрия",q:"Сколько сантиметров в 2 метрах?",a:200,options:[20,100,200,2000],why:"В 1 метре 100 см, значит в 2 метрах 200 см."}
-];
-const KEY="school-math-diagnostic-v1";
 const $=id=>document.getElementById(id);
-let state=null;
-let latestRemote=null;
-let submitting=false;
 async function loadProgress(){
- try {const res=await fetch("/api/math/progress",{credentials:"same-origin"});if(!res.ok)return;const data=await res.json();latestRemote=data.attempts?.[0]||null;
+ try {const res=await fetch("/api/math/progress",{credentials:"same-origin"});if(!res.ok)return;const data=await res.json();
  const history=document.getElementById("history");if(history){const attempts=data.attempts||[];history.textContent=attempts.length?`История: ${attempts.length} последних попыток. Последняя: ${attempts[0].correct} из ${attempts[0].total}.`:"Результатов пока нет. Начнём с диагностики!";}
  }catch(_){const history=document.getElementById("history");if(history)history.textContent="История временно недоступна";}
 }
-async function submitAttempt(){
- if(submitting||state.submitted)return;submitting=true;
- try{const res=await fetch("/api/math/attempts",{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:state.mode,answers:state.answers.map(a=>({origin:a.origin,value:a.value}))})});
- if(!res.ok)throw Error("SAVE_FAILED");state.submitted=true;save();await loadProgress();window.dispatchEvent(new Event("math-attempt-saved"));
- const info=document.getElementById("syncStatus");if(info)info.textContent="Результат сохранён в кабинете ученика.";
- }catch(_){const info=document.getElementById("syncStatus");if(info)info.textContent="Не удалось сохранить в облаке. Проверь соединение и нажми «Повторить сохранение».";const retry=document.getElementById("retrySync");if(retry)retry.hidden=false;}
- finally{submitting=false;}
-}
-
 function show(id){["intro","play","results"].forEach(x=>$(x).classList.toggle("hidden",x!==id));}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(_){}}
-function start(mode="diagnostic"){state={mode,index:0,answers:[],skill:null};if(mode==="practice"){const saved=load(); const scores=compute(saved?.answers||[]);state.skill=Object.keys(scores).sort((a,b)=>scores[a].correct/scores[a].total-scores[b].correct/scores[b].total)[0]||"Счёт";}state.questions=mode==="practice"?QUESTIONS.map((q,i)=>({...q,origin:i})).filter(q=>q.skill===state.skill):QUESTIONS.map((q,i)=>({...q,origin:i}));save();render();}
-function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");return x&&Array.isArray(x.answers)?x:null}catch(_){return null}}
-function compute(answers){const scores={};for(const skill of ["Счёт","Задачи","Дроби","Геометрия"])scores[skill]={correct:0,total:0};for(const v of answers){const skill=QUESTIONS[v.origin]?.skill;if(!scores[skill])continue;scores[skill].total++;if(v.correct)scores[skill].correct++;}return scores}
-function render(){diagnosticRequest++;$("diagnosticVisual").hidden=true;$("diagnosticVisual").replaceChildren();if(state.index>=state.questions.length)return finish();show("play");const q=state.questions[state.index];$("mode").textContent=state.mode==="practice"?"ТРЕНИРОВКА · "+state.skill:"ДИАГНОСТИКА · "+(skillLabels[q.skill]||q.skill);$("progress").textContent=(state.index+1)+" / "+state.questions.length;$("progressFill").style.width=(state.index/state.questions.length*100)+"%";$("question").textContent=q.q;$("feedback").textContent="";$("next").classList.add("hidden");const options=$("options");options.replaceChildren();for(const val of q.options){const b=document.createElement("button");b.className="option";b.textContent=val;b.addEventListener("click",()=>answer(val));options.append(b)}}
-function answer(value){const q=state.questions[state.index];if(state.answers.length>state.index)return;const correct=String(value)===String(q.a);state.answers.push({origin:q.origin,correct,value});save();for(const b of $("options").children){b.disabled=true;if(b.textContent===String(q.a))b.classList.add("correct");else if(b.textContent===String(value))b.classList.add("wrong")} $("feedback").textContent=(correct?"Верно! ":"Хорошая попытка! ")+q.why;$("next").classList.remove("hidden");$("progressFill").style.width=((state.index+1)/state.questions.length*100)+"%"}
-function finish(){$("resultStats").replaceChildren();$("resultHighlights").textContent="";$("diagnosticReview").hidden=true;show("results");if(!state.submitted)void submitAttempt();const scores=compute(state.answers);const total=state.answers.filter(x=>x.correct).length;$("resultTitle").textContent=state.mode==="practice"?"Тренировка завершена!":"Твоя карта знаний";$("resultLead").textContent="Верных ответов: "+total+" из "+state.answers.length+". Каждая задача помогает прокачать навыки.";if(state.mode==="diagnostic"){const rank=Math.max(1,Math.min(100,Math.round(total/state.answers.length*99)+1));$("adventureAssessment").textContent=`Твой стартовый уровень приключения: ${rank} из 100`;$("adventureLaunch").classList.remove("hidden")}else{$("adventureAssessment").textContent="";$("adventureLaunch").classList.add("hidden")};$("skills").replaceChildren();for(const [name,s] of Object.entries(scores)){if(!s.total)continue;const item=document.createElement("div");item.className="skill";const percent=Math.round(s.correct/s.total*100);const label=percent>=80?"Сильная сторона":percent>=50?"Продолжаем учиться":"Потренируем вместе";const title=document.createElement("strong");title.textContent=skillLabels[name]||name;const progress=document.createElement("span");progress.textContent=percent+"% · "+label;item.append(title,progress);$("skills").append(item)}save();}
 
 let diagnosticV2=null;
 let diagnosticRequest=0;
@@ -93,7 +59,6 @@ function renderDiagnosticV2(){
   const start=result.startingLevel??result.level;
   const chapter=Math.floor((start-1)/5)+1;const recommended=topics.find(topic=>topic.chapter===chapter);
   $("resultLead").textContent=topics.length?"Ответы сохранены.":"Ответы сохранены. Совёнок подберёт следующие задания.";
-  $("practice").hidden=topics.length>0;
   $("adventureAssessment").textContent=topics.length?"Начнём: "+(recommended?.title||"карта "+chapter)+" · игра "+start:"Твой старт: уровень "+start;
   $("adventureLaunch").classList.remove("hidden");
   $("resultHighlights").textContent=topics.length?"Это ориентир для старта. Учиться будем в играх.":"Можно посмотреть ответы и повторить трудные темы. Игровой прогресс сохранён.";
@@ -104,7 +69,6 @@ function renderDiagnosticV2(){
   }else for(const [name,score] of Object.entries(result.skills||{})){
    const item=node("div","skill");item.append(node("strong","",skillLabels[name]||name),node("span","",score.count?"Заданий: "+score.count:"Ещё не проверяли"));$("skills").append(item);
   }
-  $("syncStatus").textContent="";$("retrySync").hidden=true;
   return;
  }
  show("play");const q=diagnosticV2.question;if(!q)return;
@@ -112,7 +76,7 @@ function renderDiagnosticV2(){
  const max=diagnosticV2.maxQuestions||42;
  $("progress").textContent=diagnosticV2.answered+" · до "+max+" вопросов";
  $("progressFill").style.width=(diagnosticV2.answered/max*100)+"%";
- $("question").textContent=q.prompt;$("feedback").textContent="";$("next").classList.add("hidden");renderVisual(q.visual);
+ $("question").textContent=q.prompt;$("feedback").textContent="";renderVisual(q.visual);
  const field=node("input","option");field.type="text";field.inputMode=q.answerFormat?.signed?"text":"decimal";field.setAttribute("aria-label","Твой ответ");field.placeholder="Число";field.autocomplete="off";field.maxLength=50;field.id="diagnostic-answer";
  const submit=node("button","option","Ответить");submit.type="button";submit.id="diagnosticSubmit";submit.disabled=true;
  const skip=node("button","secondary","Не знаю");skip.type="button";skip.id="diagnosticSkip";
@@ -146,8 +110,8 @@ async function startDiagnosticV2(restart=false){
   const note=$("diagnosticV2Error")||node("p","","Не удалось загрузить диагностику. Попробуй ещё раз.");note.id="diagnosticV2Error";note.setAttribute("role","alert");$("start").insertAdjacentElement("afterend",note);
  }finally{if(request===diagnosticRequest){$("start").disabled=false;$("repeat").disabled=false;}}
 }
-$("start").addEventListener("click",()=>void startDiagnosticV2());$("repeat").addEventListener("click",()=>void startDiagnosticV2(true));$("practice").addEventListener("click",()=>{const prev=state;state=null;try{localStorage.setItem(KEY,JSON.stringify(prev));}catch(_){} start("practice")});$("next").addEventListener("click",()=>{state.index++;save();render()});
-document.getElementById("retrySync")?.addEventListener("click",()=>{document.getElementById("retrySync").hidden=true;void submitAttempt()});
+$("start").addEventListener("click",()=>void startDiagnosticV2());
+$("repeat").addEventListener("click",()=>void startDiagnosticV2(true));
 void loadProgress();
 if(new URLSearchParams(location.search).get("start")==="1")void startDiagnosticV2();
 

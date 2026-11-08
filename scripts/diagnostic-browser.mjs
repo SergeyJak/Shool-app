@@ -104,6 +104,42 @@ async function withSeed(session, fn) {
 }
 
 try {
+  for (const version of ['legacy', 'v3']) {
+    await test(`${version} result trains on the recommended map instead of an unrelated three-question loop`, async () => {
+      let session = version === 'legacy' ? { answers: [], asked: [], finished: false } : diagnostic.createSession();
+      while (!session.finished) {
+        const question = diagnostic.nextQuestion(session);
+        session = diagnostic.submitAnswer(session, question.id, question.answer);
+      }
+      const expected = diagnostic.result(session).startingLevel ?? diagnostic.result(session).level;
+      await withSeed(session, async () => {
+        const page = await browser.newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        await page.setViewport({ width: 320, height: 640 });
+        // A stale local practice result must not select the training topic or change placement.
+        await page.evaluateOnNewDocument(() => localStorage.setItem('school-math-diagnostic-v1', JSON.stringify({ mode: 'practice', answers: [{ origin: 0, correct: false, value: 0 }] })));
+        try {
+          await page.goto(`${fixture.url}/math-academy.html?start=1`, { waitUntil: 'networkidle0' });
+          await page.waitForSelector('#results:not(.hidden)');
+          const oldPractice = await page.$('#practice:not([hidden])');
+          await page.click(oldPractice ? '#practice' : '#adventureLaunch');
+          await page.waitForFunction(() => location.pathname === '/math-adventure' || !document.getElementById('play')?.classList.contains('hidden'));
+          assert.equal(new URL(page.url()).pathname, '/math-adventure', 'Practice must lead to the adventure, not the obsolete local quiz');
+          await page.waitForFunction(() => !document.getElementById('world').hidden && document.querySelectorAll('.node').length === 5);
+          assert.match(await page.$eval('#chapterTitle', node => node.textContent), new RegExp(`Глава ${Math.ceil(expected / 5)} из 20`));
+          await page.$$eval('.node', (nodes, level) => {
+            const target = nodes.find(node => Number(node.querySelector('.node-number')?.textContent || node.textContent.match(/\d+/)?.[0]) === level);
+            if (!target || target.disabled) throw Error('Recommended game must be available');
+            target.click();
+          }, expected);
+          await page.waitForSelector('#game:not(.hidden)');
+          assert.equal(errors.length, 0, errors.join('\n'));
+          assert.deepEqual(fixture.session(), session, 'Training navigation must preserve the completed diagnostic');
+        } finally { await page.close(); }
+      });
+    });
+  }
   await test('Intro accurately describes the current diagnostic', async () => {
     const { page, errors } = await open(360, 640, false);
     try {
@@ -301,7 +337,7 @@ try {
         record.resultsImage = await screenshot(page, `results-${width}`);
         assert.equal(await page.evaluate(() => scrollY), 0, 'Result must open without scrolling');
         await assertVisibleInViewport(page, '#adventureLaunch');
-        assert.match(await page.$eval('#adventureLaunch', el => el.textContent), /игр|приключ|начать/i);
+        assert.match(await page.$eval('#adventureLaunch', el => el.textContent), /карт|игр|приключ|начать/i);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Results must not overflow horizontally');
         assert.equal(errors.length, 0, errors.join('\n'));
       } finally { await page.close(); }

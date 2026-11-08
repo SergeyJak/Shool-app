@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>School App · Математическая академия</title>
-<link rel="stylesheet" href="/math-diagnostic.css?v=20261108">
+<link rel="stylesheet" href="/math-diagnostic.css?v=20261108-map-practice">
 <script>if(new URLSearchParams(location.search).get("start")==="1")document.documentElement.classList.add("journey-mode")</script>
 </head>
 <body><header><a href="/cabinet#studentMathPanel"> К выбору игр</a><strong>🦉 Математическая академия</strong></header>
@@ -13,16 +13,15 @@
 <section class="card hidden" id="play" aria-live="polite">
 <div class="top"><span id="mode" class="tag"></span><strong id="progress"></strong></div><div class="meter"><div id="progressFill"></div></div>
 <div id="question"></div><div id="diagnosticVisual" hidden></div><div id="options" class="options"></div><p id="feedback" class="feedback" aria-live="polite"></p>
-<button id="next" class="hidden">Продолжить</button></section>
+</section>
 <section class="card hidden" id="results">
 <div class="result-heading"><span class="result-mascot" aria-hidden="true">🦉</span><div><p class="result-eyebrow">Диагностика завершена</p><h2 id="resultTitle">Подобрали тему для старта!</h2></div></div>
 <p id="resultLead" class="result-lead"></p><p id="adventureAssessment" class="result-level"></p>
-<a id="adventureLaunch" href="/math-adventure" class="result-action result-action-primary hidden">К приключениям <span aria-hidden="true">➜</span></a>
+<a id="adventureLaunch" href="/math-adventure" class="result-action result-action-primary hidden">Тренироваться на карте <span aria-hidden="true">➜</span></a>
 <div id="resultStats" class="result-stats" aria-label="Итоги диагностики"></div><p id="resultHighlights" class="result-highlights"></p>
 <details id="diagnosticReview" class="skill-details" hidden><summary id="diagnosticReviewTitle">Разобрать ответы</summary><div id="diagnosticReviewItems" class="skills"></div></details>
 <details class="skill-details"><summary>Посмотреть темы диагностики</summary><div id="skills" class="skills"></div></details>
-<p id="syncStatus" class="small" role="status"></p><button id="retrySync" class="secondary" hidden>Повторить сохранение</button>
-<div class="result-actions"><button id="practice" class="result-action result-action-secondary">Потренироваться</button><button class="result-action result-action-tertiary" id="repeat">Пройти заново</button></div></section>
+<div class="result-actions"><button class="result-action result-action-tertiary" id="repeat">Повторить диагностику</button></div></section>
 
 <footer></footer></main>
-<script src="/skill-map.js"></script><script src="/math-academy.js?v=20261108-diagnostic"></script><script src="/adaptive-practice.js"></script></body></html>
+<script src="/skill-map.js"></script><script src="/math-academy.js?v=20261108-map-practice"></script><script src="/adaptive-practice.js"></script></body></html>
