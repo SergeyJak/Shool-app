@@ -90,5 +90,12 @@ try{
  await page.waitForFunction(()=>!document.getElementById("world").hidden&&document.querySelectorAll(".node").length===5);
  assert.equal(await page.$$eval(".node:not(:disabled)",els=>els.length),3);
  console.log("✓ adventure: apple and bridge training, hints, unlock, persisted progress");
+ progress={unlocked:95,startLevel:96,completed:[],stars:0};
+ await page.reload();
+ await page.waitForFunction(()=>!document.getElementById("world").hidden&&document.querySelectorAll(".node").length===5);
+ assert.match(await page.$eval("#chapterTitle",el=>el.textContent),/Глава 20 из 20/,"Fresh high diagnostic placement should open its recommended chapter");
+ const recommended=await page.$$eval(".node",nodes=>nodes.find(node=>node.textContent.includes("96"))?.disabled);
+ assert.equal(recommended,false,"Recommended game 96 must be directly accessible without completing chapter 1");
+ console.log("✓ adventure: fresh diagnostic placement opens chapter 20 and game 96");
  await page.close();
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
