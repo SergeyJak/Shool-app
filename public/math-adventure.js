@@ -19,7 +19,7 @@ let saved={unlocked:0,stars:0,completed:[]};
 let accountId=null,sessionVersion=0,focusVersion=0,confirmedProgress=null;
 let current=-1,correct=0,answered=false,assessed=false,startingLevel=1,chapter=0;
 let adventureGame=null;
-function stopAdventure(){adventureGame?.destroy();adventureGame=null;delete $("choices").dataset.level;delete $("choices").dataset.round;delete $("choices").dataset.mechanic;$("next").textContent="Продолжить"}
+function stopAdventure(){adventureGame?.destroy();adventureGame=null;AdventureFeedback.clear($("feedback"));delete $("choices").dataset.level;delete $("choices").dataset.round;delete $("choices").dataset.mechanic;$("next").textContent="Продолжить"}
 let appleStep=0,appleCount=0,appleHints=0;
 const appleTasks=[[2,1],[3,2],[4,3],[5,4],[6,5]];
 const bridgeTasks=[[5,2],[7,3],[9,4],[12,5],[15,7]];
@@ -113,7 +113,7 @@ async function syncResult(level,score){
   $("resultText").textContent+=stored?" Прогресс сохранён на устройстве; синхронизация пока недоступна.":" Синхронизация пока недоступна; сохранить прогресс на устройстве не удалось.";
  }
 }
-function show(id){for(const key of ["intro","game","result"])$(key).classList.toggle("hidden",key!==id);const playing=id!=="intro";$("world").classList.toggle("hidden",playing);$("chapterNav").classList.toggle("hidden",playing||!assessed);document.body.classList.toggle("adventure-playing",playing);document.body.classList.toggle("adventure-map-view",!playing&&assessed)}
+function show(id){if(id!=="game")AdventureFeedback.clear($("feedback"));for(const key of ["intro","game","result"])$(key).classList.toggle("hidden",key!==id);const playing=id!=="intro";$("world").classList.toggle("hidden",playing);$("chapterNav").classList.toggle("hidden",playing||!assessed);document.body.classList.toggle("adventure-playing",playing);document.body.classList.toggle("adventure-map-view",!playing&&assessed)}
 function setAssessment(level){assessed=true;document.body.classList.add("adventure-map-view");startingLevel=level;saved.unlocked=Math.max(saved.unlocked,level-1);chapter=0;$("chapterNav").classList.remove("hidden");$("diagnosticGate").classList.add("hidden");$("world").hidden=false;$("intro").classList.remove("hidden");$("adventureLevelHeading").textContent="Твой уровень: "+startingLevel+" из 100";map()}
 function map(){
  document.querySelectorAll(".node").forEach(node=>node.remove());

@@ -22,7 +22,9 @@
   const bars = (labels, values, prompt, hint, explanation, unit = 'мерок') => task('bars', prompt, hint, explanation, {labels,values,maxValue:12,unit});
   const grid = (percent, prompt, hint, explanation) => task('rectangle', prompt, hint, explanation, {cols:10,rows:10,targetArea:percent,requireRectangle:false});
   const route = (start, target, steps, prompt, hint, explanation, unit) => task('route', prompt, hint, explanation, {start,target,steps,unit});
-  const share = (total, groups, each, prompt, hint, explanation) => task('share', prompt, hint, explanation, {total,groups,each,unit:'кусочков'});
+  const share = (total, groups, each, prompt, hint, explanation, itemIcon = '🥧') => task('share', prompt, hint, explanation, {
+    total,groups,each,unit:'кусочков',itemIcon,groupIcon:'🍽️',groupLabels:Array.from({length:groups},(_,i) => 'Тарелка ' + (i + 1))
+  });
   const level = (number,title,skill,scene,icon,intro,success,rounds) => ({level:number,title,chapter:Math.ceil(number/5),skill,scene,icon,intro,success,rounds});
 
   const levels = [
@@ -68,7 +70,7 @@
         share(8,2,4,'Разложи восемь кусочков одного пирога поровну на две тарелки.', 'Каждой тарелке достанется половина пирога.', '8 : 2 = 4 кусочка. Каждая тарелка получила 4/8 = 1/2 пирога.'),
         fraction(6,2,3,'Для большого подноса оставь 2/3 шестичастного пирога.', 'Одна треть — два кусочка; две трети — две такие группы.', '6 : 3 × 2 = 4. Четыре кусочка из шести — 2/3.'),
         match([['Половина пирога','1/2'],['Четверть пирога','1/4'],['Три из четырёх частей','3/4']], 'Соедини подписи блюд с дробями.', 'Знаменатель называет все равные части, числитель — взятые.', 'Половина — 1/2, четверть — 1/4, три четверти — 3/4.'),
-        share(12,3,4,'Двенадцать кусочков торта раздели на три одинаковые порции.', 'Всего три тарелки: каждая должна получить треть торта.', '12 : 3 = 4. Каждая порция содержит 4/12 = 1/3 торта.'),
+        share(12,3,4,'Двенадцать кусочков торта раздели на три одинаковые порции.', 'Всего три тарелки: каждая должна получить треть торта.', '12 : 3 = 4. Каждая порция содержит 4/12 = 1/3 торта.', '🍰'),
         fraction(12,3,4,'Финальный заказ: гости съедят 3/4 торта из двенадцати кусочков. Отметь их порцию.', 'Одна четверть — три кусочка. Для гостей нужны три четверти.', '12 : 4 × 3 = 9 кусочков. Оставшиеся три — 1/4 торта.')
       ]),
     level(61,'Равные кусочки','fractions-operations','river','🟰',

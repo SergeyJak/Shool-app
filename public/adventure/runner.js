@@ -15,6 +15,7 @@
     function say(text, kind = 'info') { root.AdventureFeedback.set(feedback, text, kind); }
     function destroy() {
       active = false; roundEvents?.abort(); session.abort();
+      root.AdventureFeedback.clear(feedback);
       document.body.classList.remove('ag-playing');
     }
     next.addEventListener('click', () => {

@@ -74,13 +74,25 @@
   function share(c) {
     const t = c.task, counts = Array(t.groups).fill(0), { scene, badge } = scenery(c);
     const groups = c.el('div', 'ag-share-groups'); c.root.append(groups);
+    groups.style.setProperty('--ag-share-groups', Math.min(3, t.groups));
+    groups.classList.toggle('ag-share-groups--dense', t.groups > 3);
+    const visibleLimit = Math.max(8, t.each), itemIcon = t.itemIcon || '●';
     const bins = [];
     function paint() {
       const left = t.total - counts.reduce((a, b) => a + b, 0);
       badge.textContent = 'Осталось: ' + left;
       bins.forEach((b, i) => {
         b.count.textContent = String(counts[i]);
-        b.items.textContent = '💎'.repeat(Math.min(12, counts[i])) + (counts[i] > 12 ? ' +' + (counts[i] - 12) : '');
+        b.count.setAttribute('aria-label', (t.groupLabels?.[i] || 'Корзина ' + (i + 1)) + ': ' + counts[i]);
+        const visible = Math.min(visibleLimit, counts[i]);
+        while (b.pieces.length > visible) b.pieces.pop().remove();
+        while (b.pieces.length < visible) {
+          const piece = c.el('span', 'ag-share-item', itemIcon);
+          b.items.append(piece); b.pieces.push(piece);
+        }
+        const overflow = counts[i] - visible;
+        b.overflow.textContent = overflow ? '+' + overflow : '';
+        b.overflow.hidden = overflow === 0;
         b.add.disabled = left <= 0; b.remove.disabled = counts[i] === 0;
         b.box.dataset.count = String(counts[i]);
       });
@@ -88,12 +100,20 @@
     }
     for (let i = 0; i < t.groups; i++) {
       const box = c.el('div', 'ag-share-group'), title = c.el('strong', '', t.groupLabels?.[i] || 'Корзина ' + (i + 1));
+      const recipient = c.el('span', 'ag-share-recipient', (Array.isArray(t.groupIcon) ? t.groupIcon[i] : t.groupIcon) || '🧺');
+      recipient.setAttribute('aria-hidden', 'true');
+      const label = c.el('span', 'ag-share-label', title.textContent);
+      const ordinal = c.el('span', 'ag-share-ordinal', '№' + (i + 1));ordinal.setAttribute('aria-hidden', 'true');
+      box.setAttribute('role', 'group');box.setAttribute('aria-label', label.textContent);
+      title.replaceChildren(recipient, label, ordinal);
       const count = c.el('output', 'ag-share-count'), items = c.el('div', 'ag-share-items');
+      items.setAttribute('aria-hidden', 'true');
+      const overflow = c.el('span', 'ag-share-overflow'); overflow.setAttribute('aria-hidden', 'true');
       const add = c.button('+1', () => { if (counts.reduce((a, b) => a + b, 0) < t.total) { counts[i]++; paint(); } }, 'ag-give ag-control');
       const remove = c.button('−1', () => { if (counts[i] > 0) { counts[i]--; paint(); } }, 'ag-take ag-control');
       add.dataset.group = remove.dataset.group = String(i);
-      add.setAttribute('aria-label', 'Положить один: ' + title.textContent); remove.setAttribute('aria-label', 'Забрать один: ' + title.textContent);
-      box.append(title, items, count, add, remove); groups.append(box); bins.push({ box, count, items, add, remove });
+      add.setAttribute('aria-label', 'Положить один: ' + label.textContent); remove.setAttribute('aria-label', 'Забрать один: ' + label.textContent);
+      box.append(title, items, overflow, count, add, remove); groups.append(box); bins.push({ box, count, items, overflow, pieces: [], add, remove });
     }
     check(c, () => counts.every(n => n === t.each) && counts.reduce((a, b) => a + b, 0) === t.total
       ? c.solve(t.explanation) : c.feedback('Нужно разложить всё поровну. Сравни корзинки: из полной можно вернуть один предмет.', 'error'));

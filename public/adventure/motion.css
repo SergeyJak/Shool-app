@@ -1,0 +1,22 @@
+/* Finite celebrations stay inside the existing play area and never block input. */
+body.adventure-playing #game { position:relative }
+.ag-celebration { position:absolute; inset:0; z-index:8; border-radius:inherit; overflow:clip; pointer-events:none; animation:ag-celebration-life 1.2s linear both }
+.ag-celebration-owl { position:absolute; right:10px; top:10px; width:64px; height:64px; object-fit:contain; filter:drop-shadow(0 3px 3px #49643044); transform-origin:center bottom; animation:ag-owl-cheer 1.1s cubic-bezier(.2,.8,.3,1) both }
+.ag-celebration-star { position:absolute; left:calc(10% + var(--star-index) * 10%); top:18%; color:#e7a400; font-size:clamp(16px,4vw,24px); line-height:1; animation:ag-star-cheer .85s ease-out both; animation-delay:calc(var(--star-index) * 25ms) }
+.ag-celebration-star:nth-child(3n) { color:#9660dd }
+.ag-celebration-star:nth-child(even) { color:#53a923; top:30% }
+body.adventure-playing #feedback .ag-feedback-icon--celebrate { animation:ag-check-cheer .55s cubic-bezier(.2,1.4,.4,1) both }
+body.adventure-playing #game[data-answer-state=success] .ag-root :is(.ag-scene-value,.ag-transfer-basket,.ag-order-track,.ag-pizza,.ag-clock-dial,.ag-coordinate-grid,.ag-sequence-train) { animation:ag-board-cheer .65s ease-out both }
+body.adventure-playing #game .ag-root :is([data-matched=true],[data-placed=true]) { animation:ag-item-land .3s ease-out both }
+body.adventure-playing #game .ag-root :is(.ag-bar-fill,.ag-ruler-fill,.ag-clock-hand,.ag-scene-prop) { transition:transform .25s ease-out,height .25s ease-out,width .25s ease-out }
+@keyframes ag-celebration-life { 0%,85% { opacity:1 } 100% { opacity:0 } }
+@keyframes ag-check-cheer { 0% { transform:scale(.25) rotate(-25deg) } 65% { transform:scale(1.22) rotate(8deg) } 100% { transform:scale(1) rotate(0) } }
+@keyframes ag-owl-cheer { 0% { opacity:0; transform:translateY(16px) scale(.4) } 22% { opacity:1; transform:translateY(0) scale(1.08) rotate(-9deg) } 45% { transform:translateY(-5px) rotate(9deg) } 68% { transform:translateY(0) rotate(-5deg) } 85% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:scale(.75) } }
+@keyframes ag-star-cheer { 0% { opacity:0; transform:translateY(24px) scale(.2) rotate(-20deg) } 25% { opacity:1 } 75% { opacity:1 } 100% { opacity:0; transform:translateY(-14px) scale(1.1) rotate(35deg) } }
+@keyframes ag-board-cheer { 0%,100% { transform:scale(1) } 40% { transform:scale(1.025) } 70% { transform:scale(.99) } }
+@keyframes ag-item-land { 0% { transform:translateY(-5px); filter:brightness(1.2) } 100% { transform:translateY(0); filter:brightness(1) } }
+@media(prefers-reduced-motion:reduce) {
+  .ag-celebration { display:none; animation:none!important }
+  body.adventure-playing #game :is(.ag-feedback-icon--celebrate,.ag-root *) { animation:none!important; transition:none!important }
+  body.adventure-playing #game .meter div { transition:none!important }
+}
