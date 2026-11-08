@@ -225,6 +225,58 @@ test('adventure saves cannot write one account result into another account', asy
   assert.equal((await accepted.json()).userId, 'alice');
 });
 
+test('diagnostic retakes keep the last placement and earned adventure progress available', async () => {
+  const cookie = await accountCookie('alice');
+  const session = { answers: [{ id: 'd2-001', skill: 'numbers', difficulty: 5, correct: true, skipped: false, answer: '7' }], asked: ['d2-001'], finished: true };
+  await db.collection('math_diagnostic_v2').updateOne({ studentId: 'alice' }, { $set: { session } }, { upsert: true });
+  await db.collection('math_adventure_progress').updateOne({ studentId: 'alice' }, { $set: { unlocked: 45, completed: [0, 3, 44], stars: 8 } }, { upsert: true });
+  const before = await (await request('/api/math/adventure', cookie)).json();
+  assert.equal((await request('/api/math/diagnostic-v2/restart', cookie, 'POST', {})).status, 200);
+  const during = await (await request('/api/math/adventure', cookie)).json();
+  assert.deepEqual(during, before, 'a retake must not replace a completed placement with the old twelve-question fallback');
+  assert.deepEqual(during.progress.completed, [0, 3, 44]);
+  assert.equal(during.progress.unlocked, 45);
+  assert.equal(during.progress.stars, 8);
+  const archived = await db.collection('math_diagnostic_v2_history').findOne({ studentId: 'alice' });
+  assert.deepEqual(archived.session, session);
+  assert.equal(archived.result.level, before.progress.startLevel);
+});
+
+test('new diagnostic publishes typed questions without answers and preserves placement on replay', async () => {
+  const cookie = await accountCookie('bob');
+  await db.collection('math_diagnostic_v2').deleteMany({ studentId: 'bob' });
+  const initial = await (await request('/api/math/diagnostic-v2', cookie)).json();
+  assert.equal((await db.collection('math_diagnostic_v2').findOne({ studentId: 'bob' })).session.version, 3, 'the first displayed question must already belong to a saved version');
+  assert.equal(initial.version, 3);
+  assert.equal(initial.minQuestions, 6);
+  assert.equal(initial.maxQuestions, 42);
+  assert.equal(initial.question.answerFormat.kind, 'integer');
+  assert.equal(initial.question.answer, undefined);
+  assert.equal(initial.question.explanation, undefined);
+  const body = { id: initial.question.id, value: '__MISUNDERSTOOD__' };
+  const results = await Promise.all([request('/api/math/diagnostic-v2/answer', cookie, 'POST', body), request('/api/math/diagnostic-v2/answer', cookie, 'POST', body)]);
+  assert.deepEqual(results.map(r => r.status).sort(), [200, 409]);
+  const saved = await db.collection('math_diagnostic_v2').findOne({ studentId: 'bob' });
+  assert.equal(saved.session.answers.length, 1);
+  assert.equal(saved.session.answers[0].misunderstood, true);
+  assert.equal((await request('/api/math/diagnostic-v2/answer', cookie, 'POST', body)).status, 409);
+  const resumed = await (await request('/api/math/diagnostic-v2', cookie)).json();
+  assert.equal(resumed.answered, 1);
+  assert.notEqual(resumed.question.id, initial.question.id);
+  await db.collection('math_adventure_progress').updateOne({ studentId: 'bob' }, { $set: { unlocked: 70, stars: 9, completed: [68] } }, { upsert: true });
+  let state = resumed;
+  while (!state.finished) {
+    const response = await request('/api/math/diagnostic-v2/answer', cookie, 'POST', { id: state.question.id, value: null });
+    assert.equal(response.status, 200);
+    state = await response.json();
+  }
+  assert.equal(state.result.startingLevel, 1);
+  assert.equal(state.result.misunderstood, 1);
+  assert.equal(state.result.correct, 0);
+  const adventure = await (await request('/api/math/adventure', cookie)).json();
+  assert.deepEqual(adventure.progress, { startLevel: 1, unlocked: 70, stars: 9, completed: [68] });
+});
+
 test('replayed financial HTTP requests do not create another deposit', async () => {
   const cookie = await accountCookie('reviewadmin');
   const send = amount => fetch(base + '/api/admin/payments/deposits', { method: 'POST',

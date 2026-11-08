@@ -31,7 +31,7 @@ function persist(){return accountId!==null&&progressStorage.save(accountId,{...s
 function applyProgress(progress,initial=false){
  saved=progress;startingLevel=progress.startLevel;confirmedProgress=structuredClone(progress);
  persist();if(initial)setAssessment(startingLevel);
- if(initial&&saved.unlocked>=5&&saved.completed.includes(4))chapter=Math.floor(saved.unlocked/5);
+ if(initial)chapter=saved.unlocked>=5&&saved.completed.includes(4)?Math.floor(saved.unlocked/5):Math.floor((startingLevel-1)/5);
  map();
 }
 function clearProgress(){

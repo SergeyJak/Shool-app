@@ -15,6 +15,7 @@
     "test:student-games": "node scripts/student-games-regression.mjs",
     "test:student-interactions": "node scripts/student-game-interactions.mjs",
     "test:student-diagnostic": "node scripts/student-diagnostic-adaptive-e2e.mjs",
+    "test:diagnostic-browser": "node scripts/diagnostic-browser.mjs",
     "test:adventure-map": "node scripts/adventure-map-browser.mjs",
     "test:owl-assets": "node scripts/owl-assets-browser.mjs",
     "test:adventure-levels": "node scripts/adventure-levels-browser.mjs",

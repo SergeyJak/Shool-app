@@ -1999,7 +1999,11 @@ function adventureStartingLevel(attempts) {
 }
 async function adventureAssessment(studentId) {
   const v2=await db.collection(collectionName("math_diagnostic_v2")).findOne({studentId});
-  if(v2?.session?.finished)return diagnosticV2.result(v2.session).level;
+  if(v2?.session?.finished){const result=diagnosticV2.result(v2.session);return result.startingLevel??result.level;}
+  // A new attempt must not take away access earned with a completed assessment.
+  const previous=await db.collection(collectionName("math_diagnostic_v2_history"))
+    .findOne({studentId,"session.finished":true},{sort:{archivedAt:-1},projection:{session:1,result:1}});
+  if(previous){const result=previous.result||diagnosticV2.result(previous.session);return result.startingLevel??result.level;}
   const attempts=await mathAttempts.find({studentId,mode:"diagnostic"},{projection:{correct:1,total:1,mode:1}}).sort({createdAt:-1}).limit(1).toArray();
   return adventureStartingLevel(attempts);
 }
@@ -2055,8 +2059,20 @@ app.get("/api/math/adaptive", requireApiRole("student"), async (req,res,next)=>{
     res.json(req.query.review==="1"?buildReviewSession(attempts):buildSession(attempts));
   }catch(error){next(error);}
 });
+function diagnosticPayload(session){
+  const question=diagnosticV2.nextQuestion(session);
+  return {...diagnosticV2.progress(session),question:question?diagnosticV2.publicQuestion(question):null,
+    finished:session.finished,result:session.finished?diagnosticV2.result(session):null};
+}
 app.get("/api/math/diagnostic-v2", requireApiRole("student"), async (req,res,next)=>{
- try{const row=await db.collection(collectionName("math_diagnostic_v2")).findOne({studentId:req.user._id});const session=row?.session||diagnosticV2.createSession();const q=diagnosticV2.nextQuestion(session);res.json({question:q?{id:q.id,skill:q.skill,prompt:q.prompt}:null,answered:session.answers.length,finished:session.finished,result:session.finished?diagnosticV2.result(session):null});}catch(error){next(error);}
+ try{
+  const col=db.collection(collectionName("math_diagnostic_v2"));
+  // Pin even an unanswered attempt to its engine version before showing a question.
+  try{await col.updateOne({studentId:req.user._id},{$setOnInsert:{session:diagnosticV2.createSession(),createdAt:new Date()}},{upsert:true});}
+  catch(error){if(error.code!==11000)throw error;}
+  const row=await col.findOne({studentId:req.user._id});
+  res.json(diagnosticPayload(row.session));
+ }catch(error){next(error);}
 });
 app.post("/api/math/diagnostic-v2/answer",requireApiRole("student"),async(req,res,next)=>{
  try{
@@ -2064,9 +2080,11 @@ app.post("/api/math/diagnostic-v2/answer",requireApiRole("student"),async(req,re
   const col=db.collection(collectionName("math_diagnostic_v2"));const row=await col.findOne({studentId:req.user._id});const session=row?.session||diagnosticV2.createSession();
   let updated;try{updated=diagnosticV2.submitAnswer(session,req.body.id,req.body.value)}catch(_){return res.status(409).json({error:"QUESTION_MISMATCH"})}
   const query=row?{_id:row._id,"session.asked":session.asked}:{studentId:req.user._id,session:{$exists:false}};
-  const write=await col.updateOne(query,{$set:{session:updated,updatedAt:new Date()}},{upsert:!row});
+  let write;
+  try{write=await col.updateOne(query,{$set:{session:updated,updatedAt:new Date()}},{upsert:!row});}
+  catch(error){if(error.code===11000)return res.status(409).json({error:"CONCURRENT_ANSWER"});throw error;}
   if(!write.modifiedCount&&!write.upsertedCount)return res.status(409).json({error:"CONCURRENT_ANSWER"});
-  const q=diagnosticV2.nextQuestion(updated);res.json({correct:updated.answers.at(-1).correct,question:q?{id:q.id,skill:q.skill,prompt:q.prompt}:null,answered:updated.answers.length,finished:updated.finished,result:updated.finished?diagnosticV2.result(updated):null});
+  res.json({correct:updated.answers.at(-1).correct,...diagnosticPayload(updated)});
  }catch(error){next(error)}
 });
 app.post("/api/math/diagnostic-v2/restart",requireApiRole("student"),async(req,res,next)=>{
@@ -3817,6 +3835,7 @@ async function start() {
 
   await mathAttempts.createIndex({ studentId: 1, createdAt: -1 });
   await db.collection(collectionName("math_diagnostic_v2")).createIndex({studentId:1},{unique:true});
+  await db.collection(collectionName("math_diagnostic_v2_history")).createIndex({studentId:1,"session.finished":1,archivedAt:-1});
   await users.createIndex({ role: 1, active: 1 });
   await users.createIndex({ approvalStatus: 1, registrationSubmittedAt: -1 });
   await users.createIndex({ email: 1 }, { unique: true, sparse: true });

@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import {pathToFileURL} from "node:url";
+import http from "node:http";
 import puppeteer from "puppeteer-core";
 const root=path.resolve(import.meta.dirname,".."),pub=path.join(root,"public");
 const read=n=>fs.readFileSync(path.join(pub,n),"utf8");
@@ -29,11 +28,19 @@ window.fetch=async(url,opts={})=>{
 };</script>`;
 const html=read("math-academy.html").replace("</head>",mocks+"</head>")
  .replace(/<script src="\/(skill-map|math-academy|adaptive-practice)\.js(?:\?[^"]*)?"><\/script>/g,(tag,name)=>"<script>"+read(name+".js")+"</script>");
-const fixture=path.join(os.tmpdir(),"school-math-full-e2e.html");fs.writeFileSync(fixture,html);
+const server=http.createServer((req,res)=>{
+ const route=new URL(req.url,"http://fixture").pathname;
+ if(route==="/"){res.writeHead(200,{"Content-Type":"text/html"});res.end(html);return;}
+ const file=path.resolve(pub,"."+route);
+ if(!file.startsWith(pub+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
+ res.writeHead(200,{"Content-Type":file.endsWith(".css")?"text/css":file.endsWith(".svg")?"image/svg+xml":"application/octet-stream"});res.end(fs.readFileSync(file));
+});
+await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+const base=`http://127.0.0.1:${server.address().port}`;
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:["--no-sandbox","--disable-gpu"]});
 const page=await browser.newPage();await page.setViewport({width:412,height:915});
 try{
- await page.goto(pathToFileURL(fixture).href,{waitUntil:"load"});
+ await page.goto(base,{waitUntil:"load"});
  await page.waitForFunction(()=>document.querySelector("#skillMap .skill")!==null);
  assert.match(await page.$eval("#skillMapStatus",e=>e.textContent),/30 занятий/);
  await page.click("#start");
@@ -42,7 +49,7 @@ try{
  await page.$eval("#options input",el=>{el.value="5";el.dispatchEvent(new Event("input",{bubbles:true}));});
  await page.evaluate(()=>window.__v2Fail=true);
  await page.click("#options button");
- await page.waitForFunction(()=>document.querySelector("#feedback").textContent.includes("Ошибка сохранения"));
+ await page.waitForFunction(()=>document.querySelector("#feedback").textContent.includes("Не удалось сохранить"));
  assert.equal(await page.evaluate(()=>window.__v2Count),0);
  await page.evaluate(()=>window.__v2Fail=false);
  await page.click("#options button");
@@ -57,11 +64,13 @@ try{
   await page.waitForFunction(expected=>window.__v2Count===expected,{},i+1);
  }
  await page.waitForFunction(()=>document.querySelector("#resultStats .result-stat")!==null);
- assert.match(await page.$eval("#resultTitle",e=>e.textContent),/Задания пройдены/);
+ assert.match(await page.$eval("#resultTitle",e=>e.textContent),/Подобрали тему/);
  assert.match(await page.$eval("#adventureAssessment",e=>e.textContent),/старт: уровень 42/);
  await page.click("#repeat");
  await page.waitForFunction(()=>document.querySelector("#progress").textContent.includes("0 · до 42 вопросов"));
  assert.equal(await page.evaluate(()=>window.__v2Count),0);
+ // Return to the academy hub before exercising its separate practice tools.
+ await page.goto(base,{waitUntil:"load"});
  await page.click("#adaptiveStart");
  await page.waitForFunction(()=>document.querySelector("#adaptivePanel").hidden===false);
  assert.match(await page.$eval("#adaptiveTitle",e=>e.textContent),/уровень 2/);
@@ -85,4 +94,4 @@ try{
  await page.click("#adaptiveNext");
  await page.waitForFunction(()=>document.querySelector("#adaptiveSummary").textContent.includes("Прогресс сохранён"));
  console.log("✓ Adaptive diagnostic 19 questions, retry, reload/resume, restart, placement; skill map and practice");
-}finally{await browser.close();}
+}finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

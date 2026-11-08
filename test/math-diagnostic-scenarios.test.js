@@ -1,6 +1,6 @@
 "use strict";
 const test=require("node:test"),assert=require("node:assert/strict");
-const d=require("../lib/math-diagnostic-v2");
+const d=require("../lib/math-diagnostic-legacy");
 function run(strategy,initial=d.createSession()){
  let s=initial;
  while(!s.finished){const q=d.nextQuestion(s);assert.ok(q,"Question available until finish");s=d.submitAnswer(s,q.id,strategy(q,s));}
