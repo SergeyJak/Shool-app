@@ -2,6 +2,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   if (!socket || role === "observer") return;
 
   let localStream = null;
+  let mediaRequest = null;
   let remoteStream = null;
   let peerConnection = null;
   let peerClientId = null;
@@ -111,7 +112,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
         <video class="lesson-comms-remote" autoplay playsinline></video>
         <img class="lesson-comms-local-fallback" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_43-3.png" alt="" aria-hidden="true">
         <video class="lesson-comms-local" autoplay playsinline muted></video>
-        <div class="lesson-comms-call-state">Нажмите «Начать», чтобы подключить камеру и микрофон.</div>
+        <div class="lesson-comms-call-state" role="status" aria-live="polite">Нажмите «Позвонить», чтобы подключить камеру и микрофон.</div>
       </div>
       <div class="lesson-comms-controls">
         <button class="lesson-comms-start primary" type="button">
@@ -483,6 +484,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     const video = localStream?.getVideoTracks()[0];
     const callIsActive = Boolean(localStream || outgoingCall || callAccepted);
     const incomingCallPending = Boolean(pendingCallerId);
+    startButton.disabled = Boolean(mediaRequest);
 
     panel.classList.toggle("call-active", callIsActive);
     panel.classList.toggle("call-accepted", callAccepted);
@@ -969,11 +971,28 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     });
   }
 
+  function cancelMediaRequest() {
+    if (mediaRequest) clearTimeout(mediaRequest.reminder);
+    mediaRequest = null;
+    acceptButton.disabled = false;
+    acceptButton.querySelector("span").textContent = "Ответить";
+  }
+
   async function acquireLocalMedia() {
     if (localStream) return true;
+    if (mediaRequest) return false;
+    const request = {};
+    mediaRequest = request;
+    updateMediaButtons();
     setCallState("Запрашиваем доступ к камере и микрофону…");
+    emitRtcDebug({ event: "local-media-request-v2", state: "waiting" });
+    request.reminder = setTimeout(() => {
+      if (mediaRequest !== request) return;
+      setCallState("Камера и микрофон пока не включились. Проверьте запрос разрешения возле адресной строки браузера.");
+      emitRtcDebug({ event: "local-media-waiting-v2", state: "permission-or-device-pending" });
+    }, 10000);
     try {
-      localStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -986,20 +1005,42 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
           facingMode: "user",
         },
       });
+      // The caller may hang up while the browser permission prompt is open.
+      if (mediaRequest !== request) {
+        for (const track of stream.getTracks()) track.stop();
+        return false;
+      }
+      localStream = stream;
       localVideo.srcObject = localStream;
-      await localVideo.play().catch(() => {});
+      // Preview playback can remain pending in a hidden/background video.
+      // Media capture, not local playback, is the prerequisite for answering.
+      localVideo.play().catch(() => {
+        emitRtcDebug({ event: "local-preview-error-v2", state: "playback-unavailable" });
+      });
       emitRtcDebug({ event: "local-media-v2", state: "ready" });
       updateMediaButtons();
       return true;
     } catch (error) {
-      setCallState("Камера или микрофон недоступны.");
-      showSnackbar?.({
-        title: "Видеосвязь",
-        message: "Разрешите доступ к камере и микрофону в браузере и попробуйте снова.",
-        type: "error",
-      });
+      if (mediaRequest !== request) return false;
+      const reasons = {
+        NotAllowedError: "Доступ к камере или микрофону запрещён. Разрешите его в настройках сайта возле адресной строки и повторите попытку.",
+        SecurityError: "Браузер запретил доступ к камере или микрофону. Проверьте разрешения для этого сайта.",
+        NotFoundError: "Камера или микрофон не найдены. Подключите устройства и повторите попытку.",
+        NotReadableError: "Не удалось включить камеру или микрофон. Закройте другую программу, которая использует их, и повторите попытку.",
+        AbortError: "Браузер прервал включение камеры или микрофона. Повторите попытку.",
+        OverconstrainedError: "Камера не поддерживает запрошенные настройки. Выберите другую камеру в браузере.",
+      };
+      const reason = Object.hasOwn(reasons, error?.name) ? error.name : "UnknownError";
+      emitRtcDebug({ event: "local-media-error-v2", state: reason });
+      setCallState(reasons[reason] || "Камера или микрофон недоступны. Проверьте подключение устройств и разрешения браузера.");
       updateMediaButtons();
       return false;
+    } finally {
+      clearTimeout(request.reminder);
+      if (mediaRequest === request) {
+        cancelMediaRequest();
+        updateMediaButtons();
+      }
     }
   }
 
@@ -1034,12 +1075,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   }
 
   function resetIncomingCall() {
+    cancelMediaRequest();
     stopRingtone();
     pendingCallerId = null;
     pendingCallId = null;
     incomingBox.hidden = true;
     videoButton.classList.remove("ringing");
     videoButton.textContent = "🎥 Связь";
+    updateMediaButtons();
   }
 
   function stopCall({
@@ -1076,19 +1119,22 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     const callerClientId = pendingCallerId;
     const callId = pendingCallId;
     if (!callerClientId || !callId) return;
+    emitRtcDebug({ event: "answer-click-v2", state: "requesting-media" });
     stopRingtone();
     acceptButton.disabled = true;
+    acceptButton.querySelector("span").textContent = "Ожидаем доступ…";
     if (!(await acquireLocalMedia())) {
-      acceptButton.disabled = false;
       return;
     }
+    if (pendingCallerId !== callerClientId || pendingCallId !== callId) return;
     activeCallId = callId;
+    acceptButton.disabled = true;
+    emitRtcDebug({ event: "answer-send-v2", state: "media-ready" });
     socket.emit("rtc2:accept", { callerClientId, callId }, (result) => {
       acceptButton.disabled = false;
       if (!result?.ok) {
-        activeCallId = null;
-        resetIncomingCall();
-        setCallState("Звонок уже завершён.");
+        emitRtcDebug({ event: "answer-rejected-v2", state: "call-unavailable" });
+        stopCall({ notify: false, finalState: "Звонок уже завершён. Попросите собеседника позвонить ещё раз." });
         return;
       }
       outgoingCall = false;

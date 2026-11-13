@@ -956,10 +956,6 @@
   box-shadow: 0 5px 18px rgba(37,45,78,.10);
 }
 
-.lesson-comms-panel:not(.call-active) .lesson-comms-call-state {
-  display: none;
-}
-
 .lesson-comms-controls {
   display: grid;
   grid-template-columns: repeat(3,minmax(0,1fr));
