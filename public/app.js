@@ -1517,7 +1517,7 @@ window.addEventListener("resize", () => {
 loadDocument();
 
 
-import("./lesson-comms.mjs?v=20261004-assets3")
+import("./lesson-comms.mjs?v=20261113-call-answer")
   .then(({ initLessonComms }) => {
     initLessonComms({ socket, role, lessonId, showSnackbar });
   })
