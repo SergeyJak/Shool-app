@@ -53,8 +53,9 @@ const server = http.createServer((req, res) => {
   </script>`);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const chrome = [process.env.CHROME_BIN, '/usr/bin/chromium', '/usr/bin/google-chrome'].find(p => p && fs.existsSync(p));
-const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] });
+// Prefer the native Chrome binary over Ubuntu Chromium launcher wrappers.
+const chrome = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium'].find(p => p && fs.existsSync(p));
+const browser = await puppeteer.launch({ executablePath: chrome, headless: true, dumpio: Boolean(process.env.CI), args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 390, height: 740 });

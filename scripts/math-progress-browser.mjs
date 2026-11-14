@@ -5,7 +5,8 @@ import http from 'node:http';
 import puppeteer from 'puppeteer-core';
 
 const pub=path.resolve(import.meta.dirname,'../public');
-const chrome=[process.env.CHROME_BIN,'/usr/bin/chromium','/usr/bin/google-chrome'].filter(Boolean).find(fs.existsSync);
+// Prefer the native Chrome binary over Ubuntu Chromium launcher wrappers.
+const chrome=[process.env.CHROME_BIN,'/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].filter(Boolean).find(fs.existsSync);
 assert.ok(chrome,'Chrome/Chromium required');
 const initial={unlocked:0,stars:0,completed:[],startLevel:1};
 let account='A',identityStatus=200,cloudStatus=200,postStatus=200,holdIdentity=false,holdCloud=false,holdPost=false,switchAccountOnPost=null;
@@ -42,7 +43,7 @@ const server=http.createServer((req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base=`http://127.0.0.1:${server.address().port}`;
-const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-gpu']});
+const browser=await puppeteer.launch({executablePath:chrome,headless:true,dumpio:Boolean(process.env.CI),args:['--no-sandbox','--disable-gpu']});
 const page=await browser.newPage();
 const releaseIdentity=()=>{holdIdentity=false;identityWaiters.splice(0).forEach(reply=>reply());};
 const releaseCloud=()=>{holdCloud=false;cloudWaiters.splice(0).forEach(reply=>reply());};
