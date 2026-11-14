@@ -298,3 +298,27 @@ test('malformed preview and null socket events cannot terminate the server', asy
   assert.equal(child.exitCode, null, 'Untrusted JSON terminated the server: ' + output);
   assert.equal((await fetch(base + '/health')).status, 200);
 });
+
+test('call preparation reaches only the current caller and rejects invalid sessions', async t => {
+  const f = await fixture(t), teacher = await f.connect('teacher'), student = await f.connect('alice');
+  const other = await fixture(t), outsider = await other.connect('alice');
+  const callId = 'preparation-test-call';
+  assert.equal((await ack(teacher, 'rtc2:call', { callId })).ok, true);
+  const payload = { callId, callerClientId: 'review-client-teacher', state: 'requesting' };
+  const received = [];
+  teacher.on('rtc2:preparing', event => received.push(event));
+  assert.equal((await ack(student, 'rtc2:preparing', payload)).ok, true);
+  await delay(40);
+  assert.deepEqual(received, [{ callId, state: 'requesting' }]);
+  assert.equal((await ack(student, 'rtc2:preparing', { ...payload, state: 'blocked' })).ok, true);
+  for (const [socket, data] of [
+    [outsider, payload], [teacher, payload],
+    [student, { ...payload, callId: 'stale-call-id' }],
+    [student, { ...payload, callerClientId: 'someone-else' }],
+    [student, { ...payload, state: 'connected' }],
+  ]) assert.equal((await ack(socket, 'rtc2:preparing', data)).ok, false);
+  assert.equal((await ack(student, 'rtc2:accept', { callId, callerClientId: payload.callerClientId })).ok, true);
+  assert.equal((await ack(student, 'rtc2:preparing', payload)).ok, false);
+  await delay(40);
+  assert.equal(received.length, 2);
+});

@@ -89,30 +89,39 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
       </div>
     </div>
     <div class="lesson-comms-view lesson-comms-video">
-      <div class="lesson-comms-incoming" hidden>
+      <dialog class="lesson-comms-incoming" aria-label="Входящий видеозвонок" hidden>
         <div>
           <strong class="lesson-comms-incoming-title">К вам звонят 👋</strong>
           <span class="lesson-comms-incoming-name">Участник хочет присоединиться</span>
         </div>
+        <p class="lesson-comms-incoming-help">После ответа откроется видеочат. Если браузер спросит, разрешите камеру и микрофон.</p>
         <div class="lesson-comms-incoming-actions">
           <button class="lesson-comms-accept" type="button"><img src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_45-5.png" alt="" aria-hidden="true"><span>Ответить</span></button>
           <button class="lesson-comms-decline danger" type="button">Не сейчас</button>
         </div>
-      </div>
+      </dialog>
+      <section class="lesson-comms-setup" aria-label="Подключение к звонку">
+        <ol class="lesson-comms-steps" aria-label="Этапы подключения">
+          <li aria-current="step">1. Доступ</li><li>2. Ответ</li><li>3. Связь</li>
+        </ol>
+        <strong class="lesson-comms-setup-title">Перед звонком</strong>
+        <div class="lesson-comms-call-state" role="status" aria-live="polite">Нажмите «Позвонить». Если браузер спросит, разрешите камеру и микрофон. Запрос может появиться возле адресной строки.</div>
+        <button class="lesson-comms-cancel-setup" type="button" hidden>Отменить подготовку</button>
+        <button class="lesson-comms-retry-media" type="button" hidden>Попробовать ещё раз</button>
+      </section>
       <div class="lesson-comms-video-stage">
         <div class="lesson-comms-placeholder">
           <img class="lesson-comms-placeholder-image" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_41-1.png" alt="" aria-hidden="true">
           <div class="lesson-comms-placeholder-copy">
             <strong class="lesson-comms-placeholder-title">Учитель скоро подключится</strong>
             <span class="lesson-comms-placeholder-subtitle">Ты готов к уроку?</span>
-            <span class="lesson-comms-ready"><span aria-hidden="true">▮▮▮</span> Готово к звонку</span>
+            <span class="lesson-comms-ready">Камера ещё не включена</span>
           </div>
         </div>
         <img class="lesson-comms-remote-fallback" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_42-2.png" alt="" aria-hidden="true">
         <video class="lesson-comms-remote" autoplay playsinline></video>
         <img class="lesson-comms-local-fallback" src="/assets/video-call/controls/Изображение ChatGPT 4 окт. 2026 г., 09_32_43-3.png" alt="" aria-hidden="true">
         <video class="lesson-comms-local" autoplay playsinline muted></video>
-        <div class="lesson-comms-call-state" role="status" aria-live="polite">Нажмите «Позвонить», чтобы подключить камеру и микрофон.</div>
       </div>
       <div class="lesson-comms-controls">
         <button class="lesson-comms-start primary" type="button">
@@ -168,6 +177,11 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   const localVideo = panel.querySelector(".lesson-comms-local");
   const remoteVideo = panel.querySelector(".lesson-comms-remote");
   const callState = panel.querySelector(".lesson-comms-call-state");
+  const setup = panel.querySelector(".lesson-comms-setup");
+  const setupTitle = panel.querySelector(".lesson-comms-setup-title");
+  const setupSteps = [...panel.querySelectorAll(".lesson-comms-steps li")];
+  const cancelSetupButton = panel.querySelector(".lesson-comms-cancel-setup");
+  const retryMediaButton = panel.querySelector(".lesson-comms-retry-media");
   const placeholderTitle = panel.querySelector(".lesson-comms-placeholder-title");
   const startButtonLabel = panel.querySelector(".lesson-comms-start span:last-child");
   const remoteFallback = panel.querySelector(".lesson-comms-remote-fallback");
@@ -176,6 +190,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   const incomingName = panel.querySelector(".lesson-comms-incoming-name");
   const acceptButton = panel.querySelector(".lesson-comms-accept");
   const declineButton = panel.querySelector(".lesson-comms-decline");
+  // Keep the modal independent of a hidden/minimized video panel or open chat.
+  document.body.append(incomingBox);
   const startButton = panel.querySelector(".lesson-comms-start");
   const micButton = panel.querySelector(".lesson-comms-mic");
   const cameraButton = panel.querySelector(".lesson-comms-camera");
@@ -451,14 +467,14 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   }
 
   function syncCallTimer() {
-    if (!callAccepted) {
+    if (!callAccepted || peerConnection?.connectionState !== "connected") {
       liveEl.hidden = true;
       durationEl.textContent = "00:00";
       if (callTimerId) {
         clearInterval(callTimerId);
         callTimerId = null;
       }
-      callStartedAt = 0;
+      if (!callAccepted) callStartedAt = 0;
       return;
     }
 
@@ -472,10 +488,26 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     if (!callTimerId) callTimerId = setInterval(render, 1000);
   }
 
+  function setSetupPhase(phase) {
+    const index = { idle: 0, permission: 0, error: 0, waiting: 1, connecting: 2, connected: 3 }[phase];
+    const titles = { idle: "Перед звонком", permission: "Разрешите камеру и микрофон", error: "Проверьте доступ к устройствам", waiting: "Ждём собеседника", connecting: "Устанавливаем связь", connected: "Соединение установлено" };
+    setupTitle.textContent = titles[phase];
+    setup.dataset.phase = phase;
+    retryMediaButton.hidden = phase !== "error";
+    setupSteps.forEach((step, i) => {
+      step.classList.toggle("done", i < index);
+      if (i === index) step.setAttribute("aria-current", "step");
+      else step.removeAttribute("aria-current");
+    });
+  }
+
   function setCallState(text) {
-    const connected = Boolean(remoteStream?.getTracks().length);
+    const connected = peerConnection?.connectionState === "connected";
     callState.textContent = text;
     callState.hidden = connected;
+    setup.hidden = connected;
+    if (connected) setSetupPhase("connected");
+    syncCallTimer();
     panel.classList.toggle("call-connected", connected);
   }
 
@@ -485,6 +517,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     const callIsActive = Boolean(localStream || outgoingCall || callAccepted);
     const incomingCallPending = Boolean(pendingCallerId);
     startButton.disabled = Boolean(mediaRequest);
+    cancelSetupButton.hidden = !mediaRequest && !(incomingCallPending && !incomingBox.open);
+    panel.querySelector(".lesson-comms-ready").textContent = localStream ? "Камера и микрофон включены" : "Камера ещё не включена";
 
     panel.classList.toggle("call-active", callIsActive);
     panel.classList.toggle("call-accepted", callAccepted);
@@ -730,7 +764,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
         remoteStream.addTrack(track);
       }
       remoteVideo.play().catch(() => {});
-      setCallState("Соединение установлено");
+      setCallState(pc.connectionState === "connected" ? "Соединение установлено" : "Получаем видео. Устанавливаем связь…");
     });
 
     pc.addEventListener("connectionstatechange", () => {
@@ -754,8 +788,10 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
         setCallState("Соединение установлено");
         startRtcQualityMonitor(pc);
       } else if (pc.connectionState === "connecting") {
+        setSetupPhase("connecting");
         setCallState("Соединяем…");
       } else if (["disconnected", "failed"].includes(pc.connectionState)) {
+        setSetupPhase("connecting");
         setCallState("Связь прервалась. Восстанавливаем…");
         scheduleRtc2Resume(`connection-${pc.connectionState}`);
       }
@@ -978,13 +1014,21 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     acceptButton.querySelector("span").textContent = "Ответить";
   }
 
+  function reportPreparation(state) {
+    if (pendingCallId && pendingCallerId && socket.connected) {
+      socket.emit("rtc2:preparing", { callId: pendingCallId, callerClientId: pendingCallerId, state });
+    }
+  }
+
   async function acquireLocalMedia() {
     if (localStream) return true;
     if (mediaRequest) return false;
     const request = {};
     mediaRequest = request;
     updateMediaButtons();
-    setCallState("Запрашиваем доступ к камере и микрофону…");
+    setSetupPhase("permission");
+    setCallState("В запросе браузера выберите «Разрешить» для камеры и микрофона. Если запросов два, подтвердите оба. Затем ответ на звонок отправится автоматически.");
+    reportPreparation("requesting");
     emitRtcDebug({ event: "local-media-request-v2", state: "waiting" });
     request.reminder = setTimeout(() => {
       if (mediaRequest !== request) return;
@@ -1032,6 +1076,8 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
       };
       const reason = Object.hasOwn(reasons, error?.name) ? error.name : "UnknownError";
       emitRtcDebug({ event: "local-media-error-v2", state: reason });
+      setSetupPhase("error");
+      reportPreparation("blocked");
       setCallState(reasons[reason] || "Камера или микрофон недоступны. Проверьте подключение устройств и разрешения браузера.");
       updateMediaButtons();
       return false;
@@ -1055,6 +1101,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     callAccepted = false;
     incomingBox.hidden = true;
     startButton.querySelector("span").textContent = "Звоним…";
+    setSetupPhase("waiting");
     setCallState("Звоним второму участнику…");
     updateMediaButtons();
 
@@ -1069,7 +1116,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
         );
         updateMediaButtons();
       } else if (!result.recipients) {
-        setCallState("Звонок начат. Ждём второго участника…");
+        setCallState("Собеседник ещё не в комнате. Попросите его открыть ссылку-приглашение.");
+      } else {
+        setCallState("Вызов отправлен. Ждём, пока собеседник нажмёт «Ответить».");
       }
     });
   }
@@ -1079,6 +1128,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     stopRingtone();
     pendingCallerId = null;
     pendingCallId = null;
+    incomingBox.close();
     incomingBox.hidden = true;
     videoButton.classList.remove("ringing");
     videoButton.textContent = "🎥 Связь";
@@ -1107,6 +1157,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     resetIncomingCall();
     startButton.querySelector("span").textContent = isConnection ? "Позвонить" : `Позвонить ${role === "teacher" ? "ученику" : "учителю"}`;
     updateMediaButtons();
+    setSetupPhase("idle");
     setCallState(finalState);
   }
 
@@ -1114,13 +1165,20 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
 
   startButton.addEventListener("click", startCall);
   hangupButton.addEventListener("click", () => stopCall());
+  cancelSetupButton.addEventListener("click", () => {
+    if (pendingCallId) declineIncomingCall();
+    else stopCall({ notify: false, finalState: "Подготовка отменена. Можно начать заново." });
+  });
 
-  acceptButton.addEventListener("click", async () => {
+  async function answerCall() {
     const callerClientId = pendingCallerId;
     const callId = pendingCallId;
     if (!callerClientId || !callId) return;
     emitRtcDebug({ event: "answer-click-v2", state: "requesting-media" });
     stopRingtone();
+    incomingBox.close();
+    incomingBox.hidden = true;
+    showView("video");
     acceptButton.disabled = true;
     acceptButton.querySelector("span").textContent = "Ожидаем доступ…";
     if (!(await acquireLocalMedia())) {
@@ -1141,13 +1199,16 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
       callAccepted = true;
       peerClientId = callerClientId;
       resetIncomingCall();
-      startButton.querySelector("span").textContent = "Подключено";
+      startButton.querySelector("span").textContent = "Соединяем…";
+      setSetupPhase("connecting");
       setCallState("Соединяем…");
       updateMediaButtons();
     });
-  });
+  }
+  acceptButton.addEventListener("click", answerCall);
+  retryMediaButton.addEventListener("click", () => pendingCallId ? answerCall() : startCall());
 
-  declineButton.addEventListener("click", () => {
+  function declineIncomingCall() {
     if (pendingCallerId && pendingCallId) {
       socket.emit("rtc2:decline", {
         callerClientId: pendingCallerId,
@@ -1155,7 +1216,13 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
       });
     }
     resetIncomingCall();
-    closePanel();
+    setSetupPhase("idle");
+    setCallState("Вызов отклонён. Можно продолжить переписку.");
+  }
+  declineButton.addEventListener("click", declineIncomingCall);
+  incomingBox.addEventListener("cancel", event => {
+    event.preventDefault();
+    declineIncomingCall();
   });
 
   micButton.addEventListener("click", () => {
@@ -1175,17 +1242,27 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   window.addEventListener("pagehide", stopRingtone);
 
   socket.on("rtc2:incoming-call", ({ caller, callId } = {}) => {
-    if (!caller?.clientId || !callId || localStream || outgoingCall || callAccepted) return;
+    if (!caller?.clientId || !callId || localStream || mediaRequest || outgoingCall || callAccepted) return;
     pendingCallerId = caller.clientId;
     pendingCallId = callId;
     incomingName.textContent = `${caller.displayName || "Участник"} хочет присоединиться`;
     incomingBox.hidden = false;
+    if (!incomingBox.open) incomingBox.showModal();
     updateMediaButtons();
     startRingtone();
     videoButton.classList.add("ringing");
     videoButton.textContent = "📞 Входящий";
-    showView("video");
-    setCallState("Можно ответить, когда будете готовы 🙂");
+    setSetupPhase("idle");
+    setCallState("Нажмите «Ответить», затем разрешите камеру и микрофон в запросах браузера. Если разрешения уже выданы, подключение начнётся сразу.");
+  });
+
+  socket.on("rtc2:preparing", ({ callId, state } = {}) => {
+    if (!outgoingCall || callAccepted || callId !== activeCallId) return;
+    if (!["requesting", "blocked"].includes(state)) return;
+    setSetupPhase("waiting");
+    setCallState(state === "requesting"
+      ? "Собеседник нажал «Ответить» и настраивает камеру и микрофон. Пожалуйста, подождите."
+      : "У собеседника не включилась камера или микрофон. Он видит подсказку; ждём повторной попытки.");
   });
 
   socket.on("rtc2:accepted", ({ peer, callId } = {}) => {
@@ -1193,7 +1270,9 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
     outgoingCall = false;
     callAccepted = true;
     peerClientId = peer.clientId;
-    startButton.querySelector("span").textContent = "Подключено";
+    startButton.querySelector("span").textContent = "Соединяем…";
+    setSetupPhase("connecting");
+    setCallState("Собеседник ответил. Соединяем звук и видео…");
     updateMediaButtons();
     startOffer(peer.clientId, "accepted");
   });
@@ -1233,6 +1312,7 @@ export function initLessonComms({ socket, role, lessonId, showSnackbar, context 
   });
 
   socket.on("connect", () => {
+    if (mediaRequest) reportPreparation("requesting");
     if (currentView === "chat") {
       historyLoaded = false;
       loadChatHistory();

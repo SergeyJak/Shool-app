@@ -2976,6 +2976,22 @@ io.on("connection", (socket) => {
     ack?.({ ok: true, recipients });
   });
 
+  onEvent("rtc2:preparing", ({ callId: rawCallId, callerClientId, state } = {}, ack) => {
+    const session = rtc2SessionForLesson(lessonId);
+    const callId = normalizeRtcCallId(rawCallId);
+    const clientId = realtimeClientId(socket.handshake.auth?.clientId);
+    if (role === "observer" || !clientId || !callId || !session || session.accepted ||
+        session.callId !== callId || session.callerClientId !== realtimeClientId(callerClientId) ||
+        session.callerClientId === clientId || !["requesting", "blocked"].includes(state)) {
+      return ack?.({ ok: false, error: "INVALID_PREPARATION" });
+    }
+    const caller = rtc2SocketForClient(lessonId, session.callerClientId);
+    if (!caller) return ack?.({ ok: false, error: "CALLER_OFFLINE" });
+    session.updatedAt = Date.now();
+    caller.emit("rtc2:preparing", { callId, state });
+    ack?.({ ok: true });
+  });
+
   onEvent("rtc2:accept", ({ callId: rawCallId, callerClientId } = {}, ack) => {
     if (role === "observer") return ack?.({ ok: false, error: "READ_ONLY" });
     const callId = normalizeRtcCallId(rawCallId);

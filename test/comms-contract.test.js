@@ -204,7 +204,7 @@ test("answering stops the ringtone immediately before media setup", () => {
   const client = read("public/lesson-comms.mjs");
   assert.match(
     client,
-    /acceptButton\.addEventListener\("click",[\s\S]{0,300}stopRingtone\(\)[\s\S]{0,320}acquireLocalMedia/
+    /async function answerCall\(\)[\s\S]{0,400}stopRingtone\(\)[\s\S]{0,320}acquireLocalMedia/
   );
   assert.match(
     client,
@@ -425,9 +425,9 @@ test("RTC v2 reconnect resumes by stable call session", () => {
 });
 
 test("RTC v2 is cache-busted on lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261113-call-answer/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261113-call-answer/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261113-call-answer/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261114-call-popup/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261114-call-popup/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261114-call-popup/);
 });
 
 
@@ -493,9 +493,9 @@ test("RTC v2 diagnostics keep network context and omit raw SDP or candidates fro
 });
 
 test("RTC v2 cache bust is active on both lesson pages", () => {
-  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261113-call-answer/);
-  assert.match(read("public/teacher.html"), /app\.js\?v=20261113-call-answer/);
-  assert.match(read("public/student.html"), /app\.js\?v=20261113-call-answer/);
+  assert.match(read("public/app.js"), /lesson-comms\.mjs\?v=20261114-call-popup/);
+  assert.match(read("public/teacher.html"), /app\.js\?v=20261114-call-popup/);
+  assert.match(read("public/student.html"), /app\.js\?v=20261114-call-popup/);
 });
 
 
@@ -754,7 +754,7 @@ test("persistent connection switcher is embedded below the panel header", () => 
 
 test("connections page cache-busts presence client", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
-  assert.match(html, /connections\.js\?v=20261113-call-answer/);
+  assert.match(html, /connections\.js\?v=20261114-call-popup/);
 });
 
 
@@ -783,7 +783,7 @@ test("persistent room omits redundant invite and help cards", () => {
 
 test("connection room serves the current client bundle after compact-room DOM changes", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "public", "connections.html"), "utf8");
-  assert.match(html, /connections\.js\?v=20261113-call-answer/);
+  assert.match(html, /connections\.js\?v=20261114-call-popup/);
 });
 
 
