@@ -1,4 +1,4 @@
-import { initLessonComms } from "./lesson-comms.mjs?v=20261113-call-answer";
+import { initLessonComms } from "./lesson-comms.mjs?v=20261114-call-popup";
 
 const managerView = document.getElementById("managerView");
 const roomView = document.getElementById("roomView");

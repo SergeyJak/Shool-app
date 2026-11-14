@@ -9,7 +9,8 @@ import puppeteer from "puppeteer-core";
 // Browser plugin is not available; use the project's existing Puppeteer setup.
 // Exercise real pages, PDF.js API, worker, HTTP transfer and canvas rendering.
 const root = path.resolve(import.meta.dirname, "..");
-const chrome = [process.env.CHROME_BIN, "/usr/bin/chromium", "/usr/bin/google-chrome"]
+// Prefer the native Chrome binary over Ubuntu Chromium launcher wrappers.
+const chrome = [process.env.CHROME_BIN, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium"]
   .filter(Boolean).find(fs.existsSync);
 assert.ok(chrome, "Chromium/Chrome is required for PDF browser checks");
 const packageVersion = JSON.parse(fs.readFileSync(path.join(root, "node_modules/pdfjs-dist/package.json"))).version;
@@ -68,7 +69,7 @@ await once(server, "listening");
 const origin = `http://127.0.0.1:${server.address().port}`;
 let browser;
 try {
-  browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ["--no-sandbox", "--disable-gpu"] });
+  browser = await puppeteer.launch({ executablePath: chrome, headless: true, dumpio: Boolean(process.env.CI), args: ["--no-sandbox", "--disable-gpu"] });
   const scenarios = ["teacher", "student", "monitor"].flatMap((rolePage) =>
     ["direct", "fallback"].flatMap((mode) =>
       [false, true].map((legacyPromises) => ({ rolePage, mode, legacyPromises }))));

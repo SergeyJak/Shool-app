@@ -53,21 +53,51 @@ const server = http.createServer((req, res) => {
   </script>`);
 });
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-const chrome = [process.env.CHROME_BIN, '/usr/bin/chromium', '/usr/bin/google-chrome'].find(p => p && fs.existsSync(p));
-const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] });
+// Prefer the native Chrome binary over Ubuntu Chromium launcher wrappers.
+const chrome = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium'].find(p => p && fs.existsSync(p));
+const browser = await puppeteer.launch({ executablePath: chrome, headless: true, dumpio: Boolean(process.env.CI), args: ['--no-sandbox'] });
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 390, height: 740 });
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
-  async function fresh(mode) {
+  async function fresh(mode, answer = true) {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.waitForFunction(() => window.ready);
+    await page.evaluate(() => document.querySelector('.lesson-comms-chat-button').click());
     await page.evaluate(value => { window.mode = value; ring(); }, mode);
-    await page.click('.lesson-comms-accept');
+    if (answer) await page.click('.lesson-comms-accept');
   }
   const state = () => page.$eval('.lesson-comms-call-state', el => ({ text: el.textContent, visible: el.checkVisibility() }));
+  for (const [width, height] of [[320, 640], [390, 740], [1280, 800]]) {
+    await page.setViewport({ width, height });
+    await fresh('pending', false);
+    assert.equal(await page.$eval('.lesson-comms-incoming', el => el.matches(':modal')), true);
+    assert.equal(await page.evaluate(() => requests), 0, 'Ringing must not ask for camera permissions');
+    assert.equal(await page.$eval('.lesson-comms-chat', el => el.hidden), false, 'Ringing must preserve chat until answered');
+    const bounds = await page.$eval('.lesson-comms-incoming', el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, right: r.right, bottom: r.bottom }; });
+    assert.ok(bounds.x >= 0 && bounds.y >= 0 && bounds.right <= width && bounds.bottom <= height, JSON.stringify(bounds));
+    await page.screenshot({ path: '/tmp/school-incoming-' + width + '.png' });
+    await page.keyboard.press('Escape');
+    assert.equal(await page.$eval('.lesson-comms-incoming', el => el.open), false);
+    assert.equal(await page.$eval('.lesson-comms-chat', el => el.checkVisibility()), true, 'Declining must retain the chat');
+    assert.equal(await page.evaluate(() => events.some(e => e.name === 'rtc2:decline')), true);
+    await page.evaluate(() => ring());
+    await page.evaluate(() => deliver('rtc2:cancelled', { callId: 'test-call' }));
+    assert.equal(await page.$eval('.lesson-comms-incoming', el => el.open), false);
+    await page.click('.lesson-comms-close');
+    await page.evaluate(() => ring());
+    assert.equal(await page.$eval('.lesson-comms-incoming', el => el.matches(':modal')), true, 'Incoming dialog must work while the panel is closed');
+    await page.click('.lesson-comms-decline');
+    assert.equal(await page.$eval('.lesson-comms-panel', el => el.hidden), true);
+  }
+  await page.setViewport({ width: 390, height: 740 });
   await fresh('pending');
+  assert.equal(await page.$eval('.lesson-comms-incoming', el => el.open), false);
+  assert.equal(await page.$eval('.lesson-comms-video', el => el.checkVisibility()), true);
+  assert.equal(await page.$eval('.lesson-comms-chat', el => el.hidden), true);
+  assert.equal(await page.$eval('.lesson-comms-setup', el => el.checkVisibility()), true);
+  assert.equal(await page.evaluate(() => events.some(e => e.name === 'rtc2:preparing' && e.payload.state === 'requesting')), true);
   assert.equal((await state()).visible, true, 'Permission request must remain visible before media is ready');
   await page.evaluate(() => document.querySelector('.lesson-comms-accept').click());
   assert.equal(await page.evaluate(() => requests), 1, 'Repeated clicks must not open concurrent media requests');
@@ -84,6 +114,7 @@ try {
     await page.waitForFunction(() => !document.querySelector('.lesson-comms-accept').disabled);
     const message = await state();
     assert.equal(message.visible, true, name + ' must be visible');
+    assert.equal(await page.evaluate(() => events.some(e => e.name === 'rtc2:preparing' && e.payload.state === 'blocked')), true);
     assert.ok(message.text.includes(fragment), message.text);
     assert.equal(await page.evaluate(n => events.some(e => e.payload?.event === 'local-media-error-v2' && e.payload?.state === n), name), true);
     assert.equal(await page.evaluate(() => events.some(e => JSON.stringify(e).includes('device detail'))), false);
@@ -92,9 +123,29 @@ try {
   // Retry the denied/device-error call with a working stream. A local video play
   // promise that never settles must not block accepting the network call.
   await page.evaluate(() => { mode = 'ready'; });
-  await page.click('.lesson-comms-accept');
+  await page.click('.lesson-comms-retry-media');
   await page.waitForFunction(() => events.some(e => e.name === 'rtc2:accept'), { timeout: 3000 });
   assert.equal(await page.evaluate(() => events.filter(e => e.name === 'rtc2:accept').length), 1);
+  assert.equal(await page.$eval('.lesson-comms-setup', el => el.dataset.phase), 'connecting');
+  assert.equal(await page.$eval('.lesson-comms-live', el => el.hidden), true, 'Accepting is not yet a connected call');
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  await page.waitForFunction(() => window.ready);
+  await page.evaluate(() => { mode = 'ready'; });
+  await page.evaluate(() => document.querySelector('.lesson-comms-video-button').click());
+  await page.click('.lesson-comms-start');
+  await page.waitForFunction(() => events.some(e => e.name === 'rtc2:call'));
+  await page.evaluate(() => { window.outgoingId = events.find(e => e.name === 'rtc2:call').payload.callId; deliver('rtc2:preparing', { callId: outgoingId, state: 'requesting' }); });
+  assert.ok((await state()).text.includes('настраивает'));
+  await page.evaluate(() => deliver('rtc2:preparing', { callId: 'old-call', state: 'blocked' }));
+  assert.ok((await state()).text.includes('настраивает'), 'Ignore stale peer updates');
+  await page.evaluate(() => deliver('rtc2:preparing', { callId: outgoingId, state: 'blocked' }));
+  assert.ok((await state()).text.includes('повторной попытки'));
+  await page.screenshot({ path: '/tmp/school-call-caller-waiting.png' });
+  await page.setViewport({ width: 320, height: 640 });
+  const hangup = await page.$eval('.lesson-comms-hangup', el => {
+    const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom };
+  });
+  assert.ok(hangup.top >= 0 && hangup.bottom <= 640, 'Hangup must fit while waiting on a small phone: ' + JSON.stringify(hangup));
   assert.deepEqual(errors, []);
-  console.log('✓ RTC media: visible permissions/errors, pending reminder, cancellation cleanup, retry and non-blocking preview');
+  console.log('✓ RTC media: incoming modal, chat-to-video transition, peer preparation, permissions/errors, cancellation and retry');
 } finally { await browser.close(); server.close(); }

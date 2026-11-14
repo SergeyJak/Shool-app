@@ -1187,3 +1187,71 @@
 .lesson-comms-panel.call-active:not(.call-connected) .lesson-comms-remote-fallback {
   filter: saturate(.96) brightness(1.02);
 }
+
+/* Permission prompts and connection progress stay outside the video artwork. */
+.lesson-comms-setup {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 13px 15px;
+  border: 1px solid #dedaf2;
+  border-radius: 18px;
+  background: #f6f4ff;
+  color: #35405d;
+}
+.lesson-comms-setup[hidden], .lesson-comms-cancel-setup[hidden] { display: none !important; }
+.lesson-comms-setup-title { font-size: 16px; line-height: 1.25; }
+.lesson-comms-steps { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.lesson-comms-steps li { flex: 1; padding: 6px 3px; border-radius: 8px; text-align: center; font-size: 12px; color: #646b7e; background: #eae8f2; }
+.lesson-comms-steps [aria-current="step"] { background: #6355c6; color: white; font-weight: 750; }
+.lesson-comms-steps .done { background: #e0efdf; color: #285d31; }
+.lesson-comms-setup[data-phase="error"] { background: #fff5e8; border-color: #d6b27b; }
+.lesson-comms-setup .lesson-comms-call-state {
+  position: static;
+  display: block;
+  min-height: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  color: inherit;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 500;
+}
+.lesson-comms-cancel-setup { min-height: 44px; border: 1px solid #c9c3e3; border-radius: 10px; background: white; color: #4e438d; font: inherit; cursor: pointer; }
+.lesson-comms-panel.mini-video .lesson-comms-setup { display: none; }
+@media (max-width: 600px) {
+  .lesson-comms-panel:not(.call-connected) .lesson-comms-placeholder-image { height: 120px; }
+  .lesson-comms-panel:not(.call-connected) .lesson-comms-remote,
+  .lesson-comms-panel:not(.call-connected) .lesson-comms-video-stage { min-height: 0; height: clamp(100px, 25dvh, 200px); }
+  .lesson-comms-panel:not(.call-active) .lesson-comms-video-stage { display: none; }
+}
+
+/* A real incoming-call modal appears above chat and lesson content. */
+dialog.lesson-comms-incoming {
+  position: fixed;
+  inset: 0;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  box-sizing: border-box;
+  margin: auto;
+  padding: 24px;
+  gap: 18px;
+  overflow: auto;
+  border: 1px solid #d7d0ef;
+  border-radius: 24px;
+  background: #fffdf8;
+  box-shadow: 0 24px 80px #20213f40;
+  font-family: system-ui, sans-serif;
+}
+dialog.lesson-comms-incoming:not([open]) { display: none; }
+dialog.lesson-comms-incoming::backdrop { background: #25263880; }
+dialog.lesson-comms-incoming::after { display: none; }
+dialog .lesson-comms-incoming-title { font-size: 22px; color: #2b304b; }
+dialog .lesson-comms-incoming-name { overflow-wrap: anywhere; font-size: 17px; color: #4e5370; }
+.lesson-comms-incoming-help { margin: 0; font-size: 14px; line-height: 1.5; color: #586178; }
+dialog .lesson-comms-incoming-actions button { min-height: 52px; font-size: 15px; }
+.lesson-comms-retry-media { min-height: 44px; padding: 8px 12px; border: 0; border-radius: 10px; background: #6355c6; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+.lesson-comms-retry-media[hidden] { display: none !important; }
